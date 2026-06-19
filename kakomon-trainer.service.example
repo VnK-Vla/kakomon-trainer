@@ -1,0 +1,15 @@
+[Unit]
+Description=Kakomon Trainer
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/keita/kakomon-trainer
+Environment=KAKOMON_DATA_DIR=/home/keita/kakomon-trainer/data
+Environment=KAKOMON_ADMIN_USERS=your-email@example.com
+ExecStart=/usr/bin/python3 /home/keita/kakomon-trainer/server.py --host 127.0.0.1 --port 8081
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

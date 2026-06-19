@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>過去問演習</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local Raspberry Pi</p>
+          <h1>過去問演習</h1>
+          <p id="currentUserDisplay" class="current-user-display"></p>
+          <nav id="examTabs" class="exam-tabs" aria-label="試験切替"></nav>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <nav class="tabs" aria-label="画面切替">
+            <button class="tab active" data-tab="practice">演習</button>
+            <button class="tab" data-tab="library">一覧</button>
+            <button class="tab" data-tab="history">履歴</button>
+            <button id="usersTab" class="tab hidden" data-tab="users">ユーザー</button>
+          </nav>
+
+          <section class="filter-panel" aria-label="絞り込み">
+            <label>
+              <span>年度</span>
+              <select id="filterYear"></select>
+            </label>
+            <label>
+              <span>分野</span>
+              <select id="filterCategory"></select>
+            </label>
+            <label>
+              <span>検索</span>
+              <input id="filterKeyword" type="search" autocomplete="off">
+            </label>
+            <button id="applyFilters" class="primary">絞り込み</button>
+          </section>
+        </aside>
+
+        <section class="content">
+          <section id="practiceView" class="view active" aria-labelledby="practiceTitle">
+            <div class="view-head">
+              <div>
+                <p class="eyebrow">Practice</p>
+                <h2 id="practiceTitle">演習</h2>
+              </div>
+              <div class="practice-toolbar">
+                <button id="backToStudyMap" class="ghost hidden" type="button">一覧へ戻る</button>
+                <form id="jumpForm" class="jump-form" aria-label="問題番号へ移動">
+                  <input id="jumpQuestionNumber" type="number" min="1" max="200" inputmode="numeric" autocomplete="off" placeholder="問番号" aria-label="問題番号">
+                  <button id="jumpQuestion" class="ghost" type="submit">移動</button>
+                </form>
+                <div class="nav-buttons">
+                  <button id="prevQuestion" class="ghost" type="button">前の問題</button>
+                  <button id="nextQuestion" class="ghost" type="button">次の問題</button>
+                </div>
+              </div>
+            </div>
+
+            <section id="studyMap" class="study-map" aria-label="演習メニュー">
+              <nav class="study-tabs" aria-label="演習メニュー切替">
+                <button class="study-tab active" type="button" data-study-mode="category">分野別</button>
+                <button class="study-tab" type="button" data-study-mode="year">回数別</button>
+              </nav>
+              <div id="studyList" class="study-list"></div>
+            </section>
+
+            <article id="practiceSession" class="practice-panel hidden">
+              <div id="emptyPractice" class="empty-state">
+                <strong>問題がありません</strong>
+                <span>条件に一致する問題がありません。</span>
+              </div>
+              <div id="questionArea" class="question-area hidden">
+                <div id="questionMeta" class="meta-row"></div>
+                <div id="practiceCategoryEditor" class="practice-category-editor hidden">
+                  <label>
+                    <span>分野修正</span>
+                    <select id="practiceCategorySelect"></select>
+                  </label>
+                  <button id="savePracticeCategory" class="ghost" type="button">保存</button>
+                </div>
+                <p id="questionText" class="question-text"></p>
+                <div id="questionImages" class="question-images"></div>
+                <form id="answerForm" class="answer-form">
+                  <div id="choiceList" class="choice-list"></div>
+                  <label id="freeAnswerWrap" class="free-answer hidden">
+                    <span>解答</span>
+                    <input id="freeAnswer" type="text" autocomplete="off">
+                  </label>
+                  <div class="action-row">
+                    <button class="primary" type="submit">判定</button>
+                    <button id="clearAnswer" class="ghost" type="button">消去</button>
+                  </div>
+                </form>
+                <div id="resultBox" class="result-box hidden" aria-live="polite"></div>
+                <form id="noteForm" class="question-note">
+                  <label>
+                    <span>メモ</span>
+                    <textarea id="questionNote" maxlength="4000" rows="4"></textarea>
+                  </label>
+                  <div class="note-actions">
+                    <button id="saveNote" class="ghost small" type="submit">保存</button>
+                    <span id="noteStatus" class="note-status" aria-live="polite"></span>
+                  </div>
+                </form>
+              </div>
+            </article>
+          </section>
+
+          <section id="libraryView" class="view" aria-labelledby="libraryTitle">
+            <div class="view-head">
+              <div>
+                <p class="eyebrow">Library</p>
+                <h2 id="libraryTitle">問題一覧</h2>
+              </div>
+              <span id="libraryCount" class="count-pill">0件</span>
+            </div>
+            <div class="table-wrap">
+              <table class="library-table">
+                <thead>
+                  <tr>
+                    <th>年度</th>
+                    <th>分野</th>
+                    <th>問題</th>
+                    <th>成績</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="questionTable"></tbody>
+              </table>
+            </div>
+            <div id="libraryPagination" class="pagination hidden" aria-label="問題一覧ページ切替">
+              <button id="libraryPrevPage" class="ghost small" type="button">前へ</button>
+              <span id="libraryPageStatus">1 / 1</span>
+              <button id="libraryNextPage" class="ghost small" type="button">次へ</button>
+            </div>
+          </section>
+
+          <section id="historyView" class="view" aria-labelledby="historyTitle">
+            <div class="view-head">
+              <div>
+                <p class="eyebrow">History</p>
+                <h2 id="historyTitle">解答履歴</h2>
+              </div>
+              <button id="clearHistory" class="danger small" type="button">履歴を一括削除</button>
+            </div>
+            <div class="table-wrap">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>日時</th>
+                    <th>結果</th>
+                    <th>分野</th>
+                    <th>解答</th>
+                    <th>正答</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="historyTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="usersView" class="view" aria-labelledby="usersTitle">
+            <div class="view-head">
+              <div>
+                <p class="eyebrow">Users</p>
+                <h2 id="usersTitle">ユーザー管理</h2>
+              </div>
+            </div>
+            <form id="userAdminForm" class="user-admin-form">
+              <label>
+                <span>ユーザー名</span>
+                <input id="newUserNameInput" type="text" maxlength="80" autocomplete="off">
+              </label>
+              <button class="primary" type="submit">追加</button>
+            </form>
+            <div class="table-wrap">
+              <table class="user-table">
+                <thead>
+                  <tr>
+                    <th>ユーザー</th>
+                    <th>履歴</th>
+                    <th>最終</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="userTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

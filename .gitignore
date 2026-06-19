@@ -1,0 +1,32 @@
+# Runtime data and private user content
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Imported or generated exam assets
+static/media/
+import_pdfs/
+*.pdf
+*.tar
+*.tar.gz
+*.tgz
+
+# Local backups and generated files
+backups/
+__pycache__/
+*.py[cod]
+*.log
+
+# Local machine / deployment secrets
+.env
+*.key
+*_key*
+rasberry_*
+kakomon-trainer.service
+
+# Temporary documentation assets generated during local work
+invitee-guide-assets/
+tailscale-introduction-guide.md
+tailscale-invitee-guide.md
+tailscale-invitee-guide.html
