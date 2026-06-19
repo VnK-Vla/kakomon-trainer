@@ -145,6 +145,26 @@ def explanation_for(entry: AnswerEntry) -> str:
     return "\n\n".join(lines)
 
 
+def source_lines(explanation: str | None) -> list[str]:
+    lines: list[str] = []
+    for raw_line in (explanation or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(r"^(?:出典|Source)\s*:", line, re.IGNORECASE) and line not in lines:
+            lines.append(line)
+    return lines
+
+
+def explanation_with_preserved_source(previous: str | None, entry: AnswerEntry) -> str:
+    explanation = explanation_for(entry).strip()
+    preserved = source_lines(previous)
+    for line in reversed(preserved):
+        if line not in explanation:
+            explanation = f"{line}\n\n{explanation}" if explanation else line
+    return explanation
+
+
 def backup_db(db_path: Path, year: str) -> Path:
     backup_dir = APP_DIR / "backups" / f"before-diagnostic-radiology-{year}-answers-{now_stamp()}"
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -170,7 +190,7 @@ def import_answers(
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            "SELECT id, question FROM questions WHERE exam = ? AND year = ? ORDER BY id",
+            "SELECT id, question, explanation FROM questions WHERE exam = ? AND year = ? ORDER BY id",
             (exam, year),
         ).fetchall()
         question_by_number = {}
@@ -194,7 +214,7 @@ def import_answers(
                 """,
                 (
                     entry.answer,
-                    explanation_for(entry),
+                    explanation_with_preserved_source(question_by_number[number]["explanation"], entry),
                     timestamp,
                     question_by_number[number]["id"],
                 ),

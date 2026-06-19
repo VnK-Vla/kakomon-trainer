@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>過去問演習</title>
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="/app.css?v=20260619-filter-mobile-only">
   </head>
   <body>
     <div class="app-shell">
@@ -26,21 +26,27 @@
             <button id="usersTab" class="tab hidden" data-tab="users">ユーザー</button>
           </nav>
 
-          <section class="filter-panel" aria-label="絞り込み">
-            <label>
-              <span>年度</span>
-              <select id="filterYear"></select>
-            </label>
-            <label>
-              <span>分野</span>
-              <select id="filterCategory"></select>
-            </label>
-            <label>
-              <span>検索</span>
-              <input id="filterKeyword" type="search" autocomplete="off">
-            </label>
-            <button id="applyFilters" class="primary">絞り込み</button>
-          </section>
+          <details id="filterPanel" class="filter-panel" aria-label="絞り込み" open>
+            <summary class="filter-summary">
+              <span>絞り込み</span>
+              <span id="filterSummaryText" class="filter-summary-text">すべて</span>
+            </summary>
+            <div class="filter-fields">
+              <label>
+                <span>年度</span>
+                <select id="filterYear"></select>
+              </label>
+              <label>
+                <span>分野</span>
+                <select id="filterCategory"></select>
+              </label>
+              <label>
+                <span>検索</span>
+                <input id="filterKeyword" type="search" autocomplete="off">
+              </label>
+              <button id="applyFilters" class="primary">絞り込み</button>
+            </div>
+          </details>
         </aside>
 
         <section class="content">
@@ -66,7 +72,7 @@
             <section id="studyMap" class="study-map" aria-label="演習メニュー">
               <nav class="study-tabs" aria-label="演習メニュー切替">
                 <button class="study-tab active" type="button" data-study-mode="category">分野別</button>
-                <button class="study-tab" type="button" data-study-mode="year">回数別</button>
+                <button class="study-tab" type="button" data-study-mode="year">年度別</button>
               </nav>
               <div id="studyList" class="study-list"></div>
             </section>
@@ -86,6 +92,7 @@
                   <button id="savePracticeCategory" class="ghost" type="button">保存</button>
                 </div>
                 <p id="questionText" class="question-text"></p>
+                <div id="questionSourceLinks" class="question-source-links"></div>
                 <div id="questionImages" class="question-images"></div>
                 <form id="answerForm" class="answer-form">
                   <div id="choiceList" class="choice-list"></div>
@@ -200,6 +207,6 @@
     </div>
 
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=20260619-multi-choice-fix"></script>
   </body>
 </html>

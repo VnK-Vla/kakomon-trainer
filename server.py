@@ -2,26 +2,53 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import mimetypes
 import os
 import re
 import sqlite3
+import time
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+SOURCE_PDF_DIR = STATIC_DIR / "source-pdfs"
 DATA_DIR = Path(os.environ.get("KAKOMON_DATA_DIR", BASE_DIR / "data")).resolve()
 DB_PATH = DATA_DIR / "questions.db"
 DEFAULT_USER_NAME = "自分"
 MAX_USER_NAME_LENGTH = 80
 MAX_NOTE_LENGTH = 4000
 TAILSCALE_LOGIN_HEADER = "Tailscale-User-Login"
+SOURCE_PDF_CACHE_SECONDS = 60.0
+SOURCE_PDF_CHUNK_SIZE = 1024 * 256
+GZIP_JSON_MIN_BYTES = 1024
+
+EXAM_SOURCE_DIRS = {
+    "放射線診断専門医認定試験": "diagnostic",
+    "核医学専門医試験": "nuclear",
+    "放射線治療専門医認定試験": "treatment",
+}
+
+TREATMENT_SOURCE_FILES = {
+    "2016": "20160831.pdf",
+    "2017": "20170904_4.pdf",
+    "2018": "20180926_4.pdf",
+    "2019": "20190904_04.pdf",
+    "2020": "chiryo2020.pdf",
+    "2021": "chiryo2021.pdf",
+    "2022": "chiryo2022.pdf",
+    "2023": "chiryo2023.pdf",
+    "2024": "chiryo2024.pdf",
+    "2025": "kikou_chiryo2025_02.pdf",
+}
+
+SOURCE_PDF_CACHE: dict[str, object] = {"expires_at": 0.0, "files": set()}
 
 
 def now_iso() -> str:
@@ -65,6 +92,68 @@ def is_correct_answer(user_answer: str, correct_answer: str) -> bool:
     if user_letters and correct_letters:
         return user_letters == correct_letters
     return normalize_answer(user_answer) == normalize_answer(correct_answer)
+
+
+def source_pdf_filename(exam: str, year: str, explanation: str) -> str:
+    source_match = re.search(r"出典:\s*([^/\n]+?\.pdf)\b", explanation or "", re.IGNORECASE)
+    if source_match:
+        return source_match.group(1).strip()
+    if exam == "放射線治療専門医認定試験":
+        return TREATMENT_SOURCE_FILES.get(str(year), "")
+    if exam in {"放射線診断専門医認定試験", "核医学専門医試験"} and year:
+        return f"{year}.pdf"
+    return ""
+
+
+def source_pdf_page(explanation: str) -> int | None:
+    page_match = re.search(r"(?:p\.?|page)\s*([0-9]{1,4})", explanation or "", re.IGNORECASE)
+    if not page_match:
+        return None
+    try:
+        return int(page_match.group(1))
+    except ValueError:
+        return None
+
+
+def available_source_pdfs() -> set[tuple[str, str]]:
+    now = time.monotonic()
+    cached_files = SOURCE_PDF_CACHE.get("files")
+    expires_at = float(SOURCE_PDF_CACHE.get("expires_at") or 0.0)
+    if isinstance(cached_files, set) and now < expires_at:
+        return cached_files
+
+    files: set[tuple[str, str]] = set()
+    if SOURCE_PDF_DIR.exists():
+        for path in SOURCE_PDF_DIR.glob("*/*.pdf"):
+            if path.is_file():
+                files.add((path.parent.name, path.name))
+    SOURCE_PDF_CACHE["files"] = files
+    SOURCE_PDF_CACHE["expires_at"] = now + SOURCE_PDF_CACHE_SECONDS
+    return files
+
+
+def source_pdf_for_question(row: sqlite3.Row) -> dict | None:
+    exam = str(row["exam"] or "")
+    year = str(row["year"] or "")
+    slug = EXAM_SOURCE_DIRS.get(exam)
+    if not slug:
+        return None
+    filename = source_pdf_filename(exam, year, str(row["explanation"] or ""))
+    if not filename:
+        return None
+    if (slug, filename) not in available_source_pdfs():
+        return None
+
+    page = source_pdf_page(str(row["explanation"] or ""))
+    url = f"/source-pdfs/{quote(slug)}/{quote(filename)}"
+    if page:
+        url = f"{url}#page={page}"
+    return {
+        "label": f"{filename}" + (f" p.{page}" if page else ""),
+        "url": url,
+        "page": page,
+        "filename": filename,
+    }
 
 
 def db() -> sqlite3.Connection:
@@ -168,6 +257,7 @@ def row_to_question(row: sqlite3.Row) -> dict:
         "images": images if isinstance(images, list) else [],
         "answer": row["answer"],
         "explanation": row["explanation"],
+        "source_pdf": source_pdf_for_question(row),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -232,6 +322,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_list_questions(parsed.query)
         elif parsed.path == "/api/stats":
             self.handle_stats(parsed.query)
+        elif parsed.path == "/api/study-summary":
+            self.handle_study_summary(parsed.query)
         elif parsed.path == "/api/export":
             self.handle_export()
         elif parsed.path == "/api/attempts":
@@ -242,6 +334,13 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
         else:
             self.serve_static(parsed.path)
+
+    def do_HEAD(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/api/"):
+            self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
+            return
+        self.serve_static(parsed.path)
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
@@ -326,14 +425,23 @@ class AppHandler(BaseHTTPRequestHandler):
         if length > 0:
             self.rfile.read(length)
 
+    def accepts_gzip(self) -> bool:
+        header = self.headers.get("Accept-Encoding", "")
+        return any(item.strip().split(";", 1)[0].lower() == "gzip" for item in header.split(","))
+
     def send_json(self, payload: object, status: HTTPStatus = HTTPStatus.OK) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        use_gzip = len(body) >= GZIP_JSON_MIN_BYTES and self.accepts_gzip()
+        response_body = gzip.compress(body, compresslevel=5) if use_gzip else body
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(len(response_body)))
+        self.send_header("Vary", "Accept-Encoding")
+        if use_gzip:
+            self.send_header("Content-Encoding", "gzip")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.write(response_body)
 
     def tailscale_user(self) -> str:
         login = self.headers.get(TAILSCALE_LOGIN_HEADER)
@@ -439,12 +547,65 @@ class AppHandler(BaseHTTPRequestHandler):
             return
 
         content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-        body = target.read_bytes()
-        self.send_response(HTTPStatus.OK)
+        file_size = target.stat().st_size
+        range_header = self.headers.get("Range", "")
+        range_info = self.parse_byte_range(range_header, file_size) if range_header else None
+        if range_header and range_info is None:
+            self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+            self.send_header("Content-Range", f"bytes */{file_size}")
+            self.send_header("Accept-Ranges", "bytes")
+            self.end_headers()
+            return
+
+        if range_info:
+            start, end = range_info
+            content_length = end - start + 1
+            self.send_response(HTTPStatus.PARTIAL_CONTENT)
+            self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+        else:
+            start = 0
+            content_length = file_size
+            self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Length", str(content_length))
+        self.send_header("Accept-Ranges", "bytes")
+        if path.startswith("/source-pdfs/"):
+            self.send_header("Cache-Control", "private, max-age=3600")
         self.end_headers()
-        self.wfile.write(body)
+        if self.command == "HEAD":
+            return
+
+        with target.open("rb") as handle:
+            handle.seek(start)
+            remaining = content_length
+            while remaining > 0:
+                chunk = handle.read(min(SOURCE_PDF_CHUNK_SIZE, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
+
+    def parse_byte_range(self, header: str, file_size: int) -> tuple[int, int] | None:
+        if not header.startswith("bytes=") or "," in header:
+            return None
+        raw_start, _, raw_end = header.removeprefix("bytes=").partition("-")
+        try:
+            if raw_start:
+                start = int(raw_start)
+                end = int(raw_end) if raw_end else file_size - 1
+            elif raw_end:
+                suffix_length = int(raw_end)
+                if suffix_length <= 0:
+                    return None
+                start = max(0, file_size - suffix_length)
+                end = file_size - 1
+            else:
+                return None
+        except ValueError:
+            return None
+        if start < 0 or end < start or start >= file_size:
+            return None
+        return start, min(end, file_size - 1)
 
     def handle_list_questions(self, query: str) -> None:
         params = parse_qs(query)
@@ -896,6 +1057,100 @@ class AppHandler(BaseHTTPRequestHandler):
                 "exams": exams,
                 "years": years,
                 "categories": categories,
+            }
+        )
+
+    def handle_study_summary(self, query: str = "") -> None:
+        params = parse_qs(query)
+        exam = (params.get("exam", [""])[0] or "").strip()
+        user_name = self.effective_user_name(params)
+        filters = []
+        args: list[str] = [user_name]
+        if exam:
+            filters.append("q.exam = ?")
+            args.append(exam)
+        where = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+        def make_rows(rows: list[sqlite3.Row], label_field: str) -> list[dict]:
+            items = []
+            for row in rows:
+                total = int(row["total"] or 0)
+                ok = int(row["ok"] or 0)
+                warn = int(row["warn"] or 0)
+                wrong = int(row["wrong"] or 0)
+                untried = int(row["untried"] or 0)
+                attempted = ok + warn + wrong
+                items.append(
+                    {
+                        "label": row[label_field],
+                        "total": total,
+                        "attempted": attempted,
+                        "ok": ok,
+                        "warn": warn,
+                        "wrong": wrong,
+                        "untried": untried,
+                        "remaining": untried,
+                        "percent": round(attempted * 100 / total) if total else 0,
+                    }
+                )
+            return items
+
+        summary_select = """
+            COUNT(*) AS total,
+            SUM(CASE WHEN latest.question_id IS NULL THEN 1 ELSE 0 END) AS untried,
+            SUM(CASE WHEN latest.question_id IS NOT NULL AND latest.self_mark = 'ok' THEN 1 ELSE 0 END) AS ok,
+            SUM(CASE WHEN latest.question_id IS NOT NULL AND latest.self_mark = 'wrong' THEN 1 ELSE 0 END) AS wrong,
+            SUM(CASE WHEN latest.question_id IS NOT NULL AND latest.self_mark NOT IN ('ok', 'wrong') THEN 1 ELSE 0 END) AS warn
+        """
+        latest_cte = """
+            WITH latest AS (
+                SELECT question_id, COALESCE(self_mark, '') AS self_mark
+                FROM (
+                    SELECT
+                        question_id,
+                        self_mark,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY question_id
+                            ORDER BY created_at DESC, id DESC
+                        ) AS row_number
+                    FROM attempts
+                    WHERE user_name = ?
+                )
+                WHERE row_number = 1
+            )
+        """
+        with db() as conn:
+            category_rows = conn.execute(
+                f"""
+                {latest_cte}
+                SELECT q.category AS category, {summary_select}
+                FROM questions q
+                LEFT JOIN latest ON latest.question_id = q.id
+                {where}
+                {"AND" if where else "WHERE"} q.category <> ''
+                GROUP BY q.category
+                ORDER BY q.category
+                """,
+                args,
+            ).fetchall()
+            year_rows = conn.execute(
+                f"""
+                {latest_cte}
+                SELECT q.year AS year, {summary_select}
+                FROM questions q
+                LEFT JOIN latest ON latest.question_id = q.id
+                {where}
+                {"AND" if where else "WHERE"} q.year <> ''
+                GROUP BY q.year
+                ORDER BY q.year DESC
+                """,
+                args,
+            ).fetchall()
+
+        self.send_json(
+            {
+                "category": make_rows(category_rows, "category"),
+                "year": make_rows(year_rows, "year"),
             }
         )
 

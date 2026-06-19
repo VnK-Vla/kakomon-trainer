@@ -5,6 +5,7 @@ data/
 *.sqlite3
 
 # Imported or generated exam assets
+imports/
 static/media/
 import_pdfs/
 *.pdf

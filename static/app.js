@@ -1,6 +1,7 @@
 const DEFAULT_USER_NAME = "自分";
 const USER_STORAGE_KEY = "kakomon-trainer-user";
 const LIBRARY_PAGE_SIZE = 40;
+const COMPACT_FILTER_MEDIA = "(max-width: 520px)";
 
 function normalizeUserName(value) {
   const text = String(value ?? "").replace(/\s+/g, " ").trim();
@@ -19,6 +20,8 @@ const state = {
   questions: [],
   allQuestions: [],
   studyQuestions: [],
+  studySummary: null,
+  questionsLoaded: false,
   users: [],
   stats: null,
   session: { mode: "direct", can_switch_user: true, can_manage_users: false, can_edit_questions: false },
@@ -44,11 +47,41 @@ const SELF_MARKS = {
   wrong: { label: "×", text: "できない", className: "wrong" },
 };
 
-const KNOWN_EXAMS = ["放射線診断専門医認定試験", "核医学専門医試験"];
+const KNOWN_EXAMS = ["放射線診断専門医認定試験", "核医学専門医試験", "放射線治療専門医認定試験"];
 
 const EXAM_LABELS = {
   放射線診断専門医認定試験: "診断専門医",
   核医学専門医試験: "核医学専門医",
+  放射線治療専門医認定試験: "治療専門医",
+};
+
+const CATEGORY_ORDERS = {
+  放射線診断専門医認定試験: [
+    "神経・頭頸部",
+    "骨軟部",
+    "胸部",
+    "心大血管",
+    "乳腺",
+    "腹部",
+    "泌尿器・婦人科",
+    "小児",
+    "IVR",
+    "核医学",
+    "基礎・安全・情報",
+  ],
+  放射線治療専門医認定試験: [
+    "放射線治療総合",
+    "基礎・物理",
+    "生物・薬剤",
+    "治療計画・照射技術",
+    "安全管理・QA",
+    "中枢神経・頭頸部",
+    "胸部・乳腺",
+    "消化器",
+    "泌尿器・婦人科",
+    "血液・小児・骨軟部",
+    "緩和・良性疾患",
+  ],
 };
 
 const fields = {
@@ -67,6 +100,8 @@ const fields = {
   filterYear: $("#filterYear"),
   filterCategory: $("#filterCategory"),
   filterKeyword: $("#filterKeyword"),
+  filterPanel: $("#filterPanel"),
+  filterSummaryText: $("#filterSummaryText"),
   studyMap: $("#studyMap"),
   studyList: $("#studyList"),
   practiceSession: $("#practiceSession"),
@@ -80,6 +115,7 @@ const fields = {
   emptyPractice: $("#emptyPractice"),
   questionMeta: $("#questionMeta"),
   questionText: $("#questionText"),
+  questionSourceLinks: $("#questionSourceLinks"),
   questionImages: $("#questionImages"),
   choiceList: $("#choiceList"),
   freeAnswerWrap: $("#freeAnswerWrap"),
@@ -185,6 +221,22 @@ function userScopedParams(initial = {}) {
   return params;
 }
 
+function hasActiveQuestionFilter() {
+  return Boolean(
+    fields.filterYear.value ||
+      fields.filterCategory.value ||
+      fields.filterKeyword.value.trim() ||
+      state.localFilter,
+  );
+}
+
+function clearQuestionLists() {
+  state.allQuestions = [];
+  state.studyQuestions = [];
+  state.questions = [];
+  state.questionsLoaded = false;
+}
+
 async function refreshSession() {
   const session = await api("/api/session");
   state.session = session;
@@ -196,31 +248,38 @@ async function refreshSession() {
   return session;
 }
 
-async function refreshAll({ keepQuestion = false, renderPracticePanel = true } = {}) {
+async function refreshAll({ keepQuestion = false, renderPracticePanel = true, forceLoadQuestions = false } = {}) {
   await refreshSession();
   const query = selectedFilters();
   const statsParams = userScopedParams();
   if (state.selectedExam) statsParams.set("exam", state.selectedExam);
-  const studyParams = userScopedParams();
-  if (state.selectedExam) studyParams.set("exam", state.selectedExam);
-  const studyQuery = studyParams.toString();
+  const summaryParams = userScopedParams();
+  if (state.selectedExam) summaryParams.set("exam", state.selectedExam);
   const historyParams = userScopedParams({ limit: "80" });
   if (state.selectedExam) historyParams.set("exam", state.selectedExam);
-  const [stats, questionPayload, studyPayload, historyPayload] = await Promise.all([
+  const shouldLoadQuestions =
+    forceLoadQuestions || !state.showStudyMap || state.activeTab === "library" || hasActiveQuestionFilter();
+  const [stats, summaryPayload, questionPayload, historyPayload] = await Promise.all([
     api(`/api/stats${queryFor(statsParams)}`),
-    api(`/api/questions${query ? `?${query}` : ""}`),
-    api(`/api/questions${studyQuery ? `?${studyQuery}` : ""}`),
+    api(`/api/study-summary${queryFor(summaryParams)}`),
+    shouldLoadQuestions ? api(`/api/questions${query ? `?${query}` : ""}`) : Promise.resolve(null),
     api(`/api/attempts${queryFor(historyParams)}`),
   ]);
 
   state.stats = stats;
+  state.studySummary = summaryPayload;
   if (!state.selectedExam && stats.exams?.length) {
     state.selectedExam = stats.exams.includes(KNOWN_EXAMS[0]) ? KNOWN_EXAMS[0] : stats.exams[0];
   }
   renderUserSwitcher();
-  state.allQuestions = questionPayload.questions || [];
-  state.studyQuestions = studyPayload.questions || [];
-  state.questions = state.localFilter ? applyLocalFilter(state.allQuestions, state.localFilter) : state.allQuestions;
+  if (questionPayload) {
+    state.allQuestions = questionPayload.questions || [];
+    state.studyQuestions = state.allQuestions;
+    state.questions = state.localFilter ? applyLocalFilter(state.allQuestions, state.localFilter) : state.allQuestions;
+    state.questionsLoaded = true;
+  } else {
+    clearQuestionLists();
+  }
   renderStats();
   renderExamTabs();
   renderFilters();
@@ -342,25 +401,42 @@ function setSelectOptions(select, values, current, label) {
   select.innerHTML = `<option value="">${label}</option>${escaped.join("")}`;
 }
 
-function renderFilters() {
-  setSelectOptions(fields.filterYear, state.stats?.years || [], fields.filterYear.value, "すべて");
-  setSelectOptions(fields.filterCategory, state.stats?.categories || [], fields.filterCategory.value, "すべて");
+function sortedCategories(values, exam = state.selectedExam) {
+  return [...(values || [])].sort(
+    (a, b) => categoryOrder(a, exam) - categoryOrder(b, exam) || String(a).localeCompare(String(b), "ja"),
+  );
 }
 
-function categoryOrder(category) {
-  const order = [
-    "神経・頭頸部",
-    "骨軟部",
-    "胸部",
-    "心大血管",
-    "乳腺",
-    "腹部",
-    "泌尿器・婦人科",
-    "小児",
-    "IVR",
-    "核医学",
-    "基礎・安全・情報",
-  ];
+function renderFilters() {
+  setSelectOptions(fields.filterYear, state.stats?.years || [], fields.filterYear.value, "すべて");
+  setSelectOptions(fields.filterCategory, sortedCategories(state.stats?.categories), fields.filterCategory.value, "すべて");
+  renderFilterSummary();
+}
+
+function renderFilterSummary() {
+  if (!fields.filterSummaryText) return;
+  const parts = [];
+  if (fields.filterYear.value) parts.push(fields.filterYear.value);
+  if (fields.filterCategory.value) parts.push(fields.filterCategory.value);
+  if (fields.filterKeyword.value.trim()) parts.push(`検索: ${fields.filterKeyword.value.trim()}`);
+  if (state.localFilter?.hasImages) parts.push("画像あり");
+  if (state.localFilter?.unattempted) parts.push("未演習");
+  if (state.localFilter?.withoutAnswer) parts.push("解答未登録");
+  fields.filterSummaryText.textContent = parts.length ? parts.join(" / ") : "すべて";
+}
+
+function isCompactFilterViewport() {
+  return window.matchMedia?.(COMPACT_FILTER_MEDIA).matches ?? false;
+}
+
+function updateFilterPanelOpen() {
+  if (!fields.filterPanel) return;
+  const collapse = state.activeTab === "practice" && !state.showStudyMap && isCompactFilterViewport();
+  fields.filterPanel.open = !collapse;
+}
+
+function categoryOrder(category, exam = state.selectedExam) {
+  const order = CATEGORY_ORDERS[exam] || [];
   const index = order.indexOf(category);
   return index >= 0 ? index : order.length;
 }
@@ -405,7 +481,41 @@ function renderStudyProgress(row) {
     .join("");
 }
 
+function studyRowsFromSummary(kind) {
+  const rows = Array.isArray(state.studySummary?.[kind]) ? state.studySummary[kind] : [];
+  return rows.map((row) => {
+    const label = String(row.label || "");
+    return {
+      label: kind === "year" ? `${label}年` : label,
+      filter: kind === "year" ? { year: label } : { category: label },
+      total: Number(row.total || 0),
+      attempted: Number(row.attempted || 0),
+      ok: Number(row.ok || 0),
+      warn: Number(row.warn || 0),
+      wrong: Number(row.wrong || 0),
+      untried: Number(row.untried || 0),
+      remaining: Number(row.remaining || row.untried || 0),
+      percent: Number(row.percent || 0),
+    };
+  });
+}
+
 function buildStudyRows() {
+  if (state.studySummary) {
+    if (state.studyMode === "year") {
+      const rows = studyRowsFromSummary("year").sort((a, b) =>
+        String(b.filter.year).localeCompare(String(a.filter.year)),
+      );
+      return [{ title: "年度別", note: "", rows }];
+    }
+
+    const rows = studyRowsFromSummary("category").sort(
+      (a, b) =>
+        categoryOrder(a.filter.category) - categoryOrder(b.filter.category) || a.label.localeCompare(b.label, "ja"),
+    );
+    return [{ title: "分野別", note: "", rows }];
+  }
+
   const source = state.studyQuestions || [];
   if (state.studyMode === "year") {
     const years = [...new Set(source.map((question) => question.year).filter(Boolean))].sort((a, b) =>
@@ -419,12 +529,10 @@ function buildStudyRows() {
         ...summarizeQuestions(questions),
       };
     });
-    return [{ title: "回数別", note: "", rows }];
+    return [{ title: "年度別", note: "", rows }];
   }
 
-  const categories = [...new Set(source.map((question) => question.category).filter(Boolean))].sort(
-    (a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b, "ja"),
-  );
+  const categories = sortedCategories([...new Set(source.map((question) => question.category).filter(Boolean))]);
   const rows = categories.map((category) => {
     const questions = source.filter((question) => question.category === category);
     return {
@@ -490,7 +598,9 @@ function showStudyMap() {
   fields.jumpForm.classList.add("hidden");
   fields.navButtons.classList.add("hidden");
   fields.backToStudyMap.classList.add("hidden");
+  fields.filterPanel.open = true;
   document.body.classList.toggle("study-map-active", state.activeTab === "practice");
+  document.body.classList.remove("practice-session-active");
 }
 
 function clearStudyFilters({ keepExam = true } = {}) {
@@ -500,6 +610,7 @@ function clearStudyFilters({ keepExam = true } = {}) {
   fields.filterKeyword.value = "";
   state.libraryPage = 1;
   state.localFilter = null;
+  renderFilterSummary();
 }
 
 function showPracticeSession() {
@@ -509,7 +620,9 @@ function showPracticeSession() {
   fields.jumpForm.classList.remove("hidden");
   fields.navButtons.classList.remove("hidden");
   fields.backToStudyMap.classList.remove("hidden");
+  updateFilterPanelOpen();
   document.body.classList.remove("study-map-active");
+  document.body.classList.toggle("practice-session-active", state.activeTab === "practice");
 }
 
 function startStudyItem(index) {
@@ -520,6 +633,7 @@ function startStudyItem(index) {
   fields.filterYear.value = filter.year || "";
   fields.filterCategory.value = filter.category || "";
   fields.filterKeyword.value = filter.q || "";
+  renderFilterSummary();
   state.libraryPage = 1;
   state.showStudyMap = false;
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
@@ -529,6 +643,10 @@ function switchExam(exam) {
   if (!exam || exam === state.selectedExam) return;
   state.selectedExam = exam;
   clearStudyFilters();
+  clearQuestionLists();
+  state.currentQuestion = null;
+  state.currentIndex = -1;
+  state.resultContext = null;
   state.showStudyMap = true;
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
 }
@@ -579,6 +697,7 @@ function renderPractice() {
   fields.resultBox.className = "result-box hidden";
   fields.resultBox.textContent = "";
   fields.choiceList.innerHTML = "";
+  fields.questionSourceLinks.innerHTML = "";
   fields.freeAnswer.value = "";
   fields.questionNote.value = question?.user_note || "";
   fields.noteStatus.textContent = "";
@@ -608,6 +727,14 @@ function renderPractice() {
     .join("");
   renderPracticeCategoryEditor(question);
   fields.questionText.textContent = question.question;
+  fields.questionSourceLinks.innerHTML = question.source_pdf?.url
+    ? `
+      <a class="source-pdf-link" href="${escapeHtml(question.source_pdf.url)}" target="_blank" rel="noopener">
+        元PDFを確認
+        <span>${escapeHtml(question.source_pdf.label || "")}</span>
+      </a>
+    `
+    : "";
   fields.questionImages.innerHTML = (question.images || [])
     .map((src, index) => `
       <figure>
@@ -636,12 +763,14 @@ function renderPractice() {
 
 function categoryOptionsForPractice(question) {
   const source = state.studyQuestions?.length ? state.studyQuestions : state.allQuestions;
-  const categories = source
-    .filter((item) => !question?.exam || item.exam === question.exam)
-    .map((item) => item.category)
-    .filter(Boolean);
+  const categories = source.length
+    ? source
+        .filter((item) => !question?.exam || item.exam === question.exam)
+        .map((item) => item.category)
+        .filter(Boolean)
+    : [...(state.stats?.categories || [])];
   if (question?.category) categories.push(question.category);
-  return [...new Set(categories)].sort((a, b) => categoryOrder(a) - categoryOrder(b) || a.localeCompare(b, "ja"));
+  return sortedCategories([...new Set(categories)], question?.exam);
 }
 
 function renderPracticeCategoryEditor(question) {
@@ -733,7 +862,9 @@ async function saveQuestionNote(event) {
 }
 
 function expectsMultiple(question) {
-  return /[２2]\s*つ選べ/.test(question.question || "");
+  if (answerLetters(question?.answer).length > 1) return true;
+  const text = question?.question || "";
+  return /(?:[２2二]\s*つ|[２2二]\s*個|すべて)\s*選べ/.test(text);
 }
 
 function currentAnswer() {
@@ -967,6 +1098,13 @@ function handleResultBoxClick(event) {
 
 
 function renderQuestionTable() {
+  if (!state.questionsLoaded) {
+    fields.libraryCount.textContent = "未読み込み";
+    fields.libraryPagination?.classList.add("hidden");
+    fields.questionTable.innerHTML = `<tr><td colspan="5">一覧を開くと読み込みます</td></tr>`;
+    return;
+  }
+
   const total = state.questions.length;
   const pageCount = Math.max(1, Math.ceil(total / LIBRARY_PAGE_SIZE));
   state.libraryPage = Math.min(Math.max(1, state.libraryPage), pageCount);
@@ -1208,6 +1346,19 @@ function activateTab(name) {
     showStudyMap();
   } else {
     document.body.classList.remove("study-map-active");
+    document.body.classList.remove("practice-session-active");
+    fields.filterPanel.open = true;
+  }
+  if (name === "practice" && !state.showStudyMap) {
+    updateFilterPanelOpen();
+    document.body.classList.add("practice-session-active");
+  }
+  if (name === "library" && !state.questionsLoaded) {
+    fields.libraryCount.textContent = "読み込み中";
+    fields.questionTable.innerHTML = `<tr><td colspan="5">読み込み中です</td></tr>`;
+    refreshAll({ keepQuestion: true, renderPracticePanel: false, forceLoadQuestions: true }).catch((error) =>
+      toast(error.message),
+    );
   }
   if (name === "users") {
     refreshUsers().catch((error) => toast(error.message));
@@ -1252,8 +1403,13 @@ function bindEvents() {
     state.localFilter = null;
     state.libraryPage = 1;
     state.showStudyMap = false;
+    renderFilterSummary();
     refreshAll();
   });
+  fields.filterYear.addEventListener("change", renderFilterSummary);
+  fields.filterCategory.addEventListener("change", renderFilterSummary);
+  fields.filterKeyword.addEventListener("input", renderFilterSummary);
+  window.addEventListener("resize", updateFilterPanelOpen);
   fields.jumpForm.addEventListener("submit", jumpToQuestion);
   fields.prevQuestion.addEventListener("click", pickPreviousQuestion);
   fields.nextQuestion.addEventListener("click", pickNextQuestion);
