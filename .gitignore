@@ -7,6 +7,7 @@ data/
 # Imported or generated exam assets
 imports/
 static/media/
+static/source-pdfs/
 import_pdfs/
 *.pdf
 *.tar
@@ -15,6 +16,9 @@ import_pdfs/
 
 # Local backups and generated files
 backups/
+backup-staging/
+logs/
+work/
 __pycache__/
 *.py[cod]
 *.log
@@ -22,6 +26,7 @@ __pycache__/
 # Local machine / deployment secrets
 .env
 *.key
+*.pem
 *_key*
 rasberry_*
 kakomon-trainer.service
