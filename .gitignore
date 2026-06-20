@@ -1,11 +1,13 @@
 # Runtime data and private user content
 data/
+sample_questions.json
 *.db
 *.sqlite
 *.sqlite3
 
 # Imported or generated exam assets
 imports/
+import_answers/
 static/media/
 static/source-pdfs/
 import_pdfs/
@@ -26,6 +28,9 @@ __pycache__/
 *.log
 
 # Local machine / deployment secrets
+.agents/
+.claude/
+.codex/
 .env
 *.key
 *.pem
