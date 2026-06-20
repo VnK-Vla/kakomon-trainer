@@ -19,6 +19,8 @@ backups/
 backup-staging/
 logs/
 work/
+private-handoff/
+runtime-handoff/
 __pycache__/
 *.py[cod]
 *.log
