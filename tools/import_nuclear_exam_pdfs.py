@@ -16,6 +16,9 @@ import pdfplumber
 import pypdfium2 as pdfium
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from nuclear_classifier import classify as classify_question
+
 
 APP_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DB = APP_DIR / "data" / "questions.db"
@@ -78,7 +81,7 @@ def clean_text(text: str) -> str:
     return text
 
 
-def visible_words(page, *, include_footer: bool = False) -> list[dict]:
+def visible_words(page, *, include_footer: bool = False, min_top: float = 35.0) -> list[dict]:
     width = float(page.width)
     height = float(page.height)
     words = page.extract_words(
@@ -94,7 +97,7 @@ def visible_words(page, *, include_footer: bool = False) -> list[dict]:
         top = float(word["top"])
         if x0 < -1 or x1 > width + 1:
             continue
-        if top < 35:
+        if top < min_top:
             continue
         if not include_footer and top > height - 50:
             continue
@@ -200,22 +203,6 @@ def split_choices(parts: list[str]) -> tuple[str, list[str]]:
     return clean_text(" ".join(stem_parts)), choices
 
 
-def classify_question(stem: str, choices: list[str]) -> str:
-    text = stem + " " + " ".join(choices)
-    rules = [
-        ("脳神経", ["脳", "認知症", "アルツハイマー", "MIBG", "DAT", "IMP", "ECD", "てんかん", "パーキンソン"]),
-        ("循環器", ["心筋", "心臓", "冠", "虚血", "狭心症", "BMIPP", "Tl", "QGS", "心不全", "アミロイドーシス"]),
-        ("腫瘍・炎症", ["FDG", "PET", "腫瘍", "癌", "がん", "リンパ腫", "転移", "炎症", "サルコイドーシス"]),
-        ("内分泌・内用療法", ["甲状腺", "副甲状腺", "131I", "223Ra", "177Lu", "90Y", "治療", "退出基準"]),
-        ("骨・腎・消化器", ["骨", "腎", "肝", "胆", "肺血流", "唾液腺", "胃粘膜", "GSA", "DTPA", "MAG3"]),
-        ("基礎・安全管理", ["壊変", "半減期", "放射能", "被ばく", "線量", "法", "医療法", "品質管理", "コリメータ", "SPECT", "PET装置"]),
-    ]
-    for category, keywords in rules:
-        if any(keyword in text for keyword in keywords):
-            return category
-    return "核医学総合"
-
-
 def parse_questions(pdf_path: Path) -> tuple[list[Question], int]:
     year = pdf_path.stem
     with pdfplumber.open(str(pdf_path)) as pdf:
@@ -278,10 +265,18 @@ def label_from_no_word(words: list[dict], index: int) -> Label | None:
     candidates = [base]
     base_top = float(base["top"])
     base_x0 = float(base["x0"])
+    base_x1 = float(base["x1"])
     for word in words[index + 1 : index + 8]:
         top = float(word["top"])
-        if top - base_top > 48:
+        if top - base_top > 90:
             break
+        text = normalize(word["text"]).strip()
+        number_match = NUMBER_TOKEN_RE.match(text)
+        same_line = abs(top - base_top) <= 14 and -5 <= float(word["x0"]) - base_x1 < 90
+        stacked = abs(float(word["x0"]) - base_x0) < 35 and 0 < top - base_top < 80
+        if number_match and (same_line or stacked):
+            x0, top0, x1, bottom = bbox_for_words([base, word])
+            return Label(int(number_match.group(1)), x0, top0, x1, bottom)
         if abs(float(word["x0"]) - base_x0) > 120 and abs(top - base_top) > 8:
             continue
         candidates.append(word)
@@ -295,7 +290,7 @@ def label_from_no_word(words: list[dict], index: int) -> Label | None:
 
 
 def detect_labels(page, valid_numbers: set[int]) -> list[Label]:
-    words = visible_words(page, include_footer=False)
+    words = visible_words(page, include_footer=False, min_top=8)
     page_height = float(page.height)
     labels: list[Label] = []
     for index, word in enumerate(words):
@@ -350,7 +345,7 @@ def detect_labels(page, valid_numbers: set[int]) -> list[Label]:
                 continue
             if previous_text.startswith(("図", "Figure", "Fig")):
                 continue
-        if top < 80 and float(word["x0"]) > 120:
+        if top < 80 and float(word["x0"]) > 220:
             continue
         labels.append(
             Label(
@@ -479,8 +474,6 @@ def extract_images(
     with pdfplumber.open(str(pdf_path)) as pdf:
         for page_index in range(question_end_page + 1, len(pdf.pages) + 1):
             page = pdf.pages[page_index - 1]
-            if not page.images:
-                continue
             labels = detect_labels(page, valid_numbers)
             if not labels:
                 continue
