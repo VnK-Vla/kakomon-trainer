@@ -939,6 +939,113 @@ tr:last-child td {
   width: 126px;
 }
 
+.library-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.library-filter-label {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.result-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 7px 13px;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.result-check:hover {
+  border-color: var(--primary);
+}
+
+.result-check input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.result-check:has(input:checked) {
+  border-color: currentColor;
+}
+
+.result-check:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.result-check.ok:has(input:checked) {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.result-check.warn:has(input:checked) {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.result-check.wrong:has(input:checked) {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.result-check.untried:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--panel-soft);
+  color: var(--primary-strong);
+}
+
+.result-check.ok:has(input:checked) input {
+  accent-color: #1d4ed8;
+}
+
+.result-check.warn:has(input:checked) input {
+  accent-color: #92400e;
+}
+
+.result-check.wrong:has(input:checked) input {
+  accent-color: #991b1b;
+}
+
+.rate-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rate-cell .result-mark {
+  min-width: 30px;
+}
+
+.rate-value {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 .pagination {
   display: flex;
   justify-content: center;

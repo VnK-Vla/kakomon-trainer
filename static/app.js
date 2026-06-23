@@ -34,6 +34,7 @@ const state = {
   showStudyMap: true,
   studyItems: [],
   libraryPage: 1,
+  libraryResultFilter: new Set(),
   localFilter: null,
   resultContext: null,
 };
@@ -132,6 +133,7 @@ const fields = {
   historyTable: $("#historyTable"),
   clearHistory: $("#clearHistory"),
   libraryCount: $("#libraryCount"),
+  libraryFilter: $("#libraryFilter"),
   libraryPagination: $("#libraryPagination"),
   libraryPrevPage: $("#libraryPrevPage"),
   libraryNextPage: $("#libraryNextPage"),
@@ -165,6 +167,21 @@ function questionAttempted(question) {
 function questionSelfMark(question) {
   if (!questionAttempted(question)) return "untried";
   return SELF_MARKS[question?.last_self_mark] ? question.last_self_mark : "warn";
+}
+
+function questionResultBadge(question) {
+  const mark = questionSelfMark(question);
+  if (mark === "untried") {
+    return `<span class="result-mark pending" title="未演習">未</span>`;
+  }
+  const meta = SELF_MARKS[mark];
+  return `<span class="result-mark ${meta.className}" title="${meta.text}">${meta.label}</span>`;
+}
+
+function filteredLibraryQuestions() {
+  const selected = state.libraryResultFilter;
+  if (!selected || !selected.size) return state.questions;
+  return state.questions.filter((question) => selected.has(questionSelfMark(question)));
 }
 
 function applyLocalFilter(questions, filter) {
@@ -1105,12 +1122,13 @@ function renderQuestionTable() {
     return;
   }
 
-  const total = state.questions.length;
+  const questions = filteredLibraryQuestions();
+  const total = questions.length;
   const pageCount = Math.max(1, Math.ceil(total / LIBRARY_PAGE_SIZE));
   state.libraryPage = Math.min(Math.max(1, state.libraryPage), pageCount);
   const start = (state.libraryPage - 1) * LIBRARY_PAGE_SIZE;
   const end = Math.min(start + LIBRARY_PAGE_SIZE, total);
-  const visibleQuestions = state.questions.slice(start, end);
+  const visibleQuestions = questions.slice(start, end);
 
   fields.libraryCount.textContent = total ? `${start + 1}-${end} / ${total}件` : "0件";
   if (fields.libraryPagination) {
@@ -1121,7 +1139,10 @@ function renderQuestionTable() {
   }
 
   if (!total) {
-    fields.questionTable.innerHTML = `<tr><td colspan="5">問題がありません</td></tr>`;
+    const message = state.questions.length
+      ? "選択した結果に一致する問題がありません"
+      : "問題がありません";
+    fields.questionTable.innerHTML = `<tr><td colspan="5">${message}</td></tr>`;
     return;
   }
 
@@ -1137,7 +1158,12 @@ function renderQuestionTable() {
           <td class="table-year">${escapeHtml(question.year || "-")}</td>
           <td class="table-category" title="${escapeHtml(question.category || "-")}">${escapeHtml(question.category || "-")}</td>
           <td class="question-preview" title="${escapeHtml(question.question)}">${escapeHtml(shortText(question.question))}</td>
-          <td class="table-rate">${escapeHtml(rate)}</td>
+          <td class="table-rate">
+            <span class="rate-cell">
+              ${questionResultBadge(question)}
+              <span class="rate-value">${escapeHtml(rate)}</span>
+            </span>
+          </td>
           <td>
             <div class="table-actions">
               <button class="primary small" type="button" data-practice="${question.id}">演習</button>
@@ -1150,7 +1176,7 @@ function renderQuestionTable() {
 }
 
 function setLibraryPage(page) {
-  const total = state.questions.length;
+  const total = filteredLibraryQuestions().length;
   const pageCount = Math.max(1, Math.ceil(total / LIBRARY_PAGE_SIZE));
   state.libraryPage = Math.min(Math.max(1, page), pageCount);
   renderQuestionTable();
@@ -1420,6 +1446,18 @@ function bindEvents() {
   fields.savePracticeCategory?.addEventListener("click", savePracticeCategory);
   fields.libraryPrevPage?.addEventListener("click", () => setLibraryPage(state.libraryPage - 1));
   fields.libraryNextPage?.addEventListener("click", () => setLibraryPage(state.libraryPage + 1));
+  fields.libraryFilter?.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-result-filter]");
+    if (!input) return;
+    const mark = input.dataset.resultFilter;
+    if (input.checked) {
+      state.libraryResultFilter.add(mark);
+    } else {
+      state.libraryResultFilter.delete(mark);
+    }
+    state.libraryPage = 1;
+    renderQuestionTable();
+  });
   fields.questionTable.addEventListener("click", (event) => {
     const practiceButton = event.target.closest("[data-practice]");
     if (practiceButton) {
