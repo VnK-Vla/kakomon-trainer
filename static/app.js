@@ -83,6 +83,18 @@ const CATEGORY_ORDERS = {
     "血液・小児・骨軟部",
     "緩和・良性疾患",
   ],
+  核医学専門医試験: [
+    "医療安全・関連法規・倫理",
+    "放射性医薬品の基礎知識",
+    "撮像機器・撮像法",
+    "呼吸器・内分泌",
+    "消化器・泌尿器",
+    "心臓",
+    "腫瘍",
+    "骨・関節・軟部組織・炎症・血液・リンパ",
+    "中枢神経",
+    "核医学治療",
+  ],
 };
 
 const fields = {
@@ -1039,14 +1051,15 @@ async function submitAnswer(event) {
   }
 
   const hasAnswer = Boolean(String(state.currentQuestion.answer || "").trim());
+  const correct = hasAnswer ? isCorrectAnswer(userAnswer, state.currentQuestion.answer) : null;
   renderAnswerResult({
     attempt_id: null,
     saved: false,
     question_id: state.currentQuestion.id,
     user_answer: userAnswer,
-    self_mark: "warn",
+    self_mark: hasAnswer ? (correct ? "ok" : "wrong") : "warn",
     graded: hasAnswer,
-    correct: hasAnswer ? isCorrectAnswer(userAnswer, state.currentQuestion.answer) : null,
+    correct,
     correct_answer: state.currentQuestion.answer,
     explanation: state.currentQuestion.explanation,
     attempts: [],
@@ -1393,7 +1406,14 @@ function activateTab(name) {
 
 function bindEvents() {
   $$(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => activateTab(tab.dataset.tab));
+    tab.addEventListener("click", () => {
+      if (tab.dataset.tab === "practice") {
+        clearStudyFilters();
+        state.showStudyMap = true;
+        renderStudyMap();
+      }
+      activateTab(tab.dataset.tab);
+    });
   });
   if (fields.userForm && fields.userNameInput) {
     fields.userForm.addEventListener("submit", (event) => {
