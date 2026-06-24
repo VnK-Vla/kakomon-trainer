@@ -35,6 +35,7 @@ const state = {
   studyItems: [],
   libraryPage: 1,
   libraryResultFilter: new Set(),
+  practiceResultFilter: null,
   localFilter: null,
   resultContext: null,
 };
@@ -190,10 +191,10 @@ function questionResultBadge(question) {
   return `<span class="result-mark ${meta.className}" title="${meta.text}">${meta.label}</span>`;
 }
 
-function filteredLibraryQuestions() {
-  const selected = state.libraryResultFilter;
-  if (!selected || !selected.size) return state.questions;
-  return state.questions.filter((question) => selected.has(questionSelfMark(question)));
+function applyResultFilter(questions, resultFilter) {
+  const selected = resultFilter;
+  if (!selected || !selected.size) return questions;
+  return questions.filter((question) => selected.has(questionSelfMark(question)));
 }
 
 function applyLocalFilter(questions, filter) {
@@ -204,6 +205,18 @@ function applyLocalFilter(questions, filter) {
     if (filter.withoutAnswer && String(question.answer || "").trim()) return false;
     return true;
   });
+}
+
+function baseQuestionList() {
+  return state.localFilter ? applyLocalFilter(state.allQuestions, state.localFilter) : state.allQuestions;
+}
+
+function filteredLibraryQuestions() {
+  return applyResultFilter(baseQuestionList(), state.libraryResultFilter);
+}
+
+function filteredPracticeQuestions() {
+  return applyResultFilter(baseQuestionList(), state.practiceResultFilter);
 }
 
 function toast(message) {
@@ -264,6 +277,7 @@ function clearQuestionLists() {
   state.studyQuestions = [];
   state.questions = [];
   state.questionsLoaded = false;
+  state.practiceResultFilter = null;
 }
 
 async function refreshSession() {
@@ -304,7 +318,7 @@ async function refreshAll({ keepQuestion = false, renderPracticePanel = true, fo
   if (questionPayload) {
     state.allQuestions = questionPayload.questions || [];
     state.studyQuestions = state.allQuestions;
-    state.questions = state.localFilter ? applyLocalFilter(state.allQuestions, state.localFilter) : state.allQuestions;
+    state.questions = filteredPracticeQuestions();
     state.questionsLoaded = true;
   } else {
     clearQuestionLists();
@@ -386,6 +400,7 @@ function switchUser(value) {
 
   state.currentUser = nextUser;
   state.resultContext = null;
+  state.practiceResultFilter = null;
   state.showStudyMap = true;
   try {
     window.localStorage.setItem(USER_STORAGE_KEY, nextUser);
@@ -639,6 +654,7 @@ function clearStudyFilters({ keepExam = true } = {}) {
   fields.filterKeyword.value = "";
   state.libraryPage = 1;
   state.localFilter = null;
+  state.practiceResultFilter = null;
   renderFilterSummary();
 }
 
@@ -659,6 +675,7 @@ function startStudyItem(index) {
   if (!item) return;
   const filter = item.filter || {};
   state.localFilter = filter.localFilter || null;
+  state.practiceResultFilter = null;
   fields.filterYear.value = filter.year || "";
   fields.filterCategory.value = filter.category || "";
   fields.filterKeyword.value = filter.q || "";
@@ -701,6 +718,22 @@ function pickNextQuestion() {
 
 function pickPreviousQuestion() {
   setCurrentQuestionByIndex(state.currentIndex - 1);
+}
+
+function pickQuestionAfterRefresh(previousQuestionId, previousIndex) {
+  if (!state.questions.length) {
+    setCurrentQuestionByIndex(0);
+    return;
+  }
+
+  const freshIndex = state.questions.findIndex((question) => question.id === previousQuestionId);
+  if (freshIndex >= 0) {
+    setCurrentQuestionByIndex(freshIndex + 1);
+    return;
+  }
+
+  const nextIndex = Math.min(Math.max(0, previousIndex), state.questions.length - 1);
+  setCurrentQuestionByIndex(nextIndex);
 }
 
 function jumpToQuestion(event) {
@@ -949,8 +982,11 @@ function isCorrectAnswer(userAnswer, correctAnswer) {
 
 function syncCurrentQuestion() {
   if (!state.currentQuestion) return;
-  const fresh = state.questions.find((question) => question.id === state.currentQuestion.id);
-  if (fresh) state.currentQuestion = fresh;
+  const freshIndex = state.questions.findIndex((question) => question.id === state.currentQuestion.id);
+  if (freshIndex >= 0) {
+    state.currentIndex = freshIndex;
+    state.currentQuestion = state.questions[freshIndex];
+  }
 }
 
 function markLabel(mark) {
@@ -1075,6 +1111,8 @@ async function registerPendingResult() {
     return;
   }
 
+  const previousQuestionId = state.currentQuestion?.id || context.question_id;
+  const previousIndex = state.currentIndex;
   state.resultContext = { ...context, registering: true };
   try {
     await api("/api/attempts", {
@@ -1087,9 +1125,8 @@ async function registerPendingResult() {
       }),
     });
     await refreshAll({ keepQuestion: true, renderPracticePanel: false });
-    syncCurrentQuestion();
     toast("結果を登録しました。");
-    pickNextQuestion();
+    pickQuestionAfterRefresh(previousQuestionId, previousIndex);
   } catch (error) {
     state.resultContext = { ...context, registering: false };
     toast(error.message);
@@ -1152,7 +1189,7 @@ function renderQuestionTable() {
   }
 
   if (!total) {
-    const message = state.questions.length
+    const message = baseQuestionList().length
       ? "選択した結果に一致する問題がありません"
       : "問題がありません";
     fields.questionTable.innerHTML = `<tr><td colspan="5">${message}</td></tr>`;
@@ -1356,11 +1393,14 @@ function handleUserTableClick(event) {
 }
 
 function practiceQuestionFromLibrary(id) {
-  const index = state.questions.findIndex((item) => item.id === id);
+  const questions = filteredLibraryQuestions();
+  const index = questions.findIndex((item) => item.id === id);
   if (index < 0) {
     toast("この問題は現在の一覧に見つかりません。");
     return;
   }
+  state.practiceResultFilter = state.libraryResultFilter.size ? new Set(state.libraryResultFilter) : null;
+  state.questions = questions;
   state.showStudyMap = false;
   setCurrentQuestionByIndex(index);
   activateTab("practice");
@@ -1447,6 +1487,7 @@ function bindEvents() {
   });
   $("#applyFilters").addEventListener("click", () => {
     state.localFilter = null;
+    state.practiceResultFilter = null;
     state.libraryPage = 1;
     state.showStudyMap = false;
     renderFilterSummary();
