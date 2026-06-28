@@ -35,6 +35,7 @@ const state = {
   studyItems: [],
   libraryPage: 1,
   libraryResultFilter: new Set(),
+  practiceStartResultFilter: new Set(),
   practiceResultFilter: null,
   localFilter: null,
   resultContext: null,
@@ -48,6 +49,8 @@ const SELF_MARKS = {
   warn: { label: "△", text: "要確認", className: "warn" },
   wrong: { label: "×", text: "できない", className: "wrong" },
 };
+
+const RESULT_FILTER_ORDER = ["ok", "warn", "wrong", "untried"];
 
 const KNOWN_EXAMS = ["放射線診断専門医認定試験", "核医学専門医試験", "放射線治療専門医認定試験"];
 
@@ -116,6 +119,7 @@ const fields = {
   filterKeyword: $("#filterKeyword"),
   filterPanel: $("#filterPanel"),
   filterSummaryText: $("#filterSummaryText"),
+  practiceResultFilter: $("#practiceResultFilter"),
   studyMap: $("#studyMap"),
   studyList: $("#studyList"),
   practiceSession: $("#practiceSession"),
@@ -189,6 +193,23 @@ function questionResultBadge(question) {
   }
   const meta = SELF_MARKS[mark];
   return `<span class="result-mark ${meta.className}" title="${meta.text}">${meta.label}</span>`;
+}
+
+function resultFilterLabel(mark) {
+  if (mark === "untried") return "未演習";
+  const meta = SELF_MARKS[mark];
+  return meta ? `${meta.label} ${meta.text}` : "";
+}
+
+function resultFilterLabels(resultFilter) {
+  if (!resultFilter?.size) return [];
+  return RESULT_FILTER_ORDER.filter((mark) => resultFilter.has(mark))
+    .map(resultFilterLabel)
+    .filter(Boolean);
+}
+
+function copyResultFilter(resultFilter) {
+  return resultFilter?.size ? new Set(resultFilter) : null;
 }
 
 function applyResultFilter(questions, resultFilter) {
@@ -466,6 +487,10 @@ function renderFilterSummary() {
   if (state.localFilter?.hasImages) parts.push("画像あり");
   if (state.localFilter?.unattempted) parts.push("未演習");
   if (state.localFilter?.withoutAnswer) parts.push("解答未登録");
+  if (state.activeTab === "practice" && !state.showStudyMap) {
+    const resultLabels = resultFilterLabels(state.practiceResultFilter);
+    if (resultLabels.length) parts.push(`開始条件: ${resultLabels.join(", ")}`);
+  }
   fields.filterSummaryText.textContent = parts.length ? parts.join(" / ") : "すべて";
 }
 
@@ -631,6 +656,14 @@ function renderStudyMap() {
   $$(".study-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.studyMode === state.studyMode);
   });
+  renderPracticeResultFilter();
+}
+
+function renderPracticeResultFilter() {
+  if (!fields.practiceResultFilter) return;
+  $$("[data-practice-result-filter]").forEach((input) => {
+    input.checked = state.practiceStartResultFilter.has(input.dataset.practiceResultFilter);
+  });
 }
 
 function showStudyMap() {
@@ -675,13 +708,13 @@ function startStudyItem(index) {
   if (!item) return;
   const filter = item.filter || {};
   state.localFilter = filter.localFilter || null;
-  state.practiceResultFilter = null;
+  state.practiceResultFilter = copyResultFilter(state.practiceStartResultFilter);
   fields.filterYear.value = filter.year || "";
   fields.filterCategory.value = filter.category || "";
   fields.filterKeyword.value = filter.q || "";
-  renderFilterSummary();
   state.libraryPage = 1;
   state.showStudyMap = false;
+  renderFilterSummary();
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
 }
 
@@ -1399,7 +1432,7 @@ function practiceQuestionFromLibrary(id) {
     toast("この問題は現在の一覧に見つかりません。");
     return;
   }
-  state.practiceResultFilter = state.libraryResultFilter.size ? new Set(state.libraryResultFilter) : null;
+  state.practiceResultFilter = copyResultFilter(state.libraryResultFilter);
   state.questions = questions;
   state.showStudyMap = false;
   setCurrentQuestionByIndex(index);
@@ -1480,6 +1513,17 @@ function bindEvents() {
     const button = event.target.closest("[data-study-index]");
     if (button) startStudyItem(Number(button.dataset.studyIndex));
   });
+  fields.practiceResultFilter?.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-practice-result-filter]");
+    if (!input) return;
+    const mark = input.dataset.practiceResultFilter;
+    if (input.checked) {
+      state.practiceStartResultFilter.add(mark);
+    } else {
+      state.practiceStartResultFilter.delete(mark);
+    }
+    renderPracticeResultFilter();
+  });
   fields.backToStudyMap.addEventListener("click", () => {
     clearStudyFilters();
     showStudyMap();
@@ -1487,7 +1531,9 @@ function bindEvents() {
   });
   $("#applyFilters").addEventListener("click", () => {
     state.localFilter = null;
-    state.practiceResultFilter = null;
+    if (!(state.activeTab === "practice" && !state.showStudyMap)) {
+      state.practiceResultFilter = null;
+    }
     state.libraryPage = 1;
     state.showStudyMap = false;
     renderFilterSummary();

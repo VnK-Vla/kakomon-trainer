@@ -939,15 +939,22 @@ tr:last-child td {
   width: 126px;
 }
 
-.library-filter {
+.result-filter {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.library-filter {
   margin-bottom: 14px;
 }
 
-.library-filter-label {
+.practice-start-filter {
+  margin: -2px 0 0;
+}
+
+.result-filter-label {
   margin-right: 4px;
   color: var(--muted);
   font-size: 0.85rem;
@@ -983,6 +990,13 @@ tr:last-child td {
   margin: 0;
   accent-color: var(--primary);
   cursor: pointer;
+}
+
+.result-check span {
+  display: inline;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
 }
 
 .result-check:has(input:checked) {
@@ -1376,6 +1390,42 @@ button.small {
     min-width: 0;
     min-height: 48px;
     font-size: 0.92rem;
+  }
+
+  .practice-start-filter {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin-top: -4px;
+    overflow-x: auto;
+    padding: 0 2px 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .practice-start-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .practice-start-filter .result-filter-label {
+    flex: 0 0 auto;
+    margin-right: 0;
+    font-size: 0.76rem;
+    white-space: nowrap;
+  }
+
+  .practice-start-filter .result-check {
+    flex: 0 0 auto;
+    gap: 5px;
+    justify-content: center;
+    border-width: 1px;
+    font-size: 0.76rem;
+    min-height: 30px;
+    padding: 5px 8px;
+  }
+
+  .practice-start-filter .result-check input {
+    width: 13px;
+    height: 13px;
   }
 
   .study-list {

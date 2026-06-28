@@ -73,6 +73,25 @@
                 <button class="study-tab active" type="button" data-study-mode="category">分野別</button>
                 <button class="study-tab" type="button" data-study-mode="year">年度別</button>
               </nav>
+              <div id="practiceResultFilter" class="result-filter practice-start-filter" role="group" aria-label="開始条件">
+                <span class="result-filter-label">開始条件</span>
+                <label class="result-check ok">
+                  <input type="checkbox" data-practice-result-filter="ok">
+                  <span>○ できた</span>
+                </label>
+                <label class="result-check warn">
+                  <input type="checkbox" data-practice-result-filter="warn">
+                  <span>△ 要確認</span>
+                </label>
+                <label class="result-check wrong">
+                  <input type="checkbox" data-practice-result-filter="wrong">
+                  <span>× できない</span>
+                </label>
+                <label class="result-check untried">
+                  <input type="checkbox" data-practice-result-filter="untried">
+                  <span>未演習</span>
+                </label>
+              </div>
               <div id="studyList" class="study-list"></div>
             </section>
 
@@ -127,8 +146,8 @@
               </div>
               <span id="libraryCount" class="count-pill">0件</span>
             </div>
-            <div id="libraryFilter" class="library-filter" role="group" aria-label="結果で絞り込み">
-              <span class="library-filter-label">結果で絞り込み</span>
+            <div id="libraryFilter" class="result-filter library-filter" role="group" aria-label="結果で絞り込み">
+              <span class="result-filter-label">結果で絞り込み</span>
               <label class="result-check ok">
                 <input type="checkbox" data-result-filter="ok">
                 <span>○ できた</span>
@@ -225,6 +244,6 @@
     </div>
 
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=20260624-library-practice-filter"></script>
+    <script src="/app.js?v=20260628-practice-start-filter"></script>
   </body>
 </html>
