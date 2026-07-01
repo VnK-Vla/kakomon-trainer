@@ -28,6 +28,7 @@ TAILSCALE_LOGIN_HEADER = "Tailscale-User-Login"
 SOURCE_PDF_CACHE_SECONDS = 60.0
 SOURCE_PDF_CHUNK_SIZE = 1024 * 256
 GZIP_JSON_MIN_BYTES = 1024
+MAX_JSON_BODY_BYTES = 1024 * 1024
 
 EXAM_SOURCE_DIRS = {
     "放射線診断専門医認定試験": "diagnostic",
@@ -416,8 +417,21 @@ class AppHandler(BaseHTTPRequestHandler):
         except ValueError:
             return None
 
+    def request_content_length(self) -> int:
+        try:
+            return max(0, int(self.headers.get("Content-Length") or 0))
+        except ValueError:
+            return 0
+
     def read_json(self) -> dict | list:
-        length = int(self.headers.get("Content-Length", "0"))
+        content_type = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            # CSRF対策: フォーム/text-plain経由のクロスサイトPOSTを拒否する
+            self.discard_request_body()
+            raise ValueError("Content-Type は application/json を指定してください。")
+        length = self.request_content_length()
+        if length > MAX_JSON_BODY_BYTES:
+            raise ValueError("リクエストボディが大きすぎます。")
         if length <= 0:
             return {}
         raw = self.rfile.read(length)
@@ -427,9 +441,12 @@ class AppHandler(BaseHTTPRequestHandler):
             raise ValueError("JSONの形式を確認してください。") from exc
 
     def discard_request_body(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length > 0:
-            self.rfile.read(length)
+        remaining = self.request_content_length()
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, SOURCE_PDF_CHUNK_SIZE))
+            if not chunk:
+                break
+            remaining -= len(chunk)
 
     def accepts_gzip(self) -> bool:
         header = self.headers.get("Accept-Encoding", "")
@@ -446,6 +463,7 @@ class AppHandler(BaseHTTPRequestHandler):
         if use_gzip:
             self.send_header("Content-Encoding", "gzip")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(response_body)
 
@@ -575,6 +593,13 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(content_length))
         self.send_header("Accept-Ranges", "bytes")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        if content_type == "text/html":
+            self.send_header(
+                "Content-Security-Policy",
+                "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'",
+            )
+            self.send_header("X-Frame-Options", "DENY")
         if path.startswith("/source-pdfs/"):
             self.send_header("Cache-Control", "private, max-age=3600")
         self.end_headers()
