@@ -26,10 +26,23 @@ PAGE_MARK_RE = re.compile(r"[―-]\s*\d{1,3}\s*[―-]")
 RADIONUCLIDE_MASS_NUMBERS = {11, 13, 15, 18, 67, 68, 81, 99, 111, 123, 125, 131, 133, 201}
 CAPTION_START_RE = re.compile(
     r"^(?:"
-    r"T1|T2|FLAIR|CT|MRI|PET|MIP|HRCT|ADC|VR|"
-    r"単純|造影|脂肪|横断|冠状|矢状|前面|後面|短軸|水平|垂直|"
+    r"\d{1,3}m?\s*(?:Tc|I|Tl|In|Ga|F|C|O)|"
+    r"T1|T2|FLAIR|CT|MRI|PET|MIP|HRCT|ADC|VR|MRA|MRCP|STIR|"
+    r"単純|造影|脂肪|横断|冠状|矢状|前面|後面|短軸|長軸|水平|垂直|"
     r"門脈|平衡|動脈|肝細胞|画像|病変部|透視|血管|後前像|左側面像|"
-    r"矢状断像|横断像|冠状断像|前面像|後面像|融合画像|レノグラム|赤は"
+    r"矢状断像|横断像|冠状断像|前面像|後面像|融合画像|レノグラム|赤は|"
+    r"拡散強調|磁化率強調|水強調|肺野条件|縦隔条件|骨条件|軟部条件|脳条件|"
+    r"胸部|腹部|頭部|頭頸部|頸部|心臓|冠動脈|肺高分解能|高分解能|"
+    r"正面像|側面像|MLO|CC|SPECT|Gated SPECT|プラナー|シンチグラム|"
+    r"マンモグラム|超音波|内視鏡|注腸|血管造影|3D-CTA|"
+    r"今回|半年前|当日|初診時|来院時|発症|治療前|治療中|治療終了後|"
+    r"A B C|AB C D E|1 2|a:|a：|time intensity curve|右上腕|左前斜位"
+    r")"
+)
+CHOICE_SENTENCE_TAIL_RE = re.compile(
+    r"(?:"
+    r"\b(?:CT|MRI|PET|SPECT)\b\s*(?:で|に|を|は|検査|撮影)|"
+    r"(?:検査|撮影|有用|必要|認め|示す|用いる|投与|評価|診断|正しい|誤って|高信号|低信号)"
     r")"
 )
 
@@ -408,13 +421,29 @@ def looks_like_caption(line: str) -> bool:
     return bool(CAPTION_START_RE.search(line.strip()))
 
 
+def looks_like_choice_sentence_tail(line: str) -> bool:
+    return bool(CHOICE_SENTENCE_TAIL_RE.search(line.strip()))
+
+
+def split_inline_caption(line: str) -> tuple[str, str]:
+    for match in re.finditer(r"\s+", line):
+        choice_text = line[: match.start()].strip()
+        tail = line[match.end() :].strip()
+        if not choice_text or not tail:
+            continue
+        if looks_like_caption(tail) and not looks_like_choice_sentence_tail(tail):
+            return choice_text, tail
+    return line, ""
+
+
 def split_last_choice_and_tail(block: str) -> tuple[str, str]:
     lines = [line.strip() for line in block.splitlines() if line.strip()]
     if not lines:
         return "", ""
 
-    choice_lines = [lines[0]]
-    tail_lines: list[str] = []
+    first_choice_line, first_tail = split_inline_caption(lines[0])
+    choice_lines = [first_choice_line]
+    tail_lines: list[str] = [first_tail] if first_tail else []
     for line in lines[1:]:
         if tail_lines:
             tail_lines.append(line)
