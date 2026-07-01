@@ -845,7 +845,7 @@ function renderPractice() {
       .map(
         (choice, index) => `
           <label class="choice">
-            <input type="${inputType}" name="choiceAnswer" value="${escapeHtml(choice)}">
+            <input type="${inputType}" name="choiceAnswer" value="${escapeHtml(choiceAnswerValue(choice, index))}">
             <span>${escapeHtml(choice)}</span>
           </label>
         `,
@@ -962,6 +962,11 @@ function expectsMultiple(question) {
   return /(?:[２2二]\s*つ|[２2二]\s*個|すべて)\s*選べ/.test(text);
 }
 
+function choiceAnswerValue(choice, index) {
+  const match = String(choice || "").trim().match(/^([a-e])\s*[\.)．、，,：:]/i);
+  return match ? match[1].toLowerCase() : String.fromCharCode(97 + index);
+}
+
 function currentAnswer() {
   const question = state.currentQuestion;
   if (!question) return "";
@@ -991,6 +996,12 @@ function answerLetters(value) {
   if (!text) return [];
   const direct = /^[a-e](?:\s*[,;/、，]\s*[a-e])*$/.test(text);
   if (direct) return [...new Set(text.match(/[a-e]/g) || [])].sort();
+
+  const labeled = new Set();
+  for (const match of text.matchAll(/(?:^|[;\n；])\s*([a-e])\s*[\.)．、，,：:]/g)) {
+    labeled.add(match[1]);
+  }
+  if (labeled.size) return [...labeled].sort();
 
   const letters = new Set();
   for (const match of text.matchAll(/(^|[^a-z])([a-e])(?=\s*[\.)．、，:：;；]|$)/g)) {

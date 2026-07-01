@@ -80,6 +80,12 @@ def answer_letters(value: str | None) -> set[str]:
     if direct:
         return set(re.findall(r"[a-e]", text))
 
+    labeled = set()
+    for match in re.finditer(r"(?:^|[;\n；])\s*([a-e])\s*[\.)．、，,：:]", text):
+        labeled.add(match.group(1))
+    if labeled:
+        return labeled
+
     letters = set()
     for match in re.finditer(r"(?<![a-z])([a-e])(?=\s*[\.)．、，:：;；]|$)", text):
         letters.add(match.group(1))
