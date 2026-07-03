@@ -602,6 +602,14 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_header("X-Frame-Options", "DENY")
         if path.startswith("/source-pdfs/"):
             self.send_header("Cache-Control", "private, max-age=3600")
+        elif content_type == "text/html":
+            # index.html は毎回再検証させ、?v= 付きで参照される
+            # app.js / app.css の更新を確実に届ける
+            self.send_header("Cache-Control", "no-cache")
+        elif target.suffix in (".js", ".css"):
+            self.send_header("Cache-Control", "public, max-age=604800")
+        else:
+            self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         if self.command == "HEAD":
             return
