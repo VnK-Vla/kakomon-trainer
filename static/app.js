@@ -545,7 +545,7 @@ function renderStudyProgress(row) {
     .filter(([, count]) => count > 0)
     .map(([name, count]) => {
       const width = row.total ? (count * 100) / row.total : 0;
-      return `<span class="study-progress-${name}" style="width: ${width}%"></span>`;
+      return `<span class="study-progress-${name}" data-width="${width}"></span>`;
     })
     .join("");
 }
@@ -652,6 +652,12 @@ function renderStudyMap() {
       `;
     })
     .join("");
+
+  // Apply progress-bar widths via the DOM API so the strict Content-Security-Policy
+  // (default-src 'self', no inline styles) does not block them.
+  fields.studyList.querySelectorAll(".study-progress span[data-width]").forEach((span) => {
+    span.style.width = `${span.dataset.width}%`;
+  });
 
   $$(".study-tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.studyMode === state.studyMode);
