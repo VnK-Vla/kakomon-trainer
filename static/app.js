@@ -736,12 +736,17 @@ function switchExam(exam) {
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
 }
 
+function resetScroll() {
+  window.scrollTo(0, 0);
+}
+
 function setCurrentQuestionByIndex(index) {
   if (!state.questions.length) {
     showPracticeSession();
     state.currentQuestion = null;
     state.currentIndex = -1;
     renderPractice();
+    resetScroll();
     return;
   }
 
@@ -749,6 +754,7 @@ function setCurrentQuestionByIndex(index) {
   state.currentQuestion = state.questions[state.currentIndex];
   showPracticeSession();
   renderPractice();
+  resetScroll();
 }
 
 function pickNextQuestion() {
@@ -1492,6 +1498,7 @@ function activateTab(name) {
   if (name === "users") {
     refreshUsers().catch((error) => toast(error.message));
   }
+  resetScroll();
 }
 
 function bindEvents() {
@@ -1545,6 +1552,7 @@ function bindEvents() {
     clearStudyFilters();
     showStudyMap();
     renderStudyMap();
+    resetScroll();
   });
   $("#applyFilters").addEventListener("click", () => {
     state.localFilter = null;
@@ -1595,5 +1603,27 @@ function bindEvents() {
   fields.clearHistory?.addEventListener("click", deleteAllHistory);
 }
 
+function isKeyboardInput(element) {
+  if (!element) return false;
+  if (element.tagName === "TEXTAREA") return true;
+  if (element.tagName !== "INPUT") return false;
+  return !["checkbox", "radio", "button", "submit", "reset", "range", "file"].includes(element.type);
+}
+
+// ソフトキーボード表示中はfixedの下部タブがキーボード上に浮くため隠す。
+// ビューポート高さでの判定はiOSのツールバー開閉と区別できず誤検知するので、
+// テキスト入力へのフォーカスだけを判定条件にする。
+function syncKeyboardOpenState() {
+  document.body.classList.toggle("keyboard-open", isKeyboardInput(document.activeElement));
+}
+
+function bindKeyboardWatcher() {
+  document.addEventListener("focusin", syncKeyboardOpenState);
+  document.addEventListener("focusout", () => {
+    window.setTimeout(syncKeyboardOpenState, 60);
+  });
+}
+
+bindKeyboardWatcher();
 bindEvents();
 refreshAll().catch((error) => toast(error.message));

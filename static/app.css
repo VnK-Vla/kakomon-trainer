@@ -1343,7 +1343,11 @@ button.small {
     background: #fff;
     padding-bottom: var(--mobile-tab-safe-area);
     box-shadow: 0 -10px 28px rgba(24, 38, 34, 0.12);
-    transform: translateZ(0);
+  }
+
+  /* ソフトキーボード表示中(app.jsが付与)はfixedタブがキーボード上に浮くため隠す */
+  body.keyboard-open .tabs {
+    display: none;
   }
 
   .tab {
