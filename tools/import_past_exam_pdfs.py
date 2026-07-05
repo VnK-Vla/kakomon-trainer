@@ -13,6 +13,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
+from choice_caption_guard import warn_payload
 from field_classifier import classify_question
 
 
@@ -632,6 +633,8 @@ def main() -> None:
         )
         print(f"{pdf_path.name}: {len(questions)} questions")
         all_questions.extend(questions)
+
+    warn_payload(all_questions)
 
     if args.json_path:
         json_path = Path(args.json_path).resolve()

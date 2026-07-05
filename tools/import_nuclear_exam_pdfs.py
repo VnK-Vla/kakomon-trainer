@@ -17,6 +17,7 @@ import pypdfium2 as pdfium
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from choice_caption_guard import find_contaminated
 from nuclear_classifier import classify as classify_question
 
 
@@ -626,6 +627,21 @@ def main() -> int:
         )
 
     print(json.dumps(report, ensure_ascii=False, indent=2))
+
+    contam = find_contaminated(
+        (item.number, item.choices, item.images) for item in all_questions
+    )
+    if contam:
+        print(
+            f"[警告] 選択肢へのキャプション/版面要素の混入候補が {len(contam)} 件あります "
+            "(tools/audit_choice_captions.py で確認してください):",
+            file=sys.stderr,
+        )
+        letters = "abcde"
+        for number, i, choice, tail in contam:
+            letter = letters[i] if i < len(letters) else str(i)
+            print(f"  - 問{number} 選択肢{letter}: 疑い箇所 {tail!r} / 現在値 {choice!r}", file=sys.stderr)
+
     if args.dry_run:
         return 0
 

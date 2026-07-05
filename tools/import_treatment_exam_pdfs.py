@@ -15,6 +15,8 @@ import pdfplumber
 import pypdfium2 as pdfium
 from pdfminer.cmapdb import CMapDB
 
+from choice_caption_guard import warn_payload
+
 
 APP_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_DB = APP_DIR / "data" / "questions.db"
@@ -682,6 +684,8 @@ def main() -> int:
         all_items.extend(payload)
         image_count = sum(len(item["images"]) for item in payload)
         print(f"{pdf_path.name}: {len(payload)} questions, {image_count} images")
+
+    warn_payload(all_items)
 
     if args.json_path:
         args.json_path.parent.mkdir(parents=True, exist_ok=True)
