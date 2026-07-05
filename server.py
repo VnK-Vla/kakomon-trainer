@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import email.utils
 import gzip
 import json
 import mimetypes
@@ -573,13 +574,30 @@ class AppHandler(BaseHTTPRequestHandler):
             return
 
         content_type = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
-        file_size = target.stat().st_size
+        file_stat = target.stat()
+        file_size = file_stat.st_size
+        etag = f'"{int(file_stat.st_mtime):x}-{file_size:x}"'
+        last_modified = self.date_time_string(int(file_stat.st_mtime))
+        cache_control = self.static_cache_control(path, content_type)
+
         range_header = self.headers.get("Range", "")
         range_info = self.parse_byte_range(range_header, file_size) if range_header else None
         if range_header and range_info is None:
             self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
             self.send_header("Content-Range", f"bytes */{file_size}")
             self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+
+        # 条件付きGET: 内容が変わっていなければ本文を送らず 304 で返す(モバイルの再取得帯域を節約)。
+        # Range リクエスト時は部分取得の再検証を避けるため通常配信にフォールバックする。
+        if not range_header and self.static_not_modified(etag, file_stat.st_mtime):
+            self.send_response(HTTPStatus.NOT_MODIFIED)
+            self.send_header("ETag", etag)
+            self.send_header("Last-Modified", last_modified)
+            if cache_control:
+                self.send_header("Cache-Control", cache_control)
             self.end_headers()
             return
 
@@ -596,14 +614,16 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(content_length))
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("ETag", etag)
+        self.send_header("Last-Modified", last_modified)
+        if cache_control:
+            self.send_header("Cache-Control", cache_control)
         if content_type == "text/html":
             self.send_header(
                 "Content-Security-Policy",
                 "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'",
             )
             self.send_header("X-Frame-Options", "DENY")
-        if path.startswith("/source-pdfs/"):
-            self.send_header("Cache-Control", "private, max-age=3600")
         self.end_headers()
         if self.command == "HEAD":
             return
@@ -617,6 +637,37 @@ class AppHandler(BaseHTTPRequestHandler):
                     break
                 self.wfile.write(chunk)
                 remaining -= len(chunk)
+
+    def static_cache_control(self, path: str, content_type: str) -> str:
+        # PDF は既存どおり短期の private キャッシュ。
+        if path.startswith("/source-pdfs/"):
+            return "private, max-age=3600"
+        # ?v= のキャッシュバスター付きで要求された JS/CSS 等は、内容が変われば URL も
+        # 変わるので長期 immutable キャッシュにして再取得自体を無くす。
+        if "v" in parse_qs(urlparse(self.path).query):
+            return "public, max-age=31536000, immutable"
+        # index.html はバスター無しで参照されるため毎回 ETag で再検証させる
+        # (更新した ?v= を取りこぼさないため。中身が同じなら 304 で軽く返る)。
+        if content_type == "text/html":
+            return "no-cache"
+        # その他(バスター無しの画像など)は1日キャッシュしつつ再検証可能にする。
+        return "public, max-age=86400"
+
+    def static_not_modified(self, etag: str, mtime: float) -> bool:
+        inm = self.headers.get("If-None-Match")
+        if inm is not None:
+            # If-None-Match があれば(RFC 7232)それを優先。弱い検証子の W/ は外して比較。
+            candidates = {tag.strip().removeprefix("W/") for tag in inm.split(",")}
+            return etag in candidates or "*" in candidates
+        ims = self.headers.get("If-Modified-Since")
+        if ims:
+            try:
+                parsed = email.utils.parsedate_to_datetime(ims)
+            except (TypeError, ValueError):
+                return False
+            if parsed is not None:
+                return int(mtime) <= int(parsed.timestamp())
+        return False
 
     def parse_byte_range(self, header: str, file_size: int) -> tuple[int, int] | None:
         if not header.startswith("bytes=") or "," in header:
