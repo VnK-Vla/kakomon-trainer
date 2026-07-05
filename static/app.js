@@ -313,21 +313,18 @@ async function refreshSession() {
 }
 
 async function refreshAll({ keepQuestion = false, renderPracticePanel = true, forceLoadQuestions = false } = {}) {
-  await refreshSession();
   const query = selectedFilters();
   const statsParams = userScopedParams();
   if (state.selectedExam) statsParams.set("exam", state.selectedExam);
   const summaryParams = userScopedParams();
   if (state.selectedExam) summaryParams.set("exam", state.selectedExam);
-  const historyParams = userScopedParams({ limit: "80" });
-  if (state.selectedExam) historyParams.set("exam", state.selectedExam);
   const shouldLoadQuestions =
     forceLoadQuestions || !state.showStudyMap || state.activeTab === "library" || hasActiveQuestionFilter();
-  const [stats, summaryPayload, questionPayload, historyPayload] = await Promise.all([
+  const [stats, summaryPayload, questionPayload] = await Promise.all([
     api(`/api/stats${queryFor(statsParams)}`),
     api(`/api/study-summary${queryFor(summaryParams)}`),
     shouldLoadQuestions ? api(`/api/questions${query ? `?${query}` : ""}`) : Promise.resolve(null),
-    api(`/api/attempts${queryFor(historyParams)}`),
+    state.activeTab === "history" ? refreshHistory() : Promise.resolve(),
   ]);
 
   state.stats = stats;
@@ -349,13 +346,6 @@ async function refreshAll({ keepQuestion = false, renderPracticePanel = true, fo
   renderFilters();
   renderStudyMap();
   renderQuestionTable();
-  renderHistory(historyPayload.attempts || []);
-  if (state.session?.can_manage_users) {
-    await refreshUsers();
-  } else {
-    state.users = [];
-    renderUsers();
-  }
 
   if (!renderPracticePanel) {
     return;
@@ -1159,6 +1149,80 @@ async function submitAnswer(event) {
   setAnswerControlsDisabled(true);
 }
 
+// 解答登録のたびに全データを再取得すると、不安定な回線(モバイル+Tailscale)では
+// 1問ごとに数秒待たされる。登録内容から結果は決定できるので、サーバーへは
+// POST/PUT 1回だけ送り、集計(問題リスト・演習マップ・統計)はローカルで更新する。
+function questionById(questionId) {
+  return (
+    state.allQuestions.find((item) => item.id === questionId) ||
+    (state.currentQuestion?.id === questionId ? state.currentQuestion : null)
+  );
+}
+
+function updateSummaryRows(kind, label, prevMark, nextMark) {
+  const rows = Array.isArray(state.studySummary?.[kind]) ? state.studySummary[kind] : [];
+  const row = rows.find((item) => String(item.label ?? "") === String(label ?? ""));
+  if (!row) return;
+  if (prevMark !== "untried") row[prevMark] = Math.max(0, Number(row[prevMark] || 0) - 1);
+  row[nextMark] = Number(row[nextMark] || 0) + 1;
+  row.attempted = row.ok + row.warn + row.wrong;
+  row.untried = Math.max(0, row.total - row.attempted);
+  row.remaining = row.untried;
+  row.percent = row.total ? Math.round((row.attempted * 100) / row.total) : 0;
+}
+
+function applyMarkTransition(question, prevMark, nextMark) {
+  if (!state.studySummary || prevMark === nextMark) return;
+  updateSummaryRows("year", question.year, prevMark, nextMark);
+  updateSummaryRows("category", question.category, prevMark, nextMark);
+}
+
+function refreshQuestionViews() {
+  state.questions = filteredPracticeQuestions();
+  renderStats();
+  renderStudyMap();
+  renderQuestionTable();
+}
+
+function recordAttemptLocally(questionId, { selfMark, graded, correct }) {
+  const question = questionById(questionId);
+  if (!question) return;
+  const prevMark = questionSelfMark(question);
+  question.attempts_count = Number(question.attempts_count || 0) + 1;
+  question.last_self_mark = selfMark;
+  question.last_attempt_at = new Date().toISOString();
+  if (graded) {
+    question.graded_count = Number(question.graded_count || 0) + 1;
+    if (correct) question.correct_count = Number(question.correct_count || 0) + 1;
+  }
+  if (state.stats) {
+    state.stats.attempts = Number(state.stats.attempts || 0) + 1;
+    if (prevMark === "untried") {
+      state.stats.attempted_questions = Number(state.stats.attempted_questions || 0) + 1;
+    }
+    if (graded) {
+      state.stats.graded_attempts = Number(state.stats.graded_attempts || 0) + 1;
+      if (correct) state.stats.correct = Number(state.stats.correct || 0) + 1;
+      state.stats.rate = state.stats.graded_attempts
+        ? Math.round((state.stats.correct * 1000) / state.stats.graded_attempts) / 10
+        : 0;
+    }
+  }
+  applyMarkTransition(question, prevMark, selfMark);
+  refreshQuestionViews();
+}
+
+// 更新対象は直前に登録した最新の解答に限られるため、last_self_mark を直接置き換えられる。
+function applySelfMarkLocally(questionId, selfMark) {
+  const question = questionById(questionId);
+  if (!question) return;
+  const prevMark = questionSelfMark(question);
+  question.last_self_mark = selfMark;
+  applyMarkTransition(question, prevMark, selfMark);
+  refreshQuestionViews();
+  syncCurrentQuestion();
+}
+
 async function registerPendingResult() {
   const context = state.resultContext;
   if (!context || context.saved || context.registering) return;
@@ -1171,7 +1235,7 @@ async function registerPendingResult() {
   const previousIndex = state.currentIndex;
   state.resultContext = { ...context, registering: true };
   try {
-    await api("/api/attempts", {
+    const result = await api("/api/attempts", {
       method: "POST",
       body: JSON.stringify({
         question_id: context.question_id,
@@ -1180,7 +1244,11 @@ async function registerPendingResult() {
         self_mark: context.self_mark || "warn",
       }),
     });
-    await refreshAll({ keepQuestion: true, renderPracticePanel: false });
+    recordAttemptLocally(context.question_id, {
+      selfMark: result.self_mark || context.self_mark || "warn",
+      graded: Boolean(result.graded),
+      correct: result.correct === true,
+    });
     toast("結果を登録しました。");
     pickQuestionAfterRefresh(previousQuestionId, previousIndex);
   } catch (error) {
@@ -1204,8 +1272,8 @@ async function updateSelfMark(event) {
       body: JSON.stringify({ self_mark: mark, user_name: state.currentUser }),
     });
     renderAnswerResult(result);
-    await refreshAll({ keepQuestion: true, renderPracticePanel: false });
-    syncCurrentQuestion();
+    const questionId = state.resultContext?.question_id || state.currentQuestion?.id;
+    applySelfMarkLocally(questionId, mark);
   } catch (error) {
     toast(error.message);
   }
@@ -1287,6 +1355,13 @@ function setLibraryPage(page) {
   state.libraryPage = Math.min(Math.max(1, page), pageCount);
   renderQuestionTable();
   $("#libraryView .table-wrap")?.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+async function refreshHistory() {
+  const historyParams = userScopedParams({ limit: "80" });
+  if (state.selectedExam) historyParams.set("exam", state.selectedExam);
+  const payload = await api(`/api/attempts${queryFor(historyParams)}`);
+  renderHistory(payload.attempts || []);
 }
 
 function renderHistory(attempts) {
@@ -1495,6 +1570,9 @@ function activateTab(name) {
       toast(error.message),
     );
   }
+  if (name === "history") {
+    refreshHistory().catch((error) => toast(error.message));
+  }
   if (name === "users") {
     refreshUsers().catch((error) => toast(error.message));
   }
@@ -1626,4 +1704,7 @@ function bindKeyboardWatcher() {
 
 bindKeyboardWatcher();
 bindEvents();
-refreshAll().catch((error) => toast(error.message));
+// セッション(ユーザー確定・権限)は接続方法が変わらない限り不変なので初回だけ取得する。
+refreshSession()
+  .then(() => refreshAll())
+  .catch((error) => toast(error.message));
