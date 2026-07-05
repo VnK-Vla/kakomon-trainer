@@ -323,7 +323,9 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path == "/api/session":
+        if parsed.path == "/healthz":
+            self.send_json({"status": "ok"})
+        elif parsed.path == "/api/session":
             self.handle_session()
         elif parsed.path == "/api/questions":
             self.handle_list_questions(parsed.query)
