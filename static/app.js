@@ -16,6 +16,16 @@ function storedUserName() {
   }
 }
 
+const RANDOM_START_STORAGE_KEY = "kakomon-trainer-random-start";
+
+function storedRandomStart() {
+  try {
+    return window.localStorage.getItem(RANDOM_START_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 const state = {
   questions: [],
   allQuestions: [],
@@ -37,6 +47,9 @@ const state = {
   libraryResultFilter: new Set(),
   practiceStartResultFilter: new Set(),
   practiceResultFilter: null,
+  practiceRandomStart: storedRandomStart(),
+  practiceOrder: null,
+  practiceShufflePending: false,
   localFilter: null,
   resultContext: null,
 };
@@ -120,6 +133,7 @@ const fields = {
   filterPanel: $("#filterPanel"),
   filterSummaryText: $("#filterSummaryText"),
   practiceResultFilter: $("#practiceResultFilter"),
+  practiceRandomToggle: $("#practiceRandomToggle"),
   studyMap: $("#studyMap"),
   studyList: $("#studyList"),
   practiceSession: $("#practiceSession"),
@@ -212,6 +226,23 @@ function copyResultFilter(resultFilter) {
   return resultFilter?.size ? new Set(resultFilter) : null;
 }
 
+function shuffledPracticeOrder(questions) {
+  const ids = questions.map((question) => question.id);
+  for (let i = ids.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return new Map(ids.map((id, rank) => [id, rank]));
+}
+
+// 解答登録のたびに state.questions は組み直されるため、ランダム出題の並びは
+// id → 順位のマップとして保持し、組み直し後もこのマップで並べ直す。
+function applyPracticeOrder(questions) {
+  const order = state.practiceOrder;
+  if (!order) return questions;
+  return [...questions].sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity));
+}
+
 function applyResultFilter(questions, resultFilter) {
   const selected = resultFilter;
   if (!selected || !selected.size) return questions;
@@ -237,7 +268,7 @@ function filteredLibraryQuestions() {
 }
 
 function filteredPracticeQuestions() {
-  return applyResultFilter(baseQuestionList(), state.practiceResultFilter);
+  return applyPracticeOrder(applyResultFilter(baseQuestionList(), state.practiceResultFilter));
 }
 
 function toast(message) {
@@ -299,6 +330,8 @@ function clearQuestionLists() {
   state.questions = [];
   state.questionsLoaded = false;
   state.practiceResultFilter = null;
+  state.practiceOrder = null;
+  state.practiceShufflePending = false;
 }
 
 async function refreshSession() {
@@ -337,6 +370,11 @@ async function refreshAll({ keepQuestion = false, renderPracticePanel = true, fo
     state.allQuestions = questionPayload.questions || [];
     state.studyQuestions = state.allQuestions;
     state.questions = filteredPracticeQuestions();
+    if (state.practiceShufflePending) {
+      state.practiceOrder = shuffledPracticeOrder(state.questions);
+      state.practiceShufflePending = false;
+      state.questions = filteredPracticeQuestions();
+    }
     state.questionsLoaded = true;
   } else {
     clearQuestionLists();
@@ -478,6 +516,7 @@ function renderFilterSummary() {
   if (state.localFilter?.unattempted) parts.push("未演習");
   if (state.localFilter?.withoutAnswer) parts.push("解答未登録");
   if (state.activeTab === "practice" && !state.showStudyMap) {
+    if (state.practiceOrder || state.practiceShufflePending) parts.push("ランダム出題");
     const resultLabels = resultFilterLabels(state.practiceResultFilter);
     if (resultLabels.length) parts.push(`開始条件: ${resultLabels.join(", ")}`);
   }
@@ -656,6 +695,9 @@ function renderStudyMap() {
 }
 
 function renderPracticeResultFilter() {
+  if (fields.practiceRandomToggle) {
+    fields.practiceRandomToggle.checked = state.practiceRandomStart;
+  }
   if (!fields.practiceResultFilter) return;
   $$("[data-practice-result-filter]").forEach((input) => {
     input.checked = state.practiceStartResultFilter.has(input.dataset.practiceResultFilter);
@@ -684,6 +726,8 @@ function clearStudyFilters({ keepExam = true } = {}) {
   state.libraryPage = 1;
   state.localFilter = null;
   state.practiceResultFilter = null;
+  state.practiceOrder = null;
+  state.practiceShufflePending = false;
   renderFilterSummary();
 }
 
@@ -705,6 +749,8 @@ function startStudyItem(index) {
   const filter = item.filter || {};
   state.localFilter = filter.localFilter || null;
   state.practiceResultFilter = copyResultFilter(state.practiceStartResultFilter);
+  state.practiceOrder = null;
+  state.practiceShufflePending = state.practiceRandomStart;
   fields.filterYear.value = filter.year || "";
   fields.filterCategory.value = filter.category || "";
   fields.filterKeyword.value = filter.q || "";
@@ -1531,6 +1577,8 @@ function practiceQuestionFromLibrary(id) {
     return;
   }
   state.practiceResultFilter = copyResultFilter(state.libraryResultFilter);
+  state.practiceOrder = null;
+  state.practiceShufflePending = false;
   state.questions = questions;
   state.showStudyMap = false;
   setCurrentQuestionByIndex(index);
@@ -1626,6 +1674,14 @@ function bindEvents() {
     }
     renderPracticeResultFilter();
   });
+  fields.practiceRandomToggle?.addEventListener("change", () => {
+    state.practiceRandomStart = fields.practiceRandomToggle.checked;
+    try {
+      window.localStorage.setItem(RANDOM_START_STORAGE_KEY, state.practiceRandomStart ? "1" : "0");
+    } catch {
+      // 保存できない環境では次回起動時に既定値へ戻るだけで、演習には影響しない。
+    }
+  });
   fields.backToStudyMap.addEventListener("click", () => {
     clearStudyFilters();
     showStudyMap();
@@ -1637,6 +1693,8 @@ function bindEvents() {
     if (!(state.activeTab === "practice" && !state.showStudyMap)) {
       state.practiceResultFilter = null;
     }
+    state.practiceOrder = null;
+    state.practiceShufflePending = false;
     state.libraryPage = 1;
     state.showStudyMap = false;
     renderFilterSummary();

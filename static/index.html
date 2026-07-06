@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>過去問演習</title>
-    <link rel="stylesheet" href="/app.css?v=20260703-tabs-no-transform">
+    <link rel="stylesheet" href="/app.css?v=20260706-random-mode">
   </head>
   <body>
     <div class="app-shell">
@@ -90,6 +90,10 @@
                 <label class="result-check untried">
                   <input type="checkbox" data-practice-result-filter="untried">
                   <span>未演習</span>
+                </label>
+                <label class="result-check random">
+                  <input type="checkbox" id="practiceRandomToggle">
+                  <span>ランダム出題</span>
                 </label>
               </div>
               <div id="studyList" class="study-list"></div>
@@ -244,6 +248,6 @@
     </div>
 
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=20260705-light-refresh"></script>
+    <script src="/app.js?v=20260706-random-mode"></script>
   </body>
 </html>
