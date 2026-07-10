@@ -3,18 +3,19 @@ from __future__ import annotations
 import re
 
 
-FIELD_DEFAULT = "その他"
-FIELD_BASIC = "基礎・安全・情報"
-FIELD_NEURO = "神経・頭頸部"
+FIELD_OVERVIEW = "画像診断学総論"
+FIELD_CNS = "中枢神経"
+FIELD_HEADNECK = "頭頚部"
+FIELD_SPINE = "脊椎・脊髄"
 FIELD_MSK = "骨軟部"
-FIELD_CHEST = "胸部"
-FIELD_CARDIO = "心大血管"
-FIELD_BREAST = "乳腺"
-FIELD_ABDOMEN = "腹部"
-FIELD_URO_GYN = "泌尿器・婦人科"
-FIELD_PEDIATRIC = "小児"
+FIELD_CHEST = "呼吸器・縦隔"
+FIELD_CARDIO = "心血管・脈管"
+FIELD_BREAST = "乳房"
+FIELD_ABDOMEN = "消化器"
+FIELD_URO_GYN = "泌尿器・生殖器"
 FIELD_IVR = "IVR"
 FIELD_NUCLEAR = "核医学"
+FIELD_DEFAULT = FIELD_OVERVIEW  # 分類不能時は総論に寄せる
 
 
 PATTERNS = [
@@ -27,7 +28,7 @@ PATTERNS = [
         ),
     ),
     (
-        FIELD_BASIC,
+        FIELD_OVERVIEW,
         re.compile(
             r"線量|被ばく|線量計|画質|画像表示|PACS|DICOM|医療情報|情報システム|ランサムウェア|"
             r"Deep learning|AI|畳み込み|臨床研究|MRI 撮像法|MRI撮像法|超音波診断\(装置\)|"
@@ -38,7 +39,8 @@ PATTERNS = [
         FIELD_CARDIO,
         re.compile(
             r"心臓|心筋|冠動脈|心電図|左室|右室|心室|心停止|除細動|心筋梗塞|大動脈|"
-            r"肺動脈|肺塞栓|心電図同期|シネ MRI|遅延造影 MRI|心筋交感神経"
+            r"肺動脈|肺塞栓|心電図同期|シネ MRI|遅延造影 MRI|心筋交感神経|"
+            r"大動脈瘤|大動脈解離|大動脈縮窄|血管炎|末梢動脈"
         ),
     ),
     (
@@ -50,6 +52,20 @@ PATTERNS = [
     ),
     (FIELD_BREAST, re.compile(r"乳房|乳腺|マンモグラフィ|マンモ|乳がん検診|右乳房|左乳房")),
     (
+        FIELD_HEADNECK,
+        re.compile(
+            r"副鼻腔|上顎|下顎|顎下|顎骨|口腔|舌|扁桃|咽頭|喉頭|声帯|甲状腺|副甲状腺|"
+            r"唾液腺|耳下腺|中耳|内耳|側頭骨|錐体|乳突|眼窩|涙腺|鼻腔|鼻出血|鼻閉|"
+            r"頸部腫瘤|頸動脈分岐|耳鳴|難聴|歯"
+        ),
+    ),
+    (
+        FIELD_SPINE,
+        re.compile(
+            r"脊椎|脊髄|椎体|椎間板|馬尾|頸椎|胸椎|腰椎|仙骨|脊柱管|脊柱|後索"
+        ),
+    ),
+    (
         FIELD_URO_GYN,
         re.compile(
             r"腎|尿管|膀胱|前立腺|精巣|副腎|子宮|卵巣|骨盤部|不正性器出血|妊娠|月経|下腹部|"
@@ -59,14 +75,14 @@ PATTERNS = [
     (
         FIELD_ABDOMEN,
         re.compile(
-            r"肝|胆|膵|脾|胃|十二指腸|小腸|大腸|直腸|虫垂|腹部|腹痛|嘔吐|腸管|"
+            r"肝|胆|膵|脾|胃|食道|十二指腸|小腸|大腸|直腸|虫垂|腹部|腹痛|嘔吐|腸管|"
             r"上腹部|心窩部|胆道|門脈|EOB|消化管|腹膜|後腹膜"
         ),
     ),
     (
         FIELD_CHEST,
         re.compile(
-            r"胸部|肺|縦隔|気管|気管支|胸水|胸膜|気胸|咳嗽|呼吸|喀血|喘鳴|胸痛|"
+            r"胸部|肺|縦隔|気管|気管支|細気管支|胸水|胸膜|気胸|咳嗽|呼吸|喀血|喘鳴|胸痛|"
             r"HRCT|肺野|縦隔条件|胸腔|横隔膜"
         ),
     ),
@@ -74,19 +90,18 @@ PATTERNS = [
         FIELD_MSK,
         re.compile(
             r"骨|関節|膝|股関節|足関節|足部|足趾|踵|下肢|上肢|肩|肘|手指|上腕|大腿|下腿|"
-            r"前腕|脊椎|椎体|椎間板|"
+            r"前腕|"
             r"筋|軟部|骨肉腫|骨折|靭帯|半月板|STIR"
         ),
     ),
     (
-        FIELD_NEURO,
+        FIELD_CNS,
         re.compile(
-            r"頭部|脳|頭蓋|後頭蓋窩|小脳|大脳|脳室|髄膜|下垂体|視神経|眼窩|副鼻腔|顔面|"
-            r"頸部|耳|内耳|咽頭|喉頭|唾液腺|甲状腺|てんかん|けいれん|痙攣|意識障害|認知|"
-            r"頭痛|内頸動脈|脳梗塞|脳出血|MRA|FLAIR|拡散強調"
+            r"頭部|脳|頭蓋|後頭蓋窩|小脳|大脳|脳室|髄膜|下垂体|視神経|"
+            r"てんかん|けいれん|痙攣|意識障害|認知|"
+            r"頭痛|内頸動脈|脳梗塞|脳出血|静脈洞|矢状洞|MRA|FLAIR|拡散強調"
         ),
     ),
-    (FIELD_PEDIATRIC, re.compile(r"胎児|新生児|生後|小児|男児|女児|乳児")),
 ]
 
 
@@ -110,7 +125,7 @@ def classify_by_number(year: str, question_number: int | None) -> str:
     n = question_number
     if year_number >= 2024:
         if n <= 10:
-            return FIELD_NEURO
+            return FIELD_CNS
         if n <= 20:
             return FIELD_MSK
         if n <= 35:
@@ -120,19 +135,19 @@ def classify_by_number(year: str, question_number: int | None) -> str:
         if n <= 44:
             return FIELD_BREAST
         if n <= 49:
-            return FIELD_PEDIATRIC
+            return FIELD_ABDOMEN  # 旧小児枠は消化器に併合
         if n <= 69:
             return FIELD_ABDOMEN
         if n <= 74:
             return FIELD_IVR
         if n <= 95:
             return FIELD_NUCLEAR
-        return FIELD_BASIC
+        return FIELD_OVERVIEW
 
     if n <= 5:
-        return FIELD_BASIC
+        return FIELD_OVERVIEW
     if n <= 18:
-        return FIELD_NEURO
+        return FIELD_CNS
     if n <= 24:
         return FIELD_MSK
     if n <= 34:
@@ -147,7 +162,7 @@ def classify_by_number(year: str, question_number: int | None) -> str:
         return FIELD_URO_GYN
     if n <= 76:
         return FIELD_NUCLEAR
-    return FIELD_BASIC
+    return FIELD_OVERVIEW
 
 
 def classify_question(question: str, year: str = "", question_number: int | None = None) -> str:
