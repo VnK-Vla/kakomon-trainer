@@ -1137,19 +1137,31 @@ function renderAnswerResult(result) {
   state.resultContext = { ...(state.resultContext || {}), ...result };
   const context = state.resultContext;
   const mark = context.self_mark || "warn";
-  const resultClass = context.graded ? (context.correct ? "correct" : "wrong") : "correct";
-  const heading = context.graded
-    ? context.correct
-      ? "正解"
-      : "不正解"
-    : context.saved
-      ? "解答を記録しました"
-      : "解答を確認しました";
-  const answerBlock = context.graded
+  const hasCorrectAnswer =
+    context.has_correct_answer ?? Boolean(String(context.correct_answer || "").trim());
+  const resultClass = context.preview_only
+    ? ""
+    : context.graded
+      ? context.correct
+        ? "correct"
+        : "wrong"
+      : "correct";
+  const heading = context.preview_only
+    ? "解答・解説"
+    : context.graded
+      ? context.correct
+        ? "正解"
+        : "不正解"
+      : context.saved
+        ? "解答を記録しました"
+        : "解答を確認しました";
+  const answerBlock = hasCorrectAnswer
     ? `<div>正答: ${escapeHtml(context.correct_answer)}</div>`
     : `<div>この問題は正答未登録です。一覧の編集から正答を追加できます。</div>`;
   const userAnswerBlock = context.user_answer ? `<div>あなたの解答: ${escapeHtml(context.user_answer)}</div>` : "";
-  const registerAction = context.saved
+  const previewNote = context.preview_only ? `<div>未回答のため、結果は履歴に登録されません。</div>` : "";
+  const markButtons = context.preview_only ? "" : renderMarkButtons(context.attempt_id, mark);
+  const registerAction = context.preview_only || context.saved
     ? ""
     : `
       <div class="result-actions">
@@ -1162,8 +1174,9 @@ function renderAnswerResult(result) {
     <strong>${heading}</strong>
     ${userAnswerBlock}
     ${answerBlock}
+    ${previewNote}
     ${context.explanation ? `<div>${escapeHtml(context.explanation).replaceAll("\n", "<br>")}</div>` : ""}
-    ${renderMarkButtons(context.attempt_id, mark)}
+    ${markButtons}
     ${context.saved ? renderAttemptChoiceHistory(context.attempts || []) : ""}
     ${registerAction}
   `;
@@ -1174,20 +1187,18 @@ async function submitAnswer(event) {
   if (!state.currentQuestion) return;
 
   const userAnswer = currentAnswer();
-  if (!userAnswer) {
-    toast("解答を入力してください。");
-    return;
-  }
-
-  const hasAnswer = Boolean(String(state.currentQuestion.answer || "").trim());
-  const correct = hasAnswer ? isCorrectAnswer(userAnswer, state.currentQuestion.answer) : null;
+  const previewOnly = !userAnswer;
+  const hasCorrectAnswer = Boolean(String(state.currentQuestion.answer || "").trim());
+  const correct = !previewOnly && hasCorrectAnswer ? isCorrectAnswer(userAnswer, state.currentQuestion.answer) : null;
   renderAnswerResult({
     attempt_id: null,
     saved: false,
     question_id: state.currentQuestion.id,
     user_answer: userAnswer,
-    self_mark: hasAnswer ? (correct ? "ok" : "wrong") : "warn",
-    graded: hasAnswer,
+    self_mark: !previewOnly && hasCorrectAnswer ? (correct ? "ok" : "wrong") : "warn",
+    preview_only: previewOnly,
+    has_correct_answer: hasCorrectAnswer,
+    graded: !previewOnly && hasCorrectAnswer,
     correct,
     correct_answer: state.currentQuestion.answer,
     explanation: state.currentQuestion.explanation,
@@ -1272,7 +1283,7 @@ function applySelfMarkLocally(questionId, selfMark) {
 
 async function registerPendingResult() {
   const context = state.resultContext;
-  if (!context || context.saved || context.registering) return;
+  if (!context || context.preview_only || context.saved || context.registering) return;
   if (!context.question_id || !context.user_answer) {
     toast("先に判定してください。");
     return;
