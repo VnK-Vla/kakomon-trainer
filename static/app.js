@@ -1,6 +1,7 @@
 const DEFAULT_USER_NAME = "自分";
 const USER_STORAGE_KEY = "kakomon-trainer-user";
 const LIBRARY_PAGE_SIZE = 40;
+const QUESTION_ATTEMPT_HISTORY_LIMIT = 30;
 const COMPACT_FILTER_MEDIA = "(max-width: 520px)";
 
 function normalizeUserName(value) {
@@ -52,6 +53,7 @@ const state = {
   practiceShufflePending: false,
   localFilter: null,
   resultContext: null,
+  questionAttemptHistoryRequestId: 0,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -154,6 +156,7 @@ const fields = {
   freeAnswerWrap: $("#freeAnswerWrap"),
   freeAnswer: $("#freeAnswer"),
   resultBox: $("#resultBox"),
+  questionAttemptHistory: $("#questionAttemptHistory"),
   noteForm: $("#noteForm"),
   questionNote: $("#questionNote"),
   saveNote: $("#saveNote"),
@@ -838,8 +841,12 @@ function jumpToQuestion(event) {
 function renderPractice() {
   const question = state.currentQuestion;
   state.resultContext = null;
+  state.questionAttemptHistoryRequestId += 1;
   fields.resultBox.className = "result-box hidden";
   fields.resultBox.textContent = "";
+  fields.questionAttemptHistory.classList.add("hidden");
+  fields.questionAttemptHistory.removeAttribute("aria-busy");
+  fields.questionAttemptHistory.textContent = "";
   fields.choiceList.innerHTML = "";
   fields.questionSourceLinks.innerHTML = "";
   fields.freeAnswer.value = "";
@@ -1110,27 +1117,90 @@ function renderMarkButtons(attemptId, currentMark) {
   `;
 }
 
-function renderAttemptChoiceHistory(attempts = []) {
-  if (!attempts.length) return "";
-  const rows = attempts
+function attemptMarkPresentation(attempt) {
+  const selfMark = SELF_MARKS[attempt.self_mark] ? attempt.self_mark : "";
+  if (selfMark) {
+    return { className: markClass(selfMark), label: markLabel(selfMark) };
+  }
+  if (attempt.is_correct === 0 || attempt.is_correct === 1) {
+    return attempt.is_correct === 1
+      ? { className: "ok", label: "正解" }
+      : { className: "ng", label: "不正解" };
+  }
+  return { className: "pending", label: "未採点" };
+}
+
+function renderAttemptHistoryRows(attempts = []) {
+  return attempts
     .map((attempt) => {
-      const date = new Date(attempt.created_at).toLocaleString("ja-JP");
-      const mark = attempt.self_mark || "warn";
+      const parsedDate = new Date(attempt.created_at);
+      const date = Number.isNaN(parsedDate.getTime()) ? "日時不明" : parsedDate.toLocaleString("ja-JP");
+      const mark = attemptMarkPresentation(attempt);
       return `
         <li class="attempt-history-row">
-          <span class="result-mark ${markClass(mark)}">${markLabel(mark)}</span>
-          <span class="attempt-answer">${escapeHtml(attempt.user_answer)}</span>
+          <span class="result-mark ${mark.className}">${mark.label}</span>
+          <span class="attempt-answer">回答: ${escapeHtml(attempt.user_answer)}</span>
           <time>${escapeHtml(date)}</time>
         </li>
       `;
     })
     .join("");
-  return `
-    <div class="attempt-history">
-      <div class="attempt-history-title">選択履歴</div>
-      <ol>${rows}</ol>
-    </div>
+}
+
+function renderQuestionAttemptHistory(attempts = [], message = "") {
+  const title =
+    attempts.length === QUESTION_ATTEMPT_HISTORY_LIMIT
+      ? `過去の回答記録（直近${QUESTION_ATTEMPT_HISTORY_LIMIT}件）`
+      : "過去の回答記録";
+  const body = message
+    ? `<p class="attempt-history-message">${escapeHtml(message)}</p>`
+    : attempts.length
+      ? `<ol>${renderAttemptHistoryRows(attempts)}</ol>`
+      : `<p class="attempt-history-message">過去の回答はありません。</p>`;
+  fields.questionAttemptHistory.innerHTML = `
+    <div class="attempt-history-title">${title}</div>
+    ${body}
   `;
+  fields.questionAttemptHistory.classList.remove("hidden");
+}
+
+async function loadQuestionAttemptHistory(questionId) {
+  const normalizedId = Number(questionId);
+  if (!Number.isInteger(normalizedId) || normalizedId <= 0) return;
+  const requestedUser = state.currentUser;
+  const requestId = state.questionAttemptHistoryRequestId + 1;
+  state.questionAttemptHistoryRequestId = requestId;
+  const isCurrentRequest = () =>
+    state.questionAttemptHistoryRequestId === requestId &&
+    state.currentUser === requestedUser &&
+    state.currentQuestion?.id === normalizedId &&
+    state.resultContext?.question_id === normalizedId;
+
+  fields.questionAttemptHistory.setAttribute("aria-busy", "true");
+  renderQuestionAttemptHistory([], "読み込み中...");
+  try {
+    const params = userScopedParams({
+      question_id: String(normalizedId),
+      limit: String(QUESTION_ATTEMPT_HISTORY_LIMIT),
+    });
+    const payload = await api(`/api/attempts${queryFor(params)}`);
+    if (!isCurrentRequest()) return;
+    const attempts = Array.isArray(payload.attempts)
+      ? payload.attempts.filter(
+          (attempt) =>
+            Number(attempt.question_id) === normalizedId &&
+            typeof attempt.user_name === "string" &&
+            normalizeUserName(attempt.user_name) === requestedUser,
+        )
+      : [];
+    fields.questionAttemptHistory.removeAttribute("aria-busy");
+    renderQuestionAttemptHistory(attempts);
+  } catch (error) {
+    if (!isCurrentRequest()) return;
+    fields.questionAttemptHistory.removeAttribute("aria-busy");
+    renderQuestionAttemptHistory([], "過去の回答記録を読み込めませんでした。");
+    toast(error.message);
+  }
 }
 
 function renderAnswerResult(result) {
@@ -1177,7 +1247,6 @@ function renderAnswerResult(result) {
     ${previewNote}
     ${context.explanation ? `<div>${escapeHtml(context.explanation).replaceAll("\n", "<br>")}</div>` : ""}
     ${markButtons}
-    ${context.saved ? renderAttemptChoiceHistory(context.attempts || []) : ""}
     ${registerAction}
   `;
 }
@@ -1205,6 +1274,7 @@ async function submitAnswer(event) {
     attempts: [],
   });
   setAnswerControlsDisabled(true);
+  void loadQuestionAttemptHistory(state.currentQuestion.id);
 }
 
 // 解答登録のたびに全データを再取得すると、不安定な回線(モバイル+Tailscale)では

@@ -156,8 +156,12 @@ def horizontal_overlap(a: tuple[float, float, float, float], b: tuple[float, flo
     return max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
 
 
+def vertical_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    return max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+
+
 def bbox_intersects(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
-    return horizontal_overlap(a, b) > 0 and max(a[1], b[1]) < min(a[3], b[3])
+    return horizontal_overlap(a, b) > 0 and vertical_overlap(a, b) > 0
 
 
 def find_question_positions(pdf_path: Path, max_question_number: int = 200) -> dict[int, dict[str, float | int]]:
@@ -225,6 +229,42 @@ def caption_boxes_below_images(page, image_boxes: list[tuple[float, float, float
     return boxes
 
 
+def label_boxes_left_of_images(
+    page,
+    image_boxes: list[tuple[float, float, float, float]],
+    span_top: float,
+    span_bottom: float,
+) -> list[tuple[float, float, float, float]]:
+    if not image_boxes:
+        return []
+
+    image_left = min(box[0] for box in image_boxes)
+    max_label_width = 72
+    max_edge_gap = 8
+    # A word touching the image edge anchors the row; overlapping pieces such as
+    # a separate isotope superscript are then included without pulling in nearby body text.
+    candidates: list[tuple[float, float, float, float]] = []
+    anchors: list[tuple[float, float, float, float]] = []
+    for word in page.extract_words() or []:
+        word_box = object_bbox(word)
+        if word_box is None:
+            continue
+        if word_box[1] < span_top or word_box[3] > span_bottom:
+            continue
+        if word_box[0] < image_left - max_label_width or word_box[2] > image_left + max_edge_gap:
+            continue
+        if not any(vertical_overlap(word_box, image_box) > 0 for image_box in image_boxes):
+            continue
+        candidates.append(word_box)
+        edge_gap = image_left - word_box[2]
+        if -max_edge_gap <= edge_gap <= max_edge_gap:
+            anchors.append(word_box)
+
+    if not anchors:
+        return []
+    return [box for box in candidates if any(vertical_overlap(box, anchor) > 0 for anchor in anchors)]
+
+
 def nearby_vector_words(page, visual_box: tuple[float, float, float, float], span_top: float, span_bottom: float) -> list[tuple[float, float, float, float]]:
     expanded = (
         max(0, visual_box[0] - 32),
@@ -257,7 +297,11 @@ def question_visual_bbox(page, position: dict[str, float | int]) -> tuple[float,
             image_boxes.append(box)
 
     if image_boxes:
-        boxes = image_boxes + caption_boxes_below_images(page, image_boxes, span_bottom)
+        boxes = (
+            image_boxes
+            + caption_boxes_below_images(page, image_boxes, span_bottom)
+            + label_boxes_left_of_images(page, image_boxes, span_top, span_bottom)
+        )
         visual_box = union_bbox(boxes)
     else:
         shape_boxes: list[tuple[float, float, float, float]] = []
