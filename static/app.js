@@ -51,6 +51,7 @@ const state = {
   practiceRandomStart: storedRandomStart(),
   practiceOrder: null,
   practiceShufflePending: false,
+  refreshRequestId: 0,
   localFilter: null,
   resultContext: null,
   questionAttemptHistoryRequestId: 0,
@@ -137,6 +138,7 @@ const fields = {
   filterSummaryText: $("#filterSummaryText"),
   practiceResultFilter: $("#practiceResultFilter"),
   practiceRandomToggle: $("#practiceRandomToggle"),
+  startAllRandom: $("#startAllRandom"),
   studyMap: $("#studyMap"),
   studyList: $("#studyList"),
   practiceSession: $("#practiceSession"),
@@ -350,6 +352,7 @@ async function refreshSession() {
 }
 
 async function refreshAll({ keepQuestion = false, renderPracticePanel = true, forceLoadQuestions = false } = {}) {
+  const requestId = ++state.refreshRequestId;
   const query = selectedFilters();
   const statsParams = userScopedParams();
   if (state.selectedExam) statsParams.set("exam", state.selectedExam);
@@ -363,6 +366,7 @@ async function refreshAll({ keepQuestion = false, renderPracticePanel = true, fo
     shouldLoadQuestions ? api(`/api/questions${query ? `?${query}` : ""}`) : Promise.resolve(null),
     state.activeTab === "history" ? refreshHistory() : Promise.resolve(),
   ]);
+  if (requestId !== state.refreshRequestId) return;
 
   state.stats = stats;
   state.studySummary = summaryPayload;
@@ -648,6 +652,9 @@ function buildStudyRows() {
 
 function renderStudyMap() {
   if (!fields.studyList) return;
+  if (fields.startAllRandom) {
+    fields.startAllRandom.textContent = `全問題をランダムに解く（${Number(state.stats?.questions || 0)}問）`;
+  }
   const sections = buildStudyRows();
   state.studyItems = [];
   fields.studyList.innerHTML = sections
@@ -747,14 +754,11 @@ function showPracticeSession() {
   document.body.classList.toggle("practice-session-active", state.activeTab === "practice");
 }
 
-function startStudyItem(index) {
-  const item = state.studyItems[index];
-  if (!item) return;
-  const filter = item.filter || {};
+function startPractice(filter = {}, { forceRandom = false } = {}) {
   state.localFilter = filter.localFilter || null;
   state.practiceResultFilter = copyResultFilter(state.practiceStartResultFilter);
   state.practiceOrder = null;
-  state.practiceShufflePending = state.practiceRandomStart;
+  state.practiceShufflePending = forceRandom || state.practiceRandomStart;
   fields.filterYear.value = filter.year || "";
   fields.filterCategory.value = filter.category || "";
   fields.filterKeyword.value = filter.q || "";
@@ -762,6 +766,12 @@ function startStudyItem(index) {
   state.showStudyMap = false;
   renderFilterSummary();
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
+}
+
+function startStudyItem(index) {
+  const item = state.studyItems[index];
+  if (!item) return;
+  startPractice(item.filter || {});
 }
 
 function switchExam(exam) {
@@ -1744,6 +1754,9 @@ function bindEvents() {
   fields.studyList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-study-index]");
     if (button) startStudyItem(Number(button.dataset.studyIndex));
+  });
+  fields.startAllRandom?.addEventListener("click", () => {
+    startPractice({}, { forceRandom: true });
   });
   fields.practiceResultFilter?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-practice-result-filter]");
