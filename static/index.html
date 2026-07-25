@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>過去問演習</title>
-    <link rel="stylesheet" href="/app.css?v=20260718-image-lightbox">
+    <link rel="stylesheet" href="/app.css?v=20260725-practice-round">
   </head>
   <body>
     <div class="app-shell">
@@ -69,6 +69,7 @@
             </div>
 
             <section id="studyMap" class="study-map" aria-label="演習メニュー">
+              <section id="practiceSessionCard" class="practice-session-card hidden" aria-live="polite"></section>
               <nav class="study-tabs" aria-label="演習メニュー切替">
                 <button class="study-tab active" type="button" data-study-mode="category">分野別</button>
                 <button class="study-tab" type="button" data-study-mode="year">年度別</button>
@@ -101,6 +102,15 @@
             </section>
 
             <article id="practiceSession" class="practice-panel hidden">
+              <div id="practiceRoundProgress" class="practice-round-progress hidden" aria-live="polite"></div>
+              <div id="practiceRoundComplete" class="practice-round-complete hidden">
+                <strong>ランダム一周が完了しました</strong>
+                <span>開始時に選んだ問題をすべて解答しました。</span>
+                <div class="practice-round-complete-actions">
+                  <button class="primary" type="button" data-restart-practice-session>現在の条件でもう一周</button>
+                  <button class="ghost" type="button" data-leave-practice-session>一覧へ戻る</button>
+                </div>
+              </div>
               <div id="emptyPractice" class="empty-state">
                 <strong>問題がありません</strong>
                 <span>条件に一致する問題がありません。</span>
@@ -254,6 +264,6 @@
       <img id="imageLightboxImage" class="image-lightbox-image" alt="">
     </dialog>
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=20260718-image-lightbox"></script>
+    <script src="/app.js?v=20260725-practice-round"></script>
   </body>
 </html>

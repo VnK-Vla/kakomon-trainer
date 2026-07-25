@@ -8,6 +8,7 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -30,6 +31,11 @@ SOURCE_PDF_CACHE_SECONDS = 60.0
 SOURCE_PDF_CHUNK_SIZE = 1024 * 256
 GZIP_JSON_MIN_BYTES = 1024
 MAX_JSON_BODY_BYTES = 1024 * 1024
+MAX_PRACTICE_SESSION_QUESTIONS = 5000
+MAX_PRACTICE_FILTER_TEXT_LENGTH = 200
+MAX_PRACTICE_SESSION_TOKEN_LENGTH = 200
+PRACTICE_RESULT_MARKS = ("ok", "warn", "wrong", "untried")
+PRACTICE_LOCAL_FILTER_KEYS = ("hasImages", "unattempted", "withoutAnswer")
 
 EXAM_SOURCE_DIRS = {
     "放射線診断専門医認定試験": "diagnostic",
@@ -215,12 +221,42 @@ def init_db() -> None:
                 FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS practice_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL UNIQUE,
+                user_name TEXT NOT NULL,
+                exam TEXT NOT NULL,
+                filters TEXT NOT NULL DEFAULT '{}',
+                status TEXT NOT NULL DEFAULT 'active'
+                    CHECK(status IN ('active', 'completed')),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                UNIQUE(user_name, exam),
+                FOREIGN KEY(user_name) REFERENCES users(name) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS practice_session_items (
+                session_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                question_id INTEGER NOT NULL,
+                completed_at TEXT,
+                PRIMARY KEY(session_id, question_id),
+                UNIQUE(session_id, position),
+                FOREIGN KEY(session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE,
+                FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+            );
+
             CREATE INDEX IF NOT EXISTS idx_questions_exam ON questions(exam);
             CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
             CREATE INDEX IF NOT EXISTS idx_attempts_question_id ON attempts(question_id);
             CREATE INDEX IF NOT EXISTS idx_attempts_created_at ON attempts(created_at);
             CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
             CREATE INDEX IF NOT EXISTS idx_question_notes_user_name ON question_notes(user_name);
+            CREATE INDEX IF NOT EXISTS idx_practice_sessions_user_exam
+                ON practice_sessions(user_name, exam);
+            CREATE INDEX IF NOT EXISTS idx_practice_session_items_question_id
+                ON practice_session_items(question_id);
             """
         )
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(questions)").fetchall()}
@@ -319,6 +355,60 @@ def clean_question_payload(payload: dict, partial: bool = False) -> dict:
     return fields
 
 
+def clean_practice_filters(value: object) -> dict:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("開始条件はJSONオブジェクトで指定してください。")
+
+    filters: dict[str, object] = {}
+    for key in ("year", "category", "q"):
+        raw = value.get(key)
+        if raw is None:
+            continue
+        if not isinstance(raw, str):
+            raise ValueError(f"開始条件の {key} は文字列で指定してください。")
+        cleaned = " ".join(raw.split()).strip()
+        if len(cleaned) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+            raise ValueError(f"開始条件の {key} が長すぎます。")
+        if cleaned:
+            filters[key] = cleaned
+
+    raw_marks = value.get("result_marks")
+    if raw_marks is not None:
+        if not isinstance(raw_marks, list):
+            raise ValueError("開始条件の result_marks は配列で指定してください。")
+        marks: set[str] = set()
+        for raw_mark in raw_marks:
+            if not isinstance(raw_mark, str):
+                raise ValueError("開始条件の result_marks に不正な値があります。")
+            mark = raw_mark.strip()
+            if mark not in PRACTICE_RESULT_MARKS:
+                raise ValueError("開始条件の result_marks に不正な値があります。")
+            marks.add(mark)
+        normalized_marks = [mark for mark in PRACTICE_RESULT_MARKS if mark in marks]
+        if normalized_marks:
+            filters["result_marks"] = normalized_marks
+
+    raw_local_filter = value.get("local_filter")
+    if raw_local_filter is not None:
+        if not isinstance(raw_local_filter, dict):
+            raise ValueError("開始条件の local_filter はJSONオブジェクトで指定してください。")
+        local_filter: dict[str, bool] = {}
+        for key in PRACTICE_LOCAL_FILTER_KEYS:
+            if key not in raw_local_filter:
+                continue
+            enabled = raw_local_filter[key]
+            if not isinstance(enabled, bool):
+                raise ValueError(f"開始条件の local_filter.{key} は真偽値で指定してください。")
+            if enabled:
+                local_filter[key] = True
+        if local_filter:
+            filters["local_filter"] = local_filter
+
+    return filters
+
+
 class AppHandler(BaseHTTPRequestHandler):
     server_version = "KakomonTrainer/1.0"
 
@@ -334,6 +424,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_stats(parsed.query)
         elif parsed.path == "/api/study-summary":
             self.handle_study_summary(parsed.query)
+        elif parsed.path == "/api/practice-session":
+            self.handle_get_practice_session(parsed.query)
         elif parsed.path == "/api/export":
             self.handle_export()
         elif parsed.path == "/api/attempts":
@@ -358,6 +450,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_create_question()
         elif parsed.path == "/api/attempts":
             self.handle_create_attempt()
+        elif parsed.path == "/api/practice-session":
+            self.handle_create_practice_session()
         elif parsed.path == "/api/import":
             self.handle_import()
         elif parsed.path == "/api/users":
@@ -396,6 +490,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": "Invalid question id"}, HTTPStatus.BAD_REQUEST)
                 return
             self.handle_delete_question(question_id)
+        elif parsed.path == "/api/practice-session":
+            self.handle_delete_practice_session(parsed.query)
         elif parsed.path == "/api/attempts":
             self.handle_delete_attempts(parsed.query)
         elif parsed.path.startswith("/api/attempts/"):
@@ -553,6 +649,238 @@ class AppHandler(BaseHTTPRequestHandler):
                 "can_switch_user": True,
                 "can_manage_users": False,
                 "can_edit_questions": False,
+            }
+        )
+
+    def practice_session_payload(self, conn: sqlite3.Connection, row: sqlite3.Row) -> dict:
+        items = conn.execute(
+            """
+            SELECT question_id, completed_at
+            FROM practice_session_items
+            WHERE session_id = ?
+            ORDER BY position
+            """,
+            (row["id"],),
+        ).fetchall()
+        question_ids = [int(item["question_id"]) for item in items]
+        completed_question_ids = [
+            int(item["question_id"])
+            for item in items
+            if item["completed_at"] is not None
+        ]
+        total = len(question_ids)
+        completed = len(completed_question_ids)
+        remaining = total - completed
+
+        status = str(row["status"] or "active")
+        completed_at = row["completed_at"]
+        updated_at = row["updated_at"]
+        if remaining == 0 and (status != "completed" or not completed_at):
+            timestamp = now_iso()
+            completed_at = completed_at or timestamp
+            updated_at = timestamp
+            status = "completed"
+            conn.execute(
+                """
+                UPDATE practice_sessions
+                SET status = 'completed', updated_at = ?, completed_at = ?
+                WHERE id = ?
+                """,
+                (updated_at, completed_at, row["id"]),
+            )
+
+        try:
+            filters = json.loads(row["filters"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            filters = {}
+        if not isinstance(filters, dict):
+            filters = {}
+
+        return {
+            "token": row["token"],
+            "user_name": row["user_name"],
+            "exam": row["exam"],
+            "status": status,
+            "filters": filters,
+            "question_ids": question_ids,
+            "completed_question_ids": completed_question_ids,
+            "total": total,
+            "completed": completed,
+            "remaining": remaining,
+            "created_at": row["created_at"],
+            "updated_at": updated_at,
+            "completed_at": completed_at,
+        }
+
+    def practice_session_for_user_exam(
+        self,
+        conn: sqlite3.Connection,
+        user_name: str,
+        exam: str,
+    ) -> dict | None:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM practice_sessions
+            WHERE user_name = ? AND exam = ?
+            """,
+            (user_name, exam),
+        ).fetchone()
+        return self.practice_session_payload(conn, row) if row is not None else None
+
+    def handle_get_practice_session(self, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        exam = " ".join((params.get("exam", [""])[0] or "").split()).strip()
+        if not exam:
+            self.send_json({"error": "試験を指定してください。"}, HTTPStatus.BAD_REQUEST)
+            return
+        if len(exam) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+            self.send_json({"error": "試験名が長すぎます。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            practice_session = self.practice_session_for_user_exam(conn, user_name, exam)
+
+        self.send_json({"practice_session": practice_session})
+
+    def handle_create_practice_session(self) -> None:
+        try:
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSONオブジェクトを送信してください。")
+
+            user_name = self.effective_user_name(payload=payload)
+            raw_exam = payload.get("exam")
+            if not isinstance(raw_exam, str):
+                raise ValueError("試験を指定してください。")
+            exam = " ".join(raw_exam.split()).strip()
+            if not exam:
+                raise ValueError("試験を指定してください。")
+            if len(exam) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+                raise ValueError("試験名が長すぎます。")
+
+            filters = clean_practice_filters(payload.get("filters"))
+            raw_question_ids = payload.get("question_ids")
+            if not isinstance(raw_question_ids, list):
+                raise ValueError("問題IDは配列で指定してください。")
+            if not raw_question_ids:
+                raise ValueError("一周する問題を1問以上指定してください。")
+            if len(raw_question_ids) > MAX_PRACTICE_SESSION_QUESTIONS:
+                raise ValueError(
+                    f"一周に指定できる問題は{MAX_PRACTICE_SESSION_QUESTIONS}問までです。"
+                )
+
+            question_ids: list[int] = []
+            seen_question_ids: set[int] = set()
+            for value in raw_question_ids:
+                if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                    raise ValueError("問題IDは正の整数で指定してください。")
+                if value in seen_question_ids:
+                    raise ValueError("問題IDを重複して指定することはできません。")
+                seen_question_ids.add(value)
+                question_ids.append(value)
+        except (TypeError, ValueError) as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        timestamp = now_iso()
+        token = secrets.token_urlsafe(32)
+        with db() as conn:
+            found_question_ids: set[int] = set()
+            for start in range(0, len(question_ids), 900):
+                chunk = question_ids[start : start + 900]
+                placeholders = ", ".join("?" for _ in chunk)
+                rows = conn.execute(
+                    f"""
+                    SELECT id
+                    FROM questions
+                    WHERE exam = ? AND id IN ({placeholders})
+                    """,
+                    [exam, *chunk],
+                ).fetchall()
+                found_question_ids.update(int(row["id"]) for row in rows)
+            if found_question_ids != seen_question_ids:
+                self.send_json(
+                    {"error": "指定した試験に属さない問題IDが含まれています。"},
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+
+            conn.execute(
+                "INSERT OR IGNORE INTO users (name, created_at) VALUES (?, ?)",
+                (user_name, timestamp),
+            )
+            conn.execute(
+                "DELETE FROM practice_sessions WHERE user_name = ? AND exam = ?",
+                (user_name, exam),
+            )
+            cur = conn.execute(
+                """
+                INSERT INTO practice_sessions (
+                    token, user_name, exam, filters, status,
+                    created_at, updated_at, completed_at
+                )
+                VALUES (?, ?, ?, ?, 'active', ?, ?, NULL)
+                """,
+                (
+                    token,
+                    user_name,
+                    exam,
+                    json.dumps(filters, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
+                    timestamp,
+                    timestamp,
+                ),
+            )
+            session_id = int(cur.lastrowid)
+            conn.executemany(
+                """
+                INSERT INTO practice_session_items (
+                    session_id, position, question_id, completed_at
+                )
+                VALUES (?, ?, ?, NULL)
+                """,
+                [
+                    (session_id, position, question_id)
+                    for position, question_id in enumerate(question_ids)
+                ],
+            )
+            row = conn.execute(
+                "SELECT * FROM practice_sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+            practice_session = self.practice_session_payload(conn, row)
+
+        self.send_json(
+            {"practice_session": practice_session},
+            HTTPStatus.CREATED,
+        )
+
+    def handle_delete_practice_session(self, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        exam = " ".join((params.get("exam", [""])[0] or "").split()).strip()
+        if not exam:
+            self.send_json({"error": "試験を指定してください。"}, HTTPStatus.BAD_REQUEST)
+            return
+        if len(exam) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+            self.send_json({"error": "試験名が長すぎます。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            cur = conn.execute(
+                "DELETE FROM practice_sessions WHERE user_name = ? AND exam = ?",
+                (user_name, exam),
+            )
+            deleted = cur.rowcount
+
+        self.send_json(
+            {
+                "ok": True,
+                "deleted": deleted,
+                "user_name": user_name,
+                "exam": exam,
+                "practice_session": None,
             }
         )
 
@@ -891,12 +1219,20 @@ class AppHandler(BaseHTTPRequestHandler):
             user_name = self.effective_user_name(payload=payload)
             user_answer = str(payload.get("user_answer") or "").strip()
             self_mark = str(payload.get("self_mark") or "warn").strip()
+            raw_practice_session_token = payload.get("practice_session_token")
+            if raw_practice_session_token is not None and not isinstance(
+                raw_practice_session_token, str
+            ):
+                raise ValueError("一周トークンの形式が正しくありません。")
+            practice_session_token = str(raw_practice_session_token or "").strip()
             if question_id <= 0:
                 raise ValueError("問題を選択してください。")
             if not user_answer:
                 raise ValueError("解答を入力してください。")
             if self_mark not in {"ok", "warn", "wrong"}:
                 raise ValueError("評価は○、△、×から選択してください。")
+            if len(practice_session_token) > MAX_PRACTICE_SESSION_TOKEN_LENGTH:
+                raise ValueError("一周トークンが長すぎます。")
         except (TypeError, ValueError) as exc:
             self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
@@ -929,6 +1265,53 @@ class AppHandler(BaseHTTPRequestHandler):
                 ),
             )
             attempt_id = cur.lastrowid
+
+            practice_session = None
+            practice_session_stale = False
+            if practice_session_token:
+                session_item = conn.execute(
+                    """
+                    SELECT
+                        s.*,
+                        i.completed_at AS item_completed_at
+                    FROM practice_sessions s
+                    JOIN practice_session_items i ON i.session_id = s.id
+                    WHERE
+                        s.token = ?
+                        AND s.user_name = ?
+                        AND i.question_id = ?
+                    """,
+                    (practice_session_token, user_name, question_id),
+                ).fetchone()
+                if session_item is None:
+                    practice_session_stale = True
+                else:
+                    if session_item["item_completed_at"] is None:
+                        conn.execute(
+                            """
+                            UPDATE practice_session_items
+                            SET completed_at = ?
+                            WHERE
+                                session_id = ?
+                                AND question_id = ?
+                                AND completed_at IS NULL
+                            """,
+                            (timestamp, session_item["id"], question_id),
+                        )
+                        conn.execute(
+                            """
+                            UPDATE practice_sessions
+                            SET updated_at = ?
+                            WHERE id = ?
+                            """,
+                            (timestamp, session_item["id"]),
+                        )
+                    session_row = conn.execute(
+                        "SELECT * FROM practice_sessions WHERE id = ?",
+                        (session_item["id"],),
+                    ).fetchone()
+                    practice_session = self.practice_session_payload(conn, session_row)
+
             attempts = self.attempt_rows_for_question(conn, question_id, user_name)
 
         self.send_json(
@@ -941,6 +1324,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 "correct_answer": row["answer"],
                 "explanation": row["explanation"],
                 "attempts": attempts,
+                "practice_session": practice_session,
+                "practice_session_stale": practice_session_stale,
             }
         )
 
@@ -991,8 +1376,20 @@ class AppHandler(BaseHTTPRequestHandler):
         with db() as conn:
             cur = conn.execute("DELETE FROM attempts WHERE user_name = ?", (user_name,))
             deleted = cur.rowcount
+            session_cur = conn.execute(
+                "DELETE FROM practice_sessions WHERE user_name = ?",
+                (user_name,),
+            )
+            practice_sessions_deleted = session_cur.rowcount
 
-        self.send_json({"ok": True, "deleted": deleted, "user_name": user_name})
+        self.send_json(
+            {
+                "ok": True,
+                "deleted": deleted,
+                "practice_sessions_deleted": practice_sessions_deleted,
+                "user_name": user_name,
+            }
+        )
 
     def user_rows(self, conn: sqlite3.Connection) -> list[dict]:
         rows = conn.execute(

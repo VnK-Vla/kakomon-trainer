@@ -390,6 +390,84 @@ h2 {
   gap: 18px;
 }
 
+.practice-session-card {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(180px, 0.8fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  padding: 16px;
+}
+
+.practice-session-card-copy,
+.practice-session-card-progress {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.practice-session-card-copy strong {
+  color: #10213a;
+  font-size: 1.05rem;
+}
+
+.practice-session-card-copy > span:last-child {
+  color: #475569;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.practice-session-card-kicker {
+  color: #1d4ed8;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.practice-session-card-progress progress,
+.practice-round-progress progress {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #dbeafe;
+  accent-color: #2563eb;
+}
+
+.practice-session-card-progress progress::-webkit-progress-bar,
+.practice-round-progress progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.practice-session-card-progress progress::-webkit-progress-value,
+.practice-round-progress progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: #2563eb;
+}
+
+.practice-session-card-progress progress::-moz-progress-bar,
+.practice-round-progress progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: #2563eb;
+}
+
+.practice-session-card-progress span {
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.practice-session-card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .study-tabs {
   display: flex;
   gap: 8px;
@@ -528,6 +606,46 @@ h2 {
   min-height: 430px;
   padding: 24px;
   box-shadow: none;
+}
+
+.practice-round-progress {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  margin: -4px 0 20px;
+  padding-bottom: 14px;
+}
+
+.practice-round-progress strong,
+.practice-round-progress span {
+  color: #334155;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.practice-round-complete {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 330px;
+  gap: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.practice-round-complete strong {
+  color: var(--text);
+  font-size: 1.2rem;
+}
+
+.practice-round-complete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .empty-state {
@@ -1513,6 +1631,21 @@ button.small {
     gap: 12px;
   }
 
+  .practice-session-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .practice-session-card-progress span {
+    text-align: left;
+  }
+
+  .practice-session-card-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .study-tabs {
     gap: 0;
     margin: -2px -2px 0;
@@ -1642,6 +1775,33 @@ button.small {
   .practice-panel {
     min-height: 0;
     padding: 12px;
+  }
+
+  .practice-round-progress {
+    grid-template-columns: 1fr auto;
+    gap: 7px 10px;
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+  }
+
+  .practice-round-progress progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .practice-round-complete {
+    min-height: 0;
+    place-items: stretch;
+    align-content: start;
+    padding: 20px 0 12px;
+  }
+
+  .practice-round-complete-actions {
+    width: 100%;
+  }
+
+  .practice-round-complete-actions button {
+    flex: 1 1 100%;
   }
 
   .meta-row {

@@ -51,6 +51,11 @@ const state = {
   practiceRandomStart: storedRandomStart(),
   practiceOrder: null,
   practiceShufflePending: false,
+  practiceSession: null,
+  practiceSessionActive: false,
+  practiceStarting: false,
+  practiceFlowRequestId: 0,
+  practiceSessionRequestId: 0,
   refreshRequestId: 0,
   localFilter: null,
   resultContext: null,
@@ -141,8 +146,11 @@ const fields = {
   practiceRandomToggle: $("#practiceRandomToggle"),
   startAllRandom: $("#startAllRandom"),
   studyMap: $("#studyMap"),
+  practiceSessionCard: $("#practiceSessionCard"),
   studyList: $("#studyList"),
   practiceSession: $("#practiceSession"),
+  practiceRoundProgress: $("#practiceRoundProgress"),
+  practiceRoundComplete: $("#practiceRoundComplete"),
   backToStudyMap: $("#backToStudyMap"),
   jumpForm: $("#jumpForm"),
   jumpQuestionNumber: $("#jumpQuestionNumber"),
@@ -236,6 +244,71 @@ function copyResultFilter(resultFilter) {
   return resultFilter?.size ? new Set(resultFilter) : null;
 }
 
+function normalizePracticeSession(value) {
+  if (!value || typeof value !== "object") return null;
+  const questionIds = Array.isArray(value.question_ids)
+    ? value.question_ids.map(Number).filter(Number.isInteger)
+    : [];
+  const completedQuestionIds = Array.isArray(value.completed_question_ids)
+    ? value.completed_question_ids.map(Number).filter(Number.isInteger)
+    : [];
+  const completed = Number(value.completed ?? completedQuestionIds.length);
+  const total = Number(value.total ?? questionIds.length);
+  return {
+    ...value,
+    filters: value.filters && typeof value.filters === "object" ? value.filters : {},
+    question_ids: questionIds,
+    completed_question_ids: completedQuestionIds,
+    total,
+    completed,
+    remaining: Number(value.remaining ?? Math.max(0, total - completed)),
+  };
+}
+
+function hasActivePracticeSession() {
+  return Boolean(state.practiceSessionActive && state.practiceSession?.token);
+}
+
+function practiceSessionInProgress(session = state.practiceSession) {
+  return Boolean(session?.token && Number(session.remaining || 0) > 0 && session.status !== "completed");
+}
+
+function practiceFiltersSnapshot() {
+  return {
+    year: fields.filterYear.value || "",
+    category: fields.filterCategory.value || "",
+    q: fields.filterKeyword.value.trim(),
+    result_marks: state.practiceResultFilter?.size ? [...state.practiceResultFilter] : [],
+    local_filter: state.localFilter ? { ...state.localFilter } : {},
+  };
+}
+
+function setFilterSelectValue(select, value) {
+  const normalizedValue = String(value || "");
+  if (normalizedValue && !Array.from(select.options).some((option) => option.value === normalizedValue)) {
+    const option = document.createElement("option");
+    option.value = normalizedValue;
+    option.textContent = normalizedValue;
+    select.append(option);
+  }
+  select.value = normalizedValue;
+}
+
+function applySavedPracticeFilters(filters = {}) {
+  setFilterSelectValue(fields.filterYear, filters.year);
+  setFilterSelectValue(fields.filterCategory, filters.category);
+  fields.filterKeyword.value = filters.q || "";
+  state.localFilter =
+    filters.local_filter && typeof filters.local_filter === "object" && Object.keys(filters.local_filter).length
+      ? { ...filters.local_filter }
+      : null;
+  const resultMarks = Array.isArray(filters.result_marks)
+    ? filters.result_marks.filter((mark) => RESULT_FILTER_ORDER.includes(mark))
+    : [];
+  state.practiceStartResultFilter = new Set(resultMarks);
+  state.practiceResultFilter = resultMarks.length ? new Set(resultMarks) : null;
+}
+
 function shuffledPracticeOrder(questions) {
   const ids = questions.map((question) => question.id);
   for (let i = ids.length - 1; i > 0; i -= 1) {
@@ -277,7 +350,20 @@ function filteredLibraryQuestions() {
   return applyResultFilter(baseQuestionList(), state.libraryResultFilter);
 }
 
+function practiceSessionQuestions() {
+  const session = state.practiceSession;
+  if (!hasActivePracticeSession() || !session) return null;
+  const questionsById = new Map(state.allQuestions.map((question) => [Number(question.id), question]));
+  const completed = new Set(session.completed_question_ids);
+  return session.question_ids
+    .filter((id) => !completed.has(id))
+    .map((id) => questionsById.get(id))
+    .filter(Boolean);
+}
+
 function filteredPracticeQuestions() {
+  const sessionQuestions = practiceSessionQuestions();
+  if (sessionQuestions) return sessionQuestions;
   return applyPracticeOrder(applyResultFilter(baseQuestionList(), state.practiceResultFilter));
 }
 
@@ -325,6 +411,30 @@ function userScopedParams(initial = {}) {
   return params;
 }
 
+function practiceSessionParams(user = state.currentUser, exam = state.selectedExam) {
+  const params = new URLSearchParams();
+  params.set("user", user);
+  if (exam) params.set("exam", exam);
+  return params;
+}
+
+async function refreshPracticeSession() {
+  const requestId = ++state.practiceSessionRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const payload = await api(`/api/practice-session${queryFor(practiceSessionParams(requestedUser, requestedExam))}`);
+  if (
+    requestId !== state.practiceSessionRequestId ||
+    requestedUser !== state.currentUser ||
+    requestedExam !== state.selectedExam
+  ) {
+    return null;
+  }
+  state.practiceSession = normalizePracticeSession(payload.practice_session);
+  renderPracticeSessionCard();
+  return state.practiceSession;
+}
+
 function hasActiveQuestionFilter() {
   return Boolean(
     fields.filterYear.value ||
@@ -357,6 +467,8 @@ async function refreshSession() {
 
 async function refreshAll({ keepQuestion = false, renderPracticePanel = true, forceLoadQuestions = false } = {}) {
   const requestId = ++state.refreshRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
   const query = selectedFilters();
   const statsParams = userScopedParams();
   if (state.selectedExam) statsParams.set("exam", state.selectedExam);
@@ -364,16 +476,26 @@ async function refreshAll({ keepQuestion = false, renderPracticePanel = true, fo
   if (state.selectedExam) summaryParams.set("exam", state.selectedExam);
   const shouldLoadQuestions =
     forceLoadQuestions || !state.showStudyMap || state.activeTab === "library" || hasActiveQuestionFilter();
-  const [stats, summaryPayload, questionPayload] = await Promise.all([
+  const [stats, summaryPayload, questionPayload, practiceSessionPayload] = await Promise.all([
     api(`/api/stats${queryFor(statsParams)}`),
     api(`/api/study-summary${queryFor(summaryParams)}`),
     shouldLoadQuestions ? api(`/api/questions${query ? `?${query}` : ""}`) : Promise.resolve(null),
+    api(`/api/practice-session${queryFor(practiceSessionParams(requestedUser, requestedExam))}`),
     state.activeTab === "history" ? refreshHistory() : Promise.resolve(),
   ]);
   if (requestId !== state.refreshRequestId) return;
 
   state.stats = stats;
   state.studySummary = summaryPayload;
+  state.practiceSessionRequestId += 1;
+  const refreshedPracticeSession = normalizePracticeSession(practiceSessionPayload.practice_session);
+  if (
+    hasActivePracticeSession() &&
+    state.practiceSession?.token !== refreshedPracticeSession?.token
+  ) {
+    state.practiceSessionActive = false;
+  }
+  state.practiceSession = refreshedPracticeSession;
   if (!state.selectedExam && stats.exams?.length) {
     state.selectedExam = stats.exams.includes(KNOWN_EXAMS[0]) ? KNOWN_EXAMS[0] : stats.exams[0];
   }
@@ -462,6 +584,11 @@ function switchUser(value) {
   state.currentUser = nextUser;
   state.resultContext = null;
   state.practiceResultFilter = null;
+  state.practiceSession = null;
+  state.practiceSessionActive = false;
+  state.practiceFlowRequestId += 1;
+  setPracticeStarting(false);
+  state.practiceSessionRequestId += 1;
   state.showStudyMap = true;
   try {
     window.localStorage.setItem(USER_STORAGE_KEY, nextUser);
@@ -654,8 +781,59 @@ function buildStudyRows() {
   return [{ title: "分野別", note: "", rows }];
 }
 
+function practiceSessionFilterLabels(filters = {}) {
+  const labels = [];
+  if (filters.year) labels.push(`${filters.year}年`);
+  if (filters.category) labels.push(filters.category);
+  if (filters.q) labels.push(`検索: ${filters.q}`);
+  const resultMarks = Array.isArray(filters.result_marks) ? new Set(filters.result_marks) : null;
+  const resultLabels = resultFilterLabels(resultMarks);
+  if (resultLabels.length) labels.push(resultLabels.join("・"));
+  const localFilter = filters.local_filter || {};
+  if (localFilter.hasImages) labels.push("画像あり");
+  if (localFilter.unattempted) labels.push("未演習");
+  if (localFilter.withoutAnswer) labels.push("解答未登録");
+  return labels;
+}
+
+function renderPracticeSessionCard() {
+  if (!fields.practiceSessionCard) return;
+  const session = state.practiceSession;
+  if (!session?.token) {
+    fields.practiceSessionCard.classList.add("hidden");
+    fields.practiceSessionCard.innerHTML = "";
+    return;
+  }
+
+  const total = Math.max(0, Number(session.total || 0));
+  const completed = Math.min(total, Math.max(0, Number(session.completed || 0)));
+  const remaining = Math.max(0, Number(session.remaining ?? total - completed));
+  const isComplete = session.status === "completed" || remaining === 0;
+  const conditionLabels = practiceSessionFilterLabels(session.filters);
+  const action = isComplete ? "restart-practice-session" : "resume-practice-session";
+  const actionLabel = isComplete ? "現在の条件でもう一周" : "続きから";
+
+  fields.practiceSessionCard.classList.remove("hidden");
+  fields.practiceSessionCard.innerHTML = `
+    <div class="practice-session-card-copy">
+      <span class="practice-session-card-kicker">保存中のランダム一周</span>
+      <strong>${isComplete ? "一周完了" : `${completed}/${total}問 完了`}</strong>
+      <span>${conditionLabels.length ? escapeHtml(conditionLabels.join(" / ")) : "全問題"}</span>
+    </div>
+    <div class="practice-session-card-progress">
+      <progress value="${completed}" max="${Math.max(1, total)}" aria-label="${completed}/${total}問 完了"></progress>
+      <span>${isComplete ? "全問完了" : `残り${remaining}問`}</span>
+    </div>
+    <div class="practice-session-card-actions">
+      <button class="primary" type="button" data-${action}>${actionLabel}</button>
+      <button class="ghost small" type="button" data-discard-practice-session>破棄</button>
+    </div>
+  `;
+}
+
 function renderStudyMap() {
   if (!fields.studyList) return;
+  renderPracticeSessionCard();
   if (fields.startAllRandom) {
     fields.startAllRandom.textContent = `全問題をランダムに解く（${Number(state.stats?.questions || 0)}問）`;
   }
@@ -758,18 +936,243 @@ function showPracticeSession() {
   document.body.classList.toggle("practice-session-active", state.activeTab === "practice");
 }
 
-function startPractice(filter = {}, { forceRandom = false } = {}) {
+function setPracticeStarting(value) {
+  state.practiceStarting = value;
+  fields.studyMap?.toggleAttribute("aria-busy", value);
+  fields.startAllRandom.disabled = value;
+  fields.studyList?.querySelectorAll("button").forEach((button) => {
+    button.disabled = value;
+  });
+  fields.practiceSessionCard?.querySelectorAll("button").forEach((button) => {
+    button.disabled = value;
+  });
+}
+
+function shuffledQuestionIds(questions) {
+  const ids = questions.map((question) => Number(question.id));
+  for (let i = ids.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids;
+}
+
+function applyPracticeStartFilter(filter = {}) {
   state.localFilter = filter.localFilter || null;
   state.practiceResultFilter = copyResultFilter(state.practiceStartResultFilter);
-  state.practiceOrder = null;
-  state.practiceShufflePending = forceRandom || state.practiceRandomStart;
-  fields.filterYear.value = filter.year || "";
-  fields.filterCategory.value = filter.category || "";
+  setFilterSelectValue(fields.filterYear, filter.year);
+  setFilterSelectValue(fields.filterCategory, filter.category);
   fields.filterKeyword.value = filter.q || "";
   state.libraryPage = 1;
+}
+
+async function startPractice(filter = {}, { forceRandom = false } = {}) {
+  if (state.practiceStarting) return;
+  const randomStart = forceRandom || state.practiceRandomStart;
+  if (
+    randomStart &&
+    practiceSessionInProgress() &&
+    !window.confirm("進行中のランダム一周を破棄して、新しい一周を開始しますか？")
+  ) {
+    return;
+  }
+
+  applyPracticeStartFilter(filter);
+  state.practiceOrder = null;
+  state.practiceShufflePending = false;
+
+  if (!randomStart) {
+    state.practiceSessionActive = false;
+    state.showStudyMap = false;
+    renderFilterSummary();
+    refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
+    return;
+  }
+
+  const requestId = ++state.refreshRequestId;
+  const flowRequestId = ++state.practiceFlowRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const query = selectedFilters();
+  const filtersSnapshot = practiceFiltersSnapshot();
+  setPracticeStarting(true);
+  try {
+    const questionPayload = await api(`/api/questions${query ? `?${query}` : ""}`);
+    if (
+      requestId !== state.refreshRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+
+    const loadedQuestions = questionPayload.questions || [];
+    const localQuestions = state.localFilter ? applyLocalFilter(loadedQuestions, state.localFilter) : loadedQuestions;
+    const candidates = applyResultFilter(localQuestions, state.practiceResultFilter);
+    if (!candidates.length) {
+      state.practiceSessionActive = false;
+      state.allQuestions = loadedQuestions;
+      state.studyQuestions = loadedQuestions;
+      state.questions = [];
+      state.questionsLoaded = true;
+      state.showStudyMap = false;
+      renderFilterSummary();
+      renderQuestionTable();
+      setCurrentQuestionByIndex(0);
+      return;
+    }
+
+    const questionIds = shuffledQuestionIds(candidates);
+    const sessionPayload = await api("/api/practice-session", {
+      method: "POST",
+      body: JSON.stringify({
+        user_name: requestedUser,
+        exam: requestedExam,
+        filters: filtersSnapshot,
+        question_ids: questionIds,
+      }),
+    });
+    if (
+      requestId !== state.refreshRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+
+    state.practiceSession = normalizePracticeSession(sessionPayload.practice_session);
+    if (!state.practiceSession?.token) {
+      throw new Error("ランダム一周を開始できませんでした。");
+    }
+    state.practiceSessionActive = true;
+    state.practiceOrder = new Map(state.practiceSession.question_ids.map((id, rank) => [id, rank]));
+    state.allQuestions = loadedQuestions;
+    state.studyQuestions = loadedQuestions;
+    state.questions = filteredPracticeQuestions();
+    state.questionsLoaded = true;
+    state.showStudyMap = false;
+    renderFilterSummary();
+    renderPracticeSessionCard();
+    renderQuestionTable();
+    setCurrentQuestionByIndex(0);
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (flowRequestId === state.practiceFlowRequestId) setPracticeStarting(false);
+  }
+}
+
+async function resumePracticeSession() {
+  if (state.practiceStarting || !state.practiceSession?.token) return;
+  const requestId = ++state.refreshRequestId;
+  const flowRequestId = ++state.practiceFlowRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  setPracticeStarting(true);
+  try {
+    const params = practiceSessionParams(requestedUser, requestedExam);
+    const [questionPayload, sessionPayload] = await Promise.all([
+      api(`/api/questions${queryFor(params)}`),
+      api(`/api/practice-session${queryFor(params)}`),
+    ]);
+    if (
+      requestId !== state.refreshRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+
+    const session = normalizePracticeSession(sessionPayload.practice_session);
+    if (!session?.token) {
+      state.practiceSession = null;
+      state.practiceSessionActive = false;
+      renderPracticeSessionCard();
+      toast("保存中のランダム一周はありません。");
+      return;
+    }
+
+    state.practiceSession = session;
+    state.practiceSessionActive = true;
+    applySavedPracticeFilters(session.filters);
+    state.practiceOrder = new Map(session.question_ids.map((id, rank) => [id, rank]));
+    state.practiceShufflePending = false;
+    state.allQuestions = questionPayload.questions || [];
+    state.studyQuestions = state.allQuestions;
+    state.questions = filteredPracticeQuestions();
+    state.questionsLoaded = true;
+    state.libraryPage = 1;
+    state.showStudyMap = false;
+    renderPracticeResultFilter();
+    renderFilterSummary();
+    renderPracticeSessionCard();
+    renderQuestionTable();
+    setCurrentQuestionByIndex(0);
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (flowRequestId === state.practiceFlowRequestId) setPracticeStarting(false);
+  }
+}
+
+function restartPracticeSession() {
+  const filters = state.practiceSession?.filters;
+  if (!filters || state.practiceStarting) return;
+  applySavedPracticeFilters(filters);
+  const startFilter = {
+    year: filters.year || "",
+    category: filters.category || "",
+    q: filters.q || "",
+    localFilter: state.localFilter,
+  };
+  state.practiceSessionActive = false;
+  void startPractice(startFilter, { forceRandom: true });
+}
+
+async function discardPracticeSession() {
+  if (!state.practiceSession?.token || state.practiceStarting) return;
+  if (!window.confirm("保存中のランダム一周を破棄しますか？")) return;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const flowRequestId = ++state.practiceFlowRequestId;
+  setPracticeStarting(true);
+  try {
+    await api(`/api/practice-session${queryFor(practiceSessionParams(requestedUser, requestedExam))}`, {
+      method: "DELETE",
+    });
+    if (requestedUser !== state.currentUser || requestedExam !== state.selectedExam) return;
+    state.practiceSession = null;
+    state.practiceSessionActive = false;
+    state.practiceOrder = null;
+    renderPracticeSessionCard();
+    toast("保存中のランダム一周を破棄しました。");
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (
+      flowRequestId === state.practiceFlowRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      setPracticeStarting(false);
+    }
+  }
+}
+
+function leavePracticeSessionForStudyMap() {
+  if (state.practiceStarting) {
+    state.refreshRequestId += 1;
+    state.practiceFlowRequestId += 1;
+    setPracticeStarting(false);
+  }
+  state.practiceSessionActive = false;
+  state.practiceOrder = null;
+  state.practiceShufflePending = false;
   state.showStudyMap = false;
-  renderFilterSummary();
-  refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
+  clearStudyFilters();
+  showStudyMap();
+  renderStudyMap();
+  resetScroll();
 }
 
 function startStudyItem(index) {
@@ -781,6 +1184,11 @@ function startStudyItem(index) {
 function switchExam(exam) {
   if (!exam || exam === state.selectedExam) return;
   state.selectedExam = exam;
+  state.practiceSession = null;
+  state.practiceSessionActive = false;
+  state.practiceFlowRequestId += 1;
+  setPracticeStarting(false);
+  state.practiceSessionRequestId += 1;
   clearStudyFilters();
   clearQuestionLists();
   state.currentQuestion = null;
@@ -845,6 +1253,20 @@ function jumpToQuestion(event) {
 
   const index = state.questions.findIndex((question) => questionNumber(question) === number);
   if (index < 0) {
+    if (hasActivePracticeSession()) {
+      const completedIds = new Set(state.practiceSession.completed_question_ids);
+      const sessionIds = new Set(state.practiceSession.question_ids);
+      const completedMatch = state.allQuestions.some(
+        (question) =>
+          sessionIds.has(Number(question.id)) &&
+          completedIds.has(Number(question.id)) &&
+          questionNumber(question) === number,
+      );
+      if (completedMatch) {
+        toast(`問${number}はこの一周で解答済みです。`);
+        return;
+      }
+    }
     toast(`問${number}は現在の条件内にありません。`);
     return;
   }
@@ -852,9 +1274,30 @@ function jumpToQuestion(event) {
   setCurrentQuestionByIndex(index);
 }
 
+function renderPracticeRoundProgress() {
+  if (!fields.practiceRoundProgress) return;
+  if (!hasActivePracticeSession()) {
+    fields.practiceRoundProgress.classList.add("hidden");
+    fields.practiceRoundProgress.innerHTML = "";
+    return;
+  }
+
+  const session = state.practiceSession;
+  const total = Math.max(0, Number(session.total || 0));
+  const completed = Math.min(total, Math.max(0, Number(session.completed || 0)));
+  const remaining = Math.max(0, Number(session.remaining ?? total - completed));
+  fields.practiceRoundProgress.classList.remove("hidden");
+  fields.practiceRoundProgress.innerHTML = `
+    <strong>一周 ${completed}/${total}</strong>
+    <progress value="${completed}" max="${Math.max(1, total)}" aria-label="${completed}/${total}問 完了"></progress>
+    <span>残り${remaining}問</span>
+  `;
+}
+
 function renderPractice() {
   closeImageLightbox({ restoreFocus: false });
   const question = state.currentQuestion;
+  renderPracticeRoundProgress();
   state.resultContext = null;
   state.questionAttemptHistoryRequestId += 1;
   fields.resultBox.className = "result-box hidden";
@@ -870,7 +1313,11 @@ function renderPractice() {
   setAnswerControlsDisabled(false);
 
   if (!question) {
-    fields.emptyPractice.classList.remove("hidden");
+    const roundComplete =
+      hasActivePracticeSession() &&
+      (state.practiceSession.status === "completed" || Number(state.practiceSession.remaining || 0) === 0);
+    fields.practiceRoundComplete?.classList.toggle("hidden", !roundComplete);
+    fields.emptyPractice.classList.toggle("hidden", roundComplete);
     fields.questionArea.classList.add("hidden");
     fields.jumpQuestionNumber.value = "";
     fields.jumpQuestionNumber.disabled = true;
@@ -880,6 +1327,7 @@ function renderPractice() {
     return;
   }
 
+  fields.practiceRoundComplete?.classList.add("hidden");
   const number = questionNumber(question);
   fields.jumpQuestionNumber.disabled = false;
   fields.prevQuestion.disabled = false;
@@ -1383,23 +1831,49 @@ async function registerPendingResult() {
 
   const previousQuestionId = state.currentQuestion?.id || context.question_id;
   const previousIndex = state.currentIndex;
+  const activePracticeSession = hasActivePracticeSession();
+  const requestBody = {
+    question_id: context.question_id,
+    user_name: state.currentUser,
+    user_answer: context.user_answer,
+    self_mark: context.self_mark || "warn",
+  };
+  if (activePracticeSession) {
+    requestBody.practice_session_token = state.practiceSession.token;
+  }
   state.resultContext = { ...context, registering: true };
   try {
     const result = await api("/api/attempts", {
       method: "POST",
-      body: JSON.stringify({
-        question_id: context.question_id,
-        user_name: state.currentUser,
-        user_answer: context.user_answer,
-        self_mark: context.self_mark || "warn",
-      }),
+      body: JSON.stringify(requestBody),
     });
+    const sessionStale = activePracticeSession && result.practice_session_stale === true;
+    if (activePracticeSession && result.practice_session) {
+      state.practiceSession = normalizePracticeSession(result.practice_session);
+    }
+    if (sessionStale) {
+      state.practiceSessionActive = false;
+    }
     recordAttemptLocally(context.question_id, {
       selfMark: result.self_mark || context.self_mark || "warn",
       graded: Boolean(result.graded),
       correct: result.correct === true,
     });
-    toast("結果を登録しました。");
+    if (sessionStale) {
+      try {
+        await refreshPracticeSession();
+      } catch {
+        // 解答履歴の保存は成功しているため、再取得失敗は次回の通常更新に委ねる。
+      }
+      leavePracticeSessionForStudyMap();
+      toast("別の端末で一周が更新されました。最新の進捗から再開してください。");
+      return;
+    }
+    const roundCompleted =
+      activePracticeSession &&
+      state.practiceSession &&
+      (state.practiceSession.status === "completed" || Number(state.practiceSession.remaining || 0) === 0);
+    toast(roundCompleted ? "ランダム一周が完了しました。" : "結果を登録しました。");
     pickQuestionAfterRefresh(previousQuestionId, previousIndex);
   } catch (error) {
     state.resultContext = { ...context, registering: false };
@@ -1681,6 +2155,7 @@ function practiceQuestionFromLibrary(id) {
     return;
   }
   state.practiceResultFilter = copyResultFilter(state.libraryResultFilter);
+  state.practiceSessionActive = false;
   state.practiceOrder = null;
   state.practiceShufflePending = false;
   state.questions = questions;
@@ -1788,7 +2263,13 @@ function isImageLightboxBackgroundClick(event) {
 function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
+      if (state.practiceStarting) {
+        state.refreshRequestId += 1;
+        state.practiceFlowRequestId += 1;
+        setPracticeStarting(false);
+      }
       if (tab.dataset.tab === "practice") {
+        state.practiceSessionActive = false;
         clearStudyFilters();
         state.showStudyMap = true;
         renderStudyMap();
@@ -1822,7 +2303,20 @@ function bindEvents() {
     if (button) startStudyItem(Number(button.dataset.studyIndex));
   });
   fields.startAllRandom?.addEventListener("click", () => {
-    startPractice({}, { forceRandom: true });
+    void startPractice({}, { forceRandom: true });
+  });
+  fields.practiceSessionCard?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-resume-practice-session]")) {
+      void resumePracticeSession();
+      return;
+    }
+    if (event.target.closest("[data-restart-practice-session]")) {
+      restartPracticeSession();
+      return;
+    }
+    if (event.target.closest("[data-discard-practice-session]")) {
+      void discardPracticeSession();
+    }
   });
   fields.practiceResultFilter?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-practice-result-filter]");
@@ -1844,12 +2338,15 @@ function bindEvents() {
     }
   });
   fields.backToStudyMap.addEventListener("click", () => {
-    clearStudyFilters();
-    showStudyMap();
-    renderStudyMap();
-    resetScroll();
+    leavePracticeSessionForStudyMap();
   });
   $("#applyFilters").addEventListener("click", () => {
+    if (state.practiceStarting) {
+      state.refreshRequestId += 1;
+      state.practiceFlowRequestId += 1;
+      setPracticeStarting(false);
+    }
+    state.practiceSessionActive = false;
     state.localFilter = null;
     if (!(state.activeTab === "practice" && !state.showStudyMap)) {
       state.practiceResultFilter = null;
@@ -1881,6 +2378,15 @@ function bindEvents() {
   fields.noteForm?.addEventListener("submit", saveQuestionNote);
   $("#clearAnswer").addEventListener("click", renderPractice);
   fields.resultBox.addEventListener("click", handleResultBoxClick);
+  fields.practiceSession.addEventListener("click", (event) => {
+    if (event.target.closest("[data-restart-practice-session]")) {
+      restartPracticeSession();
+      return;
+    }
+    if (event.target.closest("[data-leave-practice-session]")) {
+      leavePracticeSessionForStudyMap();
+    }
+  });
   fields.savePracticeCategory?.addEventListener("click", savePracticeCategory);
   fields.libraryPrevPage?.addEventListener("click", () => setLibraryPage(state.libraryPage - 1));
   fields.libraryNextPage?.addEventListener("click", () => setLibraryPage(state.libraryPage + 1));
