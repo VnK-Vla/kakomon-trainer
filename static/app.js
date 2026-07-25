@@ -55,6 +55,7 @@ const state = {
   localFilter: null,
   resultContext: null,
   questionAttemptHistoryRequestId: 0,
+  imageLightboxTrigger: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -154,6 +155,9 @@ const fields = {
   questionText: $("#questionText"),
   questionSourceLinks: $("#questionSourceLinks"),
   questionImages: $("#questionImages"),
+  imageLightbox: $("#imageLightbox"),
+  imageLightboxImage: $("#imageLightboxImage"),
+  closeImageLightbox: $("#closeImageLightbox"),
   choiceList: $("#choiceList"),
   freeAnswerWrap: $("#freeAnswerWrap"),
   freeAnswer: $("#freeAnswer"),
@@ -849,6 +853,7 @@ function jumpToQuestion(event) {
 }
 
 function renderPractice() {
+  closeImageLightbox({ restoreFocus: false });
   const question = state.currentQuestion;
   state.resultContext = null;
   state.questionAttemptHistoryRequestId += 1;
@@ -899,7 +904,14 @@ function renderPractice() {
   fields.questionImages.innerHTML = (question.images || [])
     .map((src, index) => `
       <figure>
-        <img src="${escapeHtml(src)}" alt="問題画像 ${index + 1}" loading="lazy">
+        <button
+          class="question-image-trigger"
+          type="button"
+          aria-label="問題画像 ${index + 1} を拡大表示"
+          aria-haspopup="dialog"
+        >
+          <img src="${escapeHtml(src)}" alt="問題画像 ${index + 1}" loading="lazy">
+        </button>
       </figure>
     `)
     .join("");
@@ -1719,6 +1731,60 @@ function activateTab(name) {
   resetScroll();
 }
 
+function openImageLightbox(trigger) {
+  const image = trigger?.querySelector("img");
+  if (!image || !fields.imageLightbox || !fields.imageLightboxImage) return;
+
+  state.imageLightboxTrigger = trigger;
+  fields.imageLightboxImage.src = image.currentSrc || image.src;
+  fields.imageLightboxImage.alt = image.alt || "問題画像";
+
+  if (!fields.imageLightbox.open) {
+    fields.imageLightbox.showModal();
+  }
+  document.body.classList.add("image-lightbox-open");
+  fields.closeImageLightbox?.focus();
+}
+
+function closeImageLightbox({ restoreFocus = true } = {}) {
+  if (!fields.imageLightbox || !fields.imageLightboxImage) return;
+
+  const trigger = state.imageLightboxTrigger;
+  state.imageLightboxTrigger = null;
+  if (fields.imageLightbox.open) {
+    fields.imageLightbox.close();
+  }
+  document.body.classList.remove("image-lightbox-open");
+  fields.imageLightboxImage.removeAttribute("src");
+  fields.imageLightboxImage.alt = "";
+
+  if (restoreFocus && trigger?.isConnected) {
+    trigger.focus({ preventScroll: true });
+  }
+}
+
+function isImageLightboxBackgroundClick(event) {
+  if (event.target === fields.imageLightbox) return true;
+  if (event.target !== fields.imageLightboxImage) return false;
+
+  const image = fields.imageLightboxImage;
+  if (!image.naturalWidth || !image.naturalHeight) return true;
+
+  const rect = image.getBoundingClientRect();
+  const scale = Math.min(rect.width / image.naturalWidth, rect.height / image.naturalHeight);
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  const renderedLeft = rect.left + (rect.width - renderedWidth) / 2;
+  const renderedTop = rect.top + (rect.height - renderedHeight) / 2;
+
+  return (
+    event.clientX < renderedLeft ||
+    event.clientX > renderedLeft + renderedWidth ||
+    event.clientY < renderedTop ||
+    event.clientY > renderedTop + renderedHeight
+  );
+}
+
 function bindEvents() {
   $$(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -1802,6 +1868,15 @@ function bindEvents() {
   fields.jumpForm.addEventListener("submit", jumpToQuestion);
   fields.prevQuestion.addEventListener("click", pickPreviousQuestion);
   fields.nextQuestion.addEventListener("click", pickNextQuestion);
+  fields.questionImages.addEventListener("click", (event) => {
+    const trigger = event.target.closest(".question-image-trigger");
+    if (trigger) openImageLightbox(trigger);
+  });
+  fields.closeImageLightbox?.addEventListener("click", () => closeImageLightbox());
+  fields.imageLightbox?.addEventListener("click", (event) => {
+    if (isImageLightboxBackgroundClick(event)) closeImageLightbox();
+  });
+  fields.imageLightbox?.addEventListener("close", () => closeImageLightbox());
   $("#answerForm").addEventListener("submit", submitAnswer);
   fields.noteForm?.addEventListener("submit", saveQuestionNote);
   $("#clearAnswer").addEventListener("click", renderPractice);

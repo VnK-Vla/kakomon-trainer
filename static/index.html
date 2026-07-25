@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>過去問演習</title>
-    <link rel="stylesheet" href="/app.css?v=20260715-question-attempt-history">
+    <link rel="stylesheet" href="/app.css?v=20260718-image-lightbox">
   </head>
   <body>
     <div class="app-shell">
@@ -249,7 +249,11 @@
       </main>
     </div>
 
+    <dialog id="imageLightbox" class="image-lightbox" aria-label="問題画像の拡大表示">
+      <button id="closeImageLightbox" class="image-lightbox-close" type="button" aria-label="拡大表示を閉じる">×</button>
+      <img id="imageLightboxImage" class="image-lightbox-image" alt="">
+    </dialog>
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=20260718-all-random"></script>
+    <script src="/app.js?v=20260718-image-lightbox"></script>
   </body>
 </html>
