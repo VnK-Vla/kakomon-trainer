@@ -921,6 +921,10 @@ h2 {
   margin-top: 14px;
 }
 
+.result-reference-actions {
+  margin-bottom: 14px;
+}
+
 .question-note {
   display: grid;
   gap: 8px;

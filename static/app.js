@@ -82,6 +82,20 @@ const EXAM_LABELS = {
   放射線治療専門医認定試験: "治療専門医",
 };
 
+const DIAGNOSTIC_UNOFFICIAL_ANSWER_URLS = new Map([
+  ["2015", "https://radiology-exam.com/?page_id=43"],
+  ["2016", "https://radiology-exam.com/?page_id=41"],
+  ["2017", "https://radiology-exam.com/?page_id=39"],
+  ["2018", "https://radiology-exam.com/?page_id=37"],
+  ["2019", "https://radiology-exam.com/?page_id=35"],
+  ["2020", "https://radiology-exam.com/?page_id=64"],
+  ["2021", "https://radiology-exam.com/?page_id=135"],
+  ["2022", "https://radiology-exam.com/?page_id=264"],
+  ["2023", "https://radiology-exam.com/?page_id=334"],
+  ["2024", "https://radiology-exam.com/?page_id=385"],
+  ["2025", "https://radiology-exam.com/?page_id=504"],
+]);
+
 const CATEGORY_ORDERS = {
   放射線診断専門医認定試験: [
     "画像診断学総論",
@@ -207,6 +221,13 @@ function shortText(value, length = 80) {
 function questionNumber(question) {
   const match = String(question?.question || "").match(/問\s*(\d{1,3})/);
   return match ? Number(match[1]) : null;
+}
+
+function diagnosticUnofficialAnswerLink(question) {
+  if (question?.exam !== "放射線診断専門医認定試験") return null;
+  const year = String(question.year ?? "").trim();
+  const url = DIAGNOSTIC_UNOFFICIAL_ANSWER_URLS.get(year);
+  return url ? { year, url } : null;
 }
 
 function questionAttempted(question) {
@@ -1676,6 +1697,7 @@ async function loadQuestionAttemptHistory(questionId) {
 function renderAnswerResult(result) {
   state.resultContext = { ...(state.resultContext || {}), ...result };
   const context = state.resultContext;
+  const unofficialAnswer = diagnosticUnofficialAnswerLink(questionById(Number(context.question_id)));
   const mark = context.self_mark || "warn";
   const hasCorrectAnswer =
     context.has_correct_answer ?? Boolean(String(context.correct_answer || "").trim());
@@ -1700,6 +1722,21 @@ function renderAnswerResult(result) {
     : `<div>この問題は正答未登録です。一覧の編集から正答を追加できます。</div>`;
   const userAnswerBlock = context.user_answer ? `<div>あなたの解答: ${escapeHtml(context.user_answer)}</div>` : "";
   const previewNote = context.preview_only ? `<div>未回答のため、結果は履歴に登録されません。</div>` : "";
+  const unofficialAnswerBlock = unofficialAnswer
+    ? `
+      <div class="result-actions result-reference-actions">
+        <a
+          class="source-pdf-link"
+          href="${escapeHtml(unofficialAnswer.url)}"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          非公式解答例を見る
+          <span>外部サイト・${escapeHtml(unofficialAnswer.year)}年</span>
+        </a>
+      </div>
+    `
+    : "";
   const markButtons = context.preview_only ? "" : renderMarkButtons(context.attempt_id, mark);
   const registerAction = context.preview_only || context.saved
     ? ""
@@ -1715,6 +1752,7 @@ function renderAnswerResult(result) {
     ${userAnswerBlock}
     ${answerBlock}
     ${previewNote}
+    ${unofficialAnswerBlock}
     ${context.explanation ? `<div>${escapeHtml(context.explanation).replaceAll("\n", "<br>")}</div>` : ""}
     ${markButtons}
     ${registerAction}
