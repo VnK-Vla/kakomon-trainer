@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>過去問演習</title>
-    <link rel="stylesheet" href="/app.css?v=20260729-unofficial-answer-link">
+    <link rel="stylesheet" href="/app.css?v=20260808-disease-area-pages">
   </head>
   <body>
     <div class="app-shell">
@@ -22,6 +22,7 @@
             <button class="tab active" data-tab="practice">演習</button>
             <button class="tab" data-tab="library">一覧</button>
             <button class="tab" data-tab="history">履歴</button>
+            <button id="diseaseChecklistTab" class="tab hidden" data-tab="diseaseChecklist">疾患確認</button>
             <button id="usersTab" class="tab hidden" data-tab="users">ユーザー</button>
           </nav>
 
@@ -73,6 +74,7 @@
               <nav class="study-tabs" aria-label="演習メニュー切替">
                 <button class="study-tab active" type="button" data-study-mode="category">分野別</button>
                 <button class="study-tab" type="button" data-study-mode="year">年度別</button>
+                <button class="study-tab" type="button" data-study-mode="sets">問題セット</button>
               </nav>
               <div id="practiceResultFilter" class="result-filter practice-start-filter" role="group" aria-label="開始条件">
                 <span class="result-filter-label">開始条件</span>
@@ -99,6 +101,51 @@
               </div>
               <button id="startAllRandom" class="primary" type="button">全問題をランダムに解く</button>
               <div id="studyList" class="study-list"></div>
+              <section id="questionSetPanel" class="question-set-panel hidden" aria-label="問題セット">
+                <section id="questionSetListView" class="question-set-list-view">
+                  <div class="question-set-toolbar">
+                    <div>
+                      <h3>問題セット</h3>
+                      <p>Codexで作成した問題セットを、毎周ランダムな順番で解けます。</p>
+                    </div>
+                    <button id="refreshQuestionSets" class="ghost" type="button">更新</button>
+                  </div>
+                  <div id="questionSetCards" class="question-set-cards" aria-live="polite"></div>
+                </section>
+
+                <section id="questionSetHistoryView" class="question-set-history-view hidden" aria-labelledby="questionSetHistoryTitle">
+                  <div class="question-set-subview-head">
+                    <div>
+                      <p class="question-set-subview-kicker">周回履歴</p>
+                      <h3 id="questionSetHistoryTitle">問題セット</h3>
+                    </div>
+                    <button class="ghost" type="button" data-question-set-back-list>問題セット一覧へ</button>
+                  </div>
+                  <div id="questionSetRoundList" class="question-set-round-list" aria-live="polite"></div>
+                  <div id="questionSetRoundPagination" class="pagination hidden" aria-label="周回履歴ページ切替">
+                    <button id="questionSetRoundPrev" class="ghost small" type="button">前へ</button>
+                    <span id="questionSetRoundPageStatus">1 / 1</span>
+                    <button id="questionSetRoundNext" class="ghost small" type="button">次へ</button>
+                  </div>
+                </section>
+
+                <section id="questionSetRoundDetailView" class="question-set-round-detail-view hidden" aria-labelledby="questionSetRoundDetailTitle">
+                  <div class="question-set-subview-head">
+                    <div>
+                      <p class="question-set-subview-kicker">問題別結果</p>
+                      <h3 id="questionSetRoundDetailTitle">周回</h3>
+                    </div>
+                    <button class="ghost" type="button" data-question-set-back-history>周回履歴へ戻る</button>
+                  </div>
+                  <div id="questionSetRoundDetailSummary" class="question-set-round-detail-summary"></div>
+                  <div id="questionSetRoundItems" class="question-set-round-items" aria-live="polite"></div>
+                  <div id="questionSetRoundItemPagination" class="pagination hidden" aria-label="問題別結果ページ切替">
+                    <button id="questionSetRoundItemPrev" class="ghost small" type="button">前へ</button>
+                    <span id="questionSetRoundItemPageStatus">1 / 1</span>
+                    <button id="questionSetRoundItemNext" class="ghost small" type="button">次へ</button>
+                  </div>
+                </section>
+              </section>
             </section>
 
             <article id="practiceSession" class="practice-panel hidden">
@@ -227,6 +274,76 @@
             </div>
           </section>
 
+          <section id="diseaseChecklistView" class="view" aria-labelledby="diseaseChecklistTitle">
+            <div class="view-head disease-checklist-view-head">
+              <div>
+                <p class="eyebrow">Disease Check</p>
+                <h2 id="diseaseChecklistTitle">疾患確認</h2>
+              </div>
+              <div class="disease-checklist-head-actions">
+                <button id="refreshDiseaseChecklists" class="ghost small" type="button">更新</button>
+                <button id="exportDiseaseChecklist" class="primary small" type="button" disabled>△×をTSV出力</button>
+              </div>
+            </div>
+
+            <div id="diseaseChecklistMessage" class="disease-checklist-message" aria-live="polite">
+              読み込んでいます...
+            </div>
+
+            <div id="diseaseChecklistContent" class="disease-checklist-content hidden">
+              <div class="disease-checklist-toolbar">
+                <label class="disease-checklist-select-wrap">
+                  <span>確認リスト</span>
+                  <select id="diseaseChecklistSelect"></select>
+                </label>
+                <div id="diseaseChecklistSummary" class="disease-checklist-summary" aria-live="polite"></div>
+              </div>
+
+              <nav class="disease-area-navigation" aria-label="疾患確認の分野ページ切替">
+                <button id="diseasePreviousRegion" class="ghost small" type="button" disabled>前の分野</button>
+                <label class="disease-area-page-select">
+                  <span>分野ページ</span>
+                  <select id="diseaseRegionFilter" aria-describedby="diseaseAreaPageStatus"></select>
+                  <small id="diseaseAreaPageStatus" aria-live="polite"></small>
+                </label>
+                <button id="diseaseNextRegion" class="ghost small" type="button" disabled>次の分野</button>
+              </nav>
+
+              <div class="disease-checklist-filters" aria-label="疾患確認の絞り込み">
+                <label>
+                  <span>状態</span>
+                  <select id="diseaseStatusFilter">
+                    <option value="unreviewed">未確認</option>
+                    <option value="all">すべて</option>
+                    <option value="ok">○ 知っている</option>
+                    <option value="warn">△ 要確認</option>
+                    <option value="wrong">× 知らない</option>
+                    <option value="review">復習（×→△）</option>
+                  </select>
+                </label>
+                <label class="disease-search-filter">
+                  <span>検索</span>
+                  <input id="diseaseSearchFilter" type="search" autocomplete="off" placeholder="疾患名・階層・画像所見">
+                </label>
+                <div class="disease-flag-filters" role="group" aria-label="出題履歴による絞り込み">
+                  <label>
+                    <input id="diseaseEverWrongFilter" type="checkbox">
+                    <span>一度でも誤答</span>
+                  </label>
+                  <label>
+                    <input id="diseaseAddedByWrongFilter" type="checkbox">
+                    <span>誤答により追加</span>
+                  </label>
+                </div>
+              </div>
+
+              <p id="diseaseChecklistResultCount" class="disease-checklist-result-count"></p>
+              <nav id="diseaseChecklistPaginationTop" class="disease-checklist-pagination" aria-label="疾患一覧のページ切替（上）"></nav>
+              <div id="diseaseChecklistCards" class="disease-checklist-cards" aria-live="polite"></div>
+              <nav id="diseaseChecklistPaginationBottom" class="disease-checklist-pagination" aria-label="疾患一覧のページ切替（下）"></nav>
+            </div>
+          </section>
+
           <section id="usersView" class="view" aria-labelledby="usersTitle">
             <div class="view-head">
               <div>
@@ -264,6 +381,6 @@
       <img id="imageLightboxImage" class="image-lightbox-image" alt="">
     </dialog>
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=20260729-unofficial-answer-link"></script>
+    <script src="/app.js?v=20260808-disease-area-pages"></script>
   </body>
 </html>

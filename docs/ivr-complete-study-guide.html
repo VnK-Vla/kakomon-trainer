@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IVR試験対策 完全学習ノート</title>
+<style>
+@page { size: A4; margin: 13mm 13mm 15mm; }
+@media print {
+  html, body { background: #fff !important; }
+  body { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  .cover, .toc, .part-page { break-after: page; }
+  .part-page { break-before: page; }
+  h1.chapter { break-before: page; }
+  #safety h1.chapter, #endoleak h1.chapter, #organs h1.chapter { break-before: auto; }
+  h1, h2, h3, h4 { break-after: avoid-page; }
+  pre, blockquote, .card, .flow, .question, .answer, .keep { break-inside: avoid; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  .screen-only { display: none !important; }
+}
+* { box-sizing: border-box; }
+html { background: #e8edf1; }
+body {
+  margin: 0 auto;
+  max-width: 210mm;
+  color: #1b2730;
+  background: #fff;
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-size: 9.7pt;
+  line-height: 1.68;
+  letter-spacing: .01em;
+}
+main { padding: 0 1mm 7mm; }
+.cover {
+  min-height: 269mm;
+  margin: -13mm -13mm 0;
+  padding: 30mm 20mm 22mm;
+  color: #f8fbfb;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255,191,84,.32), transparent 28%),
+    radial-gradient(circle at 10% 82%, rgba(74,183,171,.23), transparent 32%),
+    linear-gradient(145deg, #132f38 0%, #1d4d55 52%, #7a4d31 120%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cover-kicker { color: #9ee3d8; font-size: 10.5pt; font-weight: 700; letter-spacing: .18em; }
+.cover h1 { margin: 9mm 0 3mm; font-size: 32pt; line-height: 1.2; letter-spacing: .02em; }
+.cover h2 { margin: 0; color: #e0eeee; font-size: 16pt; font-weight: 500; line-height: 1.45; }
+.cover .route { margin-top: 13mm; padding-left: 5mm; border-left: 3px solid #f0b85b; font-size: 12pt; line-height: 2; }
+.cover .meta { color: #d9e8e9; font-size: 9pt; }
+.badge { display: inline-block; margin: 0 2mm 2mm 0; padding: 1.2mm 3mm; border: 1px solid rgba(255,255,255,.48); border-radius: 99px; }
+.toc { padding: 8mm 3mm 0; }
+.toc h1 { color: #174d56; font-size: 22pt; }
+.toc ol { columns: 2; column-gap: 10mm; padding: 0; list-style: none; }
+.toc li { break-inside: avoid; margin: 0 0 2mm; line-height: 1.35; }
+.toc .major { margin-top: 3mm; font-weight: 700; color: #194d55; }
+.toc .minor { padding-left: 4mm; color: #52656c; font-size: 8.8pt; }
+.part-page {
+  min-height: 235mm;
+  margin: 0 -1mm;
+  padding: 72mm 13mm 0;
+  color: #fff;
+  background: linear-gradient(145deg, #194a53, #24746f 64%, #a56f42);
+}
+.part-page .n { color: #ffd894; font-size: 11pt; font-weight: 700; letter-spacing: .18em; }
+.part-page h1 { margin: 4mm 0; font-size: 29pt; line-height: 1.3; }
+.part-page p { max-width: 145mm; color: #e4f1f0; font-size: 12pt; }
+h1.chapter { margin: 0 0 6mm; padding: 8mm 0 4mm; color: #174b54; border-bottom: 2px solid #48a69d; font-size: 21pt; line-height: 1.3; }
+h2 { margin: 8mm 0 3mm; color: #176568; font-size: 15pt; line-height: 1.35; }
+h3 { margin: 5mm 0 2mm; color: #445f69; font-size: 11.5pt; }
+h4 { margin: 4mm 0 1.5mm; color: #684d39; font-size: 10pt; }
+p { margin: 0 0 3mm; }
+strong { color: #075b5f; }
+em { color: #5a493d; }
+a { color: #176f78; text-underline-offset: 2px; }
+ul, ol { margin: 1.5mm 0 4mm; padding-left: 6mm; }
+li { margin: 0 0 1.3mm; padding-left: .7mm; }
+li::marker { color: #2b8c84; font-weight: 700; }
+hr { border: 0; border-top: 1px solid #cbd6d9; margin: 7mm 0; }
+blockquote, .callout {
+  margin: 4mm 0;
+  padding: 3.5mm 4.5mm;
+  color: #263d43;
+  background: #edf7f5;
+  border-left: 4px solid #3f9e94;
+  border-radius: 0 2mm 2mm 0;
+}
+.warning { background: #fff4e5; border-left-color: #df8f2d; }
+.danger { background: #fff0ef; border-left-color: #c85b54; }
+.exam { background: #edf4fb; border-left-color: #4c83b2; }
+.source { margin-top: 4mm; color: #64747a; font-size: 8.2pt; }
+.source strong { color: #52676c; }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin: 4mm 0 5mm; }
+.card { padding: 3.5mm; border: 1px solid #c9d6d8; border-radius: 3mm; background: #f8fbfb; }
+.card h3 { margin-top: 0; color: #176568; }
+.card p:last-child, .card ul:last-child { margin-bottom: 0; }
+.flow { display: flex; gap: 2mm; align-items: stretch; margin: 4mm 0 5mm; }
+.flow .box { flex: 1; padding: 3mm; border: 1px solid #b8ccce; border-radius: 2.5mm; background: #f6faf9; text-align: center; }
+.flow .arrow { align-self: center; color: #c27831; font-size: 15pt; font-weight: 700; }
+.workflow-seven { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1.5mm; }
+.workflow-seven .box { padding: 2.5mm 1.5mm; font-size: 8.4pt; }
+.balance { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; margin: 4mm 0; }
+.balance > div { padding: 4mm; border-radius: 3mm; }
+.balance .down { background: #eaf5fb; border: 1px solid #9dc6dc; }
+.balance .up { background: #fff1e4; border: 1px solid #e0b17e; }
+.table-wrap { margin: 4mm 0 5mm; }
+table { width: 100%; border-collapse: collapse; font-size: 8.35pt; line-height: 1.48; }
+th { padding: 2.1mm 2.3mm; color: #fff; background: #1c6970; border: 1px solid #1c6970; text-align: left; vertical-align: top; }
+td { padding: 1.9mm 2.3mm; border: 1px solid #c5d3d6; vertical-align: top; }
+tbody tr:nth-child(even) td { background: #f4f8f8; }
+.tight td, .tight th { padding: 1.3mm 1.7mm; }
+.small { font-size: 8.2pt; }
+.very-small { font-size: 7.4pt; }
+code { padding: .1em .35em; color: #7a3748; background: #f6edf0; border-radius: 3px; font-family: "Noto Sans Mono CJK JP", monospace; font-size: .92em; }
+.mnemonic { display: inline-block; padding: .6mm 2mm; color: #704416; background: #fff0d5; border: 1px solid #e7c589; border-radius: 99px; font-weight: 700; }
+.rank-s, .rank-a, .rank-b { display: inline-block; min-width: 6mm; padding: .2mm 1.4mm; border-radius: 99px; color: #fff; text-align: center; font-weight: 700; }
+.rank-s { background: #bd4c45; } .rank-a { background: #c07a2b; } .rank-b { background: #4a7c87; }
+.question { margin: 4mm 0; padding: 3.5mm 4mm; border: 1px solid #c5d3d6; border-radius: 3mm; background: #fbfdfd; }
+.question .qno { color: #176568; font-weight: 700; }
+.answer { margin: 3mm 0 5mm; padding: 3.5mm 4mm; background: #eef7f4; border-left: 4px solid #4b9c83; }
+.answer .key { color: #185c51; font-weight: 700; }
+.page-break { break-before: page; }
+.muted { color: #68777c; }
+.center { text-align: center; }
+@media screen {
+  body { padding: 13mm; box-shadow: 0 0 28px rgba(24,49,55,.20); }
+  .cover { margin: -13mm -13mm 12mm; }
+  .part-page { min-height: 175mm; margin-bottom: 8mm; }
+}
+@media (max-width: 760px) {
+  body { padding: 5mm; }
+  .cover { margin: -5mm -5mm 8mm; min-height: 92vh; padding: 20mm 10mm; }
+  .cover h1 { font-size: 26pt; }
+  .toc ol { columns: 1; }
+  .card-grid, .balance { grid-template-columns: 1fr; }
+  .flow { display: block; }
+  .flow .box { margin-bottom: 2mm; text-align: left; }
+  .flow .arrow { display: none; }
+  .workflow-seven { display: block; }
+  table { font-size: 8pt; }
+}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <div class="cover-kicker">放射線診断専門医試験・過去問連動</div>
+    <h1>IVR試験対策<br>完全学習ノート</h1>
+    <h2>普段IVRに関わらなくても、目的から考えて選べるようになる</h2>
+    <div class="route">目的 → 標的 → 血流 → 到達経路<br>道具 → 治療終点 → 合併症</div>
+  </div>
+  <div class="meta">
+    <p><span class="badge">過去問34問を全件監査</span><span class="badge">添付3冊を統合</span><span class="badge">知識確認40問＋画像観察6題</span></p>
+    <p>2026年8月7日 改訂版<br>診断放射線科専門医試験の学習用</p>
+  </div>
+</section>
+
+<nav class="toc">
+  <h1>目次</h1>
+  <ol>
+    <li class="major"><a href="#how-to-use">この資料の使い方</a></li>
+    <li class="major"><a href="#mini-glossary">先に見るミニ用語集</a></li>
+    <li class="major"><a href="#first-12">最初に覚える12行</a></li>
+    <li class="major"><a href="#trend">0. 過去問からみた優先順位</a></li>
+    <li class="major"><a href="#part1">第I部　IVRの共通言語</a></li>
+    <li class="major"><a href="#map">1. まず目的を6つに分ける</a></li>
+    <li class="minor"><a href="#workflow">迷わない7段階</a></li>
+    <li class="major"><a href="#access">2. 穿刺から選択造影まで</a></li>
+    <li class="major"><a href="#embolics">3. 塞栓物質を「深さ」と「強さ」で選ぶ</a></li>
+    <li class="major"><a href="#occlusion">4. Packingとisolation</a></li>
+    <li class="major"><a href="#safety">5. 安全管理と合併症</a></li>
+    <li class="major"><a href="#part2">第II部　頻出手技</a></li>
+    <li class="major"><a href="#bleeding">6. 出血・仮性動脈瘤</a></li>
+    <li class="major"><a href="#bae">7. 気管支動脈塞栓術</a></li>
+    <li class="major"><a href="#portal">8. BRTOとTIPS</a></li>
+    <li class="major"><a href="#tace">9. TACEと肝外供血路</a></li>
+    <li class="major"><a href="#aneurysm">10. 動脈瘤・血管奇形</a></li>
+    <li class="major"><a href="#venous">11. 静脈・アクセス系IVR</a></li>
+    <li class="major"><a href="#endoleak">12. EVAR後エンドリーク</a></li>
+    <li class="major"><a href="#nonvascular">13. 生検・ドレナージ・焼灼</a></li>
+    <li class="major"><a href="#organs">14. 腎・子宮・肺・AF前CT</a></li>
+    <li class="major"><a href="#part3">第III部　演習と監査表</a></li>
+    <li class="major"><a href="#pitfalls">15. 選択肢の引っかけ</a></li>
+    <li class="major"><a href="#questions">16. 画像観察＋知識確認40問</a></li>
+    <li class="major"><a href="#answers">17. 解答・解説</a></li>
+    <li class="major"><a href="#past-index">18. 過去問34問の全件索引</a></li>
+    <li class="major"><a href="#sources">19. 添付書籍ページ案内・参考資料</a></li>
+    <li class="major"><a href="#last-check">20. 試験直前チェックリスト</a></li>
+  </ol>
+</nav>
+
+<main>
+<section id="how-to-use">
+  <h1 class="chapter">この資料の使い方</h1>
+  <p>この資料は、IVRの手技を一から再現するためのマニュアルではなく、<strong>専門医試験で画像と選択肢から正しい判断を引き出すための学習ノート</strong>である。添付3冊の図表や文章は転載せず、過去問で必要な概念を再構成した。実臨床では、最新の添付文書、施設手順、学会指針、指導医の判断を優先する。</p>
+  <div class="card-grid">
+    <div class="card"><h3>1周目：全体像</h3><p>「最初に覚える12行」→第I部→各章の青い試験欄だけ読む。固有名詞を暗記する前に、止める・開ける・採る・抜く・焼く／凍らす・つなぐ／迂回する、のどれかを言えるようにする。</p></div>
+    <div class="card"><h3>2周目：過去問連動</h3><p>各章末の過去問参照をアプリで開き、画像だけを先に観察する。<strong>責任血管、流入路、流出路、危険枝、標的臓器</strong>の5点を声に出してから選択肢を見る。</p></div>
+    <div class="card"><h3>3周目：演習</h3><p>第16章の画像観察6題と知識確認40問に取り組み、根拠を一文で書く。誤答したら答えを覚えるのではなく、「目的・標的・血流・経路・道具・終点・合併症」のどこで判断を誤ったか分類する。</p></div>
+    <div class="card"><h3>直前：監査表</h3><p>過去問34問の全件索引と最終チェックリストを使う。画像依存で見解が揺れる設問は、登録解答を絶対的な医学的事実として覚えない。</p></div>
+  </div>
+  <div class="callout warning"><strong>資料の年代に注意：</strong>添付書籍には2005年、2011年、2018年の記載が含まれる。デバイス、保険適用、塞栓物質、抗凝固薬休薬、治療適応は変わりうるため、本資料では2024〜2026年に確認できる学会資料と照合し、古い数値や製品名は原則として暗記対象から外した。</div>
+</section>
+
+<section id="mini-glossary">
+  <h1 class="chapter">先に見るミニ用語集</h1>
+  <p>本文では略語を繰り返し使う。最初から英語を暗記する必要はなく、まず<strong>日本語で何をしているか</strong>をつかむ。分からなくなったらここへ戻る。</p>
+  <div class="card-grid small">
+    <div class="card"><h3>画像・血栓・解剖</h3><ul>
+      <li><strong>DSA：</strong>血管だけを強調する血管造影</li>
+      <li><strong>CTA：</strong>造影CTによる血管評価</li>
+      <li><strong>VTE：</strong>静脈血栓塞栓症の総称。DVTは深部静脈血栓症、PEは肺血栓塞栓症</li>
+      <li><strong>IVC：</strong>下大静脈</li>
+      <li><strong>CKD：</strong>慢性腎臓病</li>
+      <li><strong>ACTH：</strong>副腎皮質刺激ホルモン</li>
+      <li><strong>ABC：</strong>気道・呼吸・循環の順に安定化する救急初期対応</li>
+      <li><strong>HCC：</strong>肝細胞癌</li>
+      <li><strong>AML／TSC：</strong>腎血管筋脂肪腫／結節性硬化症</li>
+      <li><strong>GDA／SMA：</strong>胃十二指腸動脈／上腸間膜動脈</li>
+    </ul></div>
+    <div class="card"><h3>頻出手技</h3><ul>
+      <li><strong>BAE：</strong>気管支動脈塞栓術</li>
+      <li><strong>BRTO：</strong>バルーン閉塞下逆行性経静脈的塞栓術</li>
+      <li><strong>TIPS：</strong>経頸静脈的肝内門脈大循環短絡術</li>
+      <li><strong>cTACE／DEB-TACE：</strong>抗癌薬とリピオドールを用いる従来型TACE／薬剤溶出性ビーズを用いるTACE</li>
+      <li><strong>UAE：</strong>子宮動脈塞栓術</li>
+      <li><strong>EVAR：</strong>腹部大動脈瘤ステントグラフト内挿術</li>
+      <li><strong>PICC：</strong>末梢挿入型中心静脈カテーテル</li>
+      <li><strong>AVS／VAIVT：</strong>副腎静脈サンプリング／透析シャント血管内治療</li>
+      <li><strong>PTA／AVF：</strong>経皮的血管形成術／動静脈瘻</li>
+      <li><strong>PTBD：</strong>経皮経肝胆道ドレナージ</li>
+      <li><strong>RFA／MWA：</strong>ラジオ波／マイクロ波による熱凝固療法</li>
+      <li><strong>VATS：</strong>胸腔鏡下手術</li>
+      <li><strong>AF：</strong>心房細動</li>
+    </ul></div>
+    <div class="card"><h3>塞栓で使う言葉</h3><ul>
+      <li><strong>PVA：</strong>塞栓用ポリビニルアルコール粒子</li>
+      <li><strong>NBCA：</strong>血液中で重合する液体塞栓物質</li>
+      <li><strong>EO：</strong>主に静脈瘤硬化で使うオレイン酸モノエタノールアミン</li>
+      <li><strong>AVM／nidus：</strong>動静脈奇形／異常血管が集まる短絡の中心</li>
+      <li><strong>packing：</strong>瘤や腔の中を詰める</li>
+      <li><strong>isolation／sandwich：</strong>病変の流出側と流入側を挟んで止める</li>
+      <li><strong>covered stent／stent graft：</strong>血管を保ちながら破綻部を内側から覆う被覆ステント。本資料では同義として扱う</li>
+    </ul></div>
+    <div class="card"><h3>画像・治療計画の言葉</h3><ul>
+      <li><strong>endpoint：</strong>治療を終了してよい到達点</li>
+      <li><strong>landing zone：</strong>ステントやプラグを安全に固定できる血管区間</li>
+      <li><strong>extravasation：</strong>造影剤の血管外漏出</li>
+      <li><strong>vascular lake：</strong>TACE中にみられる腫瘍内の湖状造影剤貯留</li>
+      <li><strong>bare area：</strong>肝右葉が横隔膜と接する無漿膜野</li>
+      <li><strong>flow void：</strong>MRIで速い血流が黒く抜ける所見</li>
+      <li><strong>heat-sink：</strong>近くの血流に熱が奪われ、焼灼不足になる現象</li>
+      <li><strong>probe：</strong>焼灼・凍結に用いる針状器具</li>
+      <li><strong>hydrodissection：</strong>液体で標的と周囲臓器の間を広げて保護する方法</li>
+      <li><strong>pinch-off：</strong>鎖骨と第1肋骨間の圧迫によるカテーテル損傷</li>
+      <li><strong>stepwise injection：</strong>造影を確認しながら少量ずつ段階的に注入する方法</li>
+    </ul></div>
+  </div>
+  <div class="callout exam"><strong>読み替えの原則：</strong>英語を見たら、まず「何を止める／開ける／採る／抜く／焼く・凍らす／つなぐのか」に戻す。</div>
+</section>
+
+<section id="first-12">
+  <h1 class="chapter">最初に覚える12行</h1>
+  <ol>
+    <li>IVRは画像で<strong>目的地と経路を確認しながら</strong>行う低侵襲治療で、血管系と非血管系に大別する。</li>
+    <li>問題を見たら、まず目的を「<strong>止める・開ける・採る・抜く・焼く／凍らす・つなぐ／迂回する</strong>」に翻訳する。</li>
+    <li>仮性動脈瘤は壁が脆い。流入・流出路があり親血管を犠牲にできる場合は、両側を止める<strong>isolation</strong>を考える。親血管温存が必要ならcovered stentなどを比較する。</li>
+    <li>コイルは狙った太い血管を局所閉塞、粒子・マイクロスフィアは末梢血管床、NBCAは流れに乗る永久液体塞栓、と整理する。</li>
+    <li>NBCAは凝固能に依存しにくいが、逆流・非標的塞栓・カテーテル接着に注意する。エタノールはさらに強力で、安易に選ばない。</li>
+    <li>喀血のBAEでは術前造影CTが有用。造影剤漏出はなくてもよく、異常血管増生、拡張・蛇行、シャント、非気管支体循環動脈を探す。</li>
+    <li>BRTOは胃静脈瘤を<strong>閉じて門脈圧を上げうる</strong>。TIPSは門脈を減圧して<strong>肝性脳症を増やしうる</strong>。</li>
+    <li>消化管出血では超選択的コイルまたはNBCAが軸。太い血管用プラグや腫瘍用粒子を反射的に選ばない。</li>
+    <li>肺生検後の喀血は患側下、全身性<strong>動脈</strong>空気塞栓は100%酸素とABC安定化を急ぐ。神経・循環器症状があれば高圧酸素療法を緊急相談する。</li>
+    <li>大量胸水を急速に排液した数時間後の片側浸潤影は再膨張性肺水腫を考える。</li>
+    <li>IVCフィルターは、急性VTEで抗凝固ができない状況が代表的適応。抗凝固可能例へ一律に留置するものではない。</li>
+    <li>EVAR後Type II endoleakは分枝からの逆行性流入。瘤径増大がなければ監視が基本で、近位本幹だけ塞栓しても根治しない。</li>
+  </ol>
+</section>
+
+<section id="trend">
+  <h1 class="chapter">0. 過去問からみた優先順位</h1>
+  <p>アプリの放射線診断専門医認定試験2015〜2025年、全904問を読み取り専用で確認した。カテゴリーが「IVR」の問題は34問で、<strong>34問すべてに画像があり、10問は複数選択</strong>だった。2024年8問、2025年7問で、直近2年だけで15問、全体の44.1%を占める。カテゴリー付与方針の変化も影響しうるが、近年は手技名だけでなく、術前画像、デバイス選択、治療終点、合併症まで広く問われている。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>優先度</th><th>必ず説明できる論点</th><th>過去問での典型的な聞かれ方</th></tr></thead>
+    <tbody>
+      <tr><td><span class="rank-s">S</span></td><td>塞栓物質、仮性動脈瘤のisolation、BAE、BRTO/TIPS</td><td>「どの塞栓物質か」「どこを塞栓するか」「次に何をするか」「重大な合併症は何か」</td></tr>
+      <tr><td><span class="rank-s">S</span></td><td>生検・ドレナージ・アブレーションの合併症</td><td>肺生検後の喀血／空気塞栓、腎生検後血腫、胸水排液後肺水腫、穿刺経路</td></tr>
+      <tr><td><span class="rank-a">A</span></td><td>TACE、UAE、腎AML、血管奇形、内臓動脈瘤</td><td>標的血管、病変の流速、塞栓物質、肝外供血路、側副血行</td></tr>
+      <tr><td><span class="rank-a">A</span></td><td>PICC/CVポート、透析シャントPTA、AVS、IVCフィルター</td><td>最適な静脈、造影解剖、トラブル対応、適応</td></tr>
+      <tr><td><span class="rank-b">B</span></td><td>EVAR後endoleak、術前マッピング、ライン・チューブ</td><td>遅延相、分枝逆流、カテーテル先端位置、解剖破格</td></tr>
+    </tbody>
+  </table></div>
+  <h2>年度別件数</h2>
+  <div class="table-wrap"><table class="tight center">
+    <thead><tr><th>年度</th><th>2015</th><th>2016</th><th>2017</th><th>2018</th><th>2019</th><th>2020</th><th>2021</th><th>2022</th><th>2023</th><th>2024</th><th>2025</th></tr></thead>
+    <tbody><tr><td>IVR分類</td><td>1</td><td>1</td><td>3</td><td>3</td><td>3</td><td>1</td><td>3</td><td>2</td><td>2</td><td>8</td><td>7</td></tr></tbody>
+  </table></div>
+  <div class="callout exam"><strong>画像問題の読み方：</strong>①単純／造影CTで病変と活動性出血、②血管造影で流入・流出・危険枝、③塞栓後像で病変血流消失と臓器血流温存、の順に見る。画像だけで手技名を当てようとせず、何を変えた画像かを言語化する。</div>
+  <div class="callout warning"><strong>解答監査上の注意がある4問：</strong>DB解説上、2015問45（外傷性鎖骨下動脈仮性瘤）、2019問64（殿部高流量AVMの塞栓法）、2023問57（BRTO造影で胃静脈瘤が描出されているか）に「疑義あり」の記録があり、2024問74（VATSマーカー経路）にも登録解答への異論を示すコメントがある。これらは画像と当時の選択肢に依存するため、本資料では一般原則と登録解答を分けて扱う。</div>
+</section>
+
+<section class="part-page" id="part1">
+  <div class="n">PART I</div>
+  <h1>IVRの共通言語</h1>
+  <p>手技名を丸暗記せず、どのIVRにも共通する「目的・標的・血流・経路・道具・終点・合併症」を身につける。</p>
+</section>
+
+<section id="map">
+  <h1 class="chapter">1. まず目的を6つに分ける</h1>
+  <div class="card-grid">
+    <div class="card"><h3>止める</h3><p>出血、動脈瘤、腫瘍血流、AVM、静脈瘤を塞栓・硬化する。<br><span class="mnemonic">塞栓材と血流が主役</span></p></div>
+    <div class="card"><h3>開ける</h3><p>狭窄・閉塞をバルーン、ステント、血栓除去で再開通する。<br><span class="mnemonic">入口と末梢流が主役</span></p></div>
+    <div class="card"><h3>採る</h3><p>生検、静脈サンプリング、圧測定で診断材料を得る。<br><span class="mnemonic">正しい場所の証明が主役</span></p></div>
+    <div class="card"><h3>抜く</h3><p>膿・胆汁・尿・胸水・腹水をドレナージする。<br><span class="mnemonic">安全な経路と留置後管理</span></p></div>
+    <div class="card"><h3>焼く／凍らす</h3><p>RFA、MWA、凍結療法などで腫瘍を局所壊死させる。<br><span class="mnemonic">マージンと周囲臓器</span></p></div>
+    <div class="card"><h3>つなぐ／迂回する</h3><p>TIPS、ステントグラフト、シャント再建などで流路を作る。試験では「開ける」に含めてもよい。<br><span class="mnemonic">前後の圧と副作用</span></p></div>
+  </div>
+
+  <h2 id="workflow">迷わない7段階</h2>
+  <div class="flow workflow-seven">
+    <div class="box"><strong>1 目的</strong><br>何を変える？</div>
+    <div class="box"><strong>2 標的</strong><br>血管・腫瘍・腔？</div>
+    <div class="box"><strong>3 血流</strong><br>流入・流出・側副路</div>
+    <div class="box"><strong>4 経路</strong><br>安全に届く？</div>
+    <div class="box"><strong>5 道具</strong><br>深さ・強さ・可逆性</div>
+    <div class="box"><strong>6 終点</strong><br>何を消し、何を残す？</div>
+    <div class="box"><strong>7 合併症</strong><br>何が起こる？<br>どう防ぎ気づく？</div>
+  </div>
+  <p>選択肢に「コイル」「NBCA」「ステントグラフト」と並んでいても、最初に道具を選ばない。たとえば術後仮性動脈瘤なら、目的は止血、標的は破綻した動脈、血流は流入と流出の両方、親血管を犠牲にできるならisolation、温存が必要ならcovered stentを考える。終点は瘤への血流消失と必要な臓器血流の温存、警戒する合併症は非標的塞栓・臓器虚血・再出血である。</p>
+  <div class="source"><strong>添付参照：</strong>『IVRマニュアル 第2版』冊子p10–26（PDF p28–44）、『皆伝! IVRの知恵 第2版』非血管系総論 冊子p325–338（PDF p337–350）。</div>
+</section>
+
+<section id="access">
+  <h1 class="chapter">2. 穿刺から選択造影まで</h1>
+  <h2>2-1. 血管系の基本</h2>
+  <div class="flow">
+    <div class="box">超音波で血管穿刺</div><div class="arrow">→</div>
+    <div class="box">ガイドワイヤー</div><div class="arrow">→</div>
+    <div class="box">シース</div><div class="arrow">→</div>
+    <div class="box">親カテーテル</div><div class="arrow">→</div>
+    <div class="box">マイクロカテーテル</div><div class="arrow">→</div>
+    <div class="box">選択造影・治療</div>
+  </div>
+  <ul>
+    <li><strong>セルジンガー法：</strong>針で穿刺し、ワイヤーを入れ、針を抜き、ワイヤーに沿ってシース／カテーテルを入れる。非血管ドレナージにも同じ発想を使う。</li>
+    <li><strong>シース：</strong>アクセスを保ち、カテーテル交換と止血をしやすくする。</li>
+    <li><strong>親カテーテル：</strong>目的血管の入口まで安定して進める。形状は解剖とアプローチで選ぶ。</li>
+    <li><strong>マイクロカテーテル：</strong>責任枝へ超選択的に進め、正常組織を温存する。細くすれば万能ではなく、注入圧・塞栓材との適合・抜去性に注意する。</li>
+    <li><strong>DSA：</strong>骨などの背景を差し引き血管を見やすくする。呼吸・体動に弱い。ロードマップは先の造影像を案内図として重ねる。</li>
+  </ul>
+
+  <h2>2-2. 画像は「手技前・最中・後」で読む</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>時点</th><th>見るもの</th><th>試験での言葉</th></tr></thead>
+    <tbody>
+      <tr><td>手技前CT/MRI</td><td>病変、活動性出血、血管起始、側副路、安全な穿刺経路</td><td>造影剤血管外漏出、仮性瘤、flow void、腫瘍濃染</td></tr>
+      <tr><td>診断造影</td><td>流入血管、病変内血流、流出静脈、危険な正常枝</td><td>早期静脈還流、シャント、脊髄動脈、非標的枝</td></tr>
+      <tr><td>選択造影</td><td>カテーテル先端が十分近いか、塞栓材がどこへ行くか</td><td>超選択的、フローコントロール、バルーン閉塞下</td></tr>
+      <tr><td>治療後造影</td><td>病変血流の消失、親血管・臓器血流の温存、別の流入路</td><td>技術的な治療終了点（technical endpoint）、側副血行、非標的塞栓なし</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>2-3. 静脈アクセスの頻出解剖</h2>
+  <ul>
+    <li><strong>PICC：</strong>上腕の尺側皮静脈は太く直線的で、動脈・神経から離れやすいため一般に候補になりやすい。ただし超音波で径、カテーテル／静脈比、血栓、周囲構造を評価し、将来腎代替療法を要しうるCKD患者では尺側皮・橈側皮静脈を透析アクセス用に温存する。</li>
+    <li><strong>副腎静脈：</strong>右副腎静脈は短く下大静脈へ直接、左副腎静脈は下横隔静脈と合流し左腎静脈へ流入するのが基本。AVSでは採血成功の確認と希釈補正のためコルチゾールも測る。</li>
+    <li><strong>中心静脈ポート：</strong>超音波ガイド穿刺、先端位置、気胸・動脈穿刺・pinch-off（鎖骨と第1肋骨間の圧迫による損傷）・感染・血栓・カテーテル断裂をセットで覚える。</li>
+  </ul>
+  <div class="callout exam"><strong>過去問連動：</strong>2022問59（AVS）、2024問73（PICC）、2018問23（ライン・チューブ）、2018問63［呼吸器カテゴリー］（CVポート）。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』CVポート 冊子p284–293（PDF p296–305）、AVS p318–321（PDF p330–333）。『IVRマニュアル 第2版』中心静脈アクセス 冊子p73–78（PDF p91–96）。</div>
+</section>
+
+<section id="embolics">
+  <h1 class="chapter">3. 塞栓物質を「深さ」と「強さ」で選ぶ</h1>
+  <p>塞栓物質は名前ではなく、<strong>どこまで届くか、どのくらい持続するか、凝固能に依存するか、再治療を妨げるか</strong>で整理する。次の表は試験用の基本像であり、製品ごとの特性と承認範囲は添付文書で確認する。</p>
+  <div class="table-wrap"><table class="small">
+    <thead><tr><th>材料</th><th>届き方・持続</th><th>向く状況</th><th>弱点／引っかけ</th></tr></thead>
+    <tbody>
+      <tr><td><strong>金属コイル</strong></td><td>狙った比較的近位の血管を機械的に閉塞。多くは永久。</td><td>限局性出血、仮性瘤の前後、動脈瘤isolation、太めの枝。</td><td>血栓形成にある程度依存。近位だけ塞ぐと側副路再開通。末梢再治療の入口を失う。</td></tr>
+      <tr><td><strong>血管塞栓用プラグ</strong></td><td>比較的太い血管を短い区間で栓。永久。</td><td>高流量・太径血管、脾動脈などで適切なランディングがある場合。</td><td>細い末梢枝や急角度には不向き。消化管末梢出血で反射的に選ばない。</td></tr>
+      <tr><td><strong>ゼラチンスポンジ</strong></td><td>粒径と作り方で分布が変わる。一時的塞栓として扱う。</td><td>外傷・術後出血、腫瘍、子宮・肝など多用途。</td><td>大きさが不均一になりやすく、到達深度が読みづらい。再開通しうる。</td></tr>
+      <tr><td><strong>粒子／マイクロスフィア</strong></td><td>末梢血管床へ入り、選んだ粒径より細い血管への流入を制限。多くは長期。</td><td>UAE、腫瘍塞栓、BAEなど。DEBは薬剤を担持する。</td><td>危険吻合やシャントがあると非標的塞栓。コイルのような一点閉塞ではない。</td></tr>
+      <tr><td><strong>NBCA</strong></td><td>血液中で重合する永久液体塞栓。リピオドール混合で視認性・重合速度・到達を調整。</td><td>凝固障害、細い／蛇行血管、速やかな止血、AVMなど。</td><td>逆流、静脈側流出、非標的塞栓、カテーテル接着。混合比を数字だけで暗記しない。</td></tr>
+      <tr><td><strong>無水エタノール</strong></td><td>血管内皮を障害する強力な永久硬化・塞栓材。</td><td>一部のAVM、腎疾患、門脈塞栓など、熟練下の限定的状況。</td><td>疼痛、壊死、神経障害、心肺系副作用など重篤合併症。外傷性出血やBAEの一般解として選ばない。</td></tr>
+      <tr><td><strong>EO／ポリドカノール</strong></td><td>静脈瘤・低流量静脈奇形を硬化。</td><td>EOはBRTO、ポリドカノールは静脈奇形など。</td><td>動脈性急性出血の一般的塞栓材ではない。高流量AVMでは流出制御なしに使わない。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>3-1. 「深さ」の概略イメージ</h2>
+  <div class="flow">
+    <div class="box"><strong>近位</strong><br>プラグ・コイル</div><div class="arrow">→</div>
+    <div class="box"><strong>中間</strong><br>ゼラチン粒子</div><div class="arrow">→</div>
+    <div class="box"><strong>末梢床</strong><br>粒子・マイクロスフィア</div><div class="arrow">→</div>
+    <div class="box"><strong>到達は可変</strong><br>NBCAは流れに沿い鋳型状</div>
+  </div>
+  <p>この並びは粒子状材料の到達傾向をつかむための概略で、強さの順位ではない。とくにNBCAは血流速度、カテーテル位置、注入速度、シャント、リピオドール混合比で近位にも末梢にも到達しうる。<strong>「NBCAだから必ず最末梢へ届く」「何mmの材料だから必ずここで止まる」とは考えない。</strong></p>
+
+  <h2>3-2. 過去問での材料選択</h2>
+  <ul>
+    <li>外傷性胸壁動脈出血：ゼラチンスポンジ＋コイル（2017問63）。</li>
+    <li>殿部高流量AVM：nidusへ届くNBCA／エタノールを検討し、内腸骨動脈本幹の近位コイルだけでは不十分（2019問64、ただしDB解説に疑義注記）。</li>
+    <li>下部消化管出血：超選択的コイルまたはNBCA（2024問71）。</li>
+    <li>症候性子宮筋腫：マイクロスフィア（2024問72）。</li>
+    <li>脾動脈瘤：コイルとプラグを組み合わせたisolationがありうる（2025問72）。</li>
+  </ul>
+  <div class="callout danger"><strong>危険な短絡：</strong>粒子や液体を注入する前に、脊髄動脈、冠動脈・食道枝、肺静脈／体静脈への流出、門脈逆流などを確認する。「標的に届く」ことと「標的以外へ行かない」ことは同時に考える。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』塞栓物質総論・コイル 冊子p393–400（PDF p405–412）、NBCA p401–409（PDF p413–421）、マイクロスフェア p410–413（PDF p422–425）、ゼラチン p414–416（PDF p426–428）、vascular plug p417–418（PDF p429–430）。『IVRマニュアル 第2版』冊子p109–113（PDF p127–131）。</div>
+</section>
+
+<section id="occlusion">
+  <h1 class="chapter">4. Packingとisolation</h1>
+  <div class="balance">
+    <div class="down"><h3>Packing</h3><p>瘤や血管腔の<strong>中</strong>をコイルなどで詰める。親血管を残せる可能性があるが、仮性瘤では壁が脆く、穿孔や再開通、neckからの流入が問題になる。</p></div>
+    <div class="up"><h3>Isolation / sandwich</h3><p>病変の<strong>流出側（back door）→必要なら瘤内→流入側（front door）</strong>を閉塞し、側副路を含む血流を断つ。仮性瘤・側副豊富な内臓動脈で頻出。</p></div>
+  </div>
+  <div class="flow">
+    <div class="box">流入側<br><strong>front door</strong></div><div class="arrow">→</div>
+    <div class="box">仮性動脈瘤<br><strong>脆い袋</strong></div><div class="arrow">→</div>
+    <div class="box">流出側<br><strong>back door</strong></div>
+  </div>
+  <p class="small center"><strong>図の矢印は血流方向。</strong>塞栓する順序は逆向きに、流出側（back door）→必要なら瘤内→流入側（front door）。</p>
+  <p>近位側だけをコイルで閉じても、別の動脈から逆行性に病変へ血流が入ることがある。したがってカテーテルを先に流出側へ進め、遠位を塞栓してから手前へ戻るのが基本形である。親血管を温存すべき太い動脈では、病変を覆う<strong>ステントグラフト</strong>が選択肢になる。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>病変・状況</th><th>考え方</th><th>残すもの</th></tr></thead>
+    <tbody>
+      <tr><td>膵頭十二指腸切除後GDA断端仮性瘤</td><td>流入・流出をisolation。入手可能なら親血管温存のcovered stentも検討。</td><td>肝血流</td></tr>
+      <tr><td>脾動脈瘤</td><td>瘤前後をisolation。短胃・胃大網動脈などの側副路で脾実質血流が残りうる。</td><td>脾実質灌流</td></tr>
+      <tr><td>腎内分枝AVF</td><td>フローコントロール下に短絡点を選択的塞栓。</td><td>正常腎実質</td></tr>
+      <tr><td>親血管本幹の外傷性仮性瘤</td><td>閉塞可能性と臓器虚血を評価。covered stent、バルーン、外科などを比較。</td><td>末梢臓器血流</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout exam"><strong>一言で覚える：</strong><span class="mnemonic">仮性瘤は「袋」より「前門と後門」</span>。選択肢でpackingだけが提示されたら、親血管温存の利点と再出血リスクを両方考える。</div>
+  <div class="source"><strong>添付参照：</strong>『IVRマニュアル 第2版』消化管出血・仮性瘤 冊子p97–102（PDF p115–120）、内臓動脈瘤 p152–155（PDF p170–173）。『皆伝! IVRの知恵 第2版』コイルのisolation/packing 冊子p397–400（PDF p409–412）、内臓動脈瘤 p173–186（PDF p185–198）。</div>
+</section>
+
+<section id="safety">
+  <h1 class="chapter">5. 安全管理と合併症</h1>
+  <h2>5-1. 手技前に確認する6項目</h2>
+  <ol>
+    <li><strong>適応：</strong>症状、緊急度、代替治療、予後、患者希望。</li>
+    <li><strong>最新画像：</strong>標的、アクセス、側副路、危険臓器、病変の変化。</li>
+    <li><strong>出血リスク：</strong>血算、凝固、抗血小板薬／抗凝固薬、肝腎機能。固定の休薬日数を一律暗記せず、手技の出血リスクと血栓リスクを比較する。</li>
+    <li><strong>造影剤・薬剤：</strong>過去の反応、腎機能、甲状腺、妊娠可能性、使用する硬化剤や抗癌薬。</li>
+    <li><strong>感染：</strong>菌血症、穿刺部感染、胆道・尿路閉塞、必要な予防抗菌薬。</li>
+    <li><strong>鎮静・救急対応：</strong>気道、循環、疼痛、アナフィラキシー、迷走神経反射、輸血・外科バックアップ。</li>
+  </ol>
+
+  <h2>5-2. 合併症は原因で分類する</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>原因</th><th>代表例</th><th>試験での対策</th></tr></thead>
+    <tbody>
+      <tr><td>穿刺</td><td>血腫、仮性瘤、動静脈瘻、気胸、臓器損傷</td><td>超音波、圧迫可能部位、経路設計、術後観察</td></tr>
+      <tr><td>カテーテル／ワイヤー</td><td>解離、穿孔、攣縮、塞栓、迷走神経反射</td><td>抵抗時に押さない、先端位置を透視で確認</td></tr>
+      <tr><td>塞栓物質</td><td>非標的塞栓、臓器梗塞、脊髄梗塞、肺塞栓</td><td>危険枝・シャント確認、超選択、注入中監視</td></tr>
+      <tr><td>造影剤／薬剤</td><td>アナフィラキシー、腎障害、溶血、心肺系副作用</td><td>既往と腎機能、緊急薬、用量・流出路</td></tr>
+      <tr><td>放射線</td><td>皮膚障害、白内障、術者被曝</td><td>時間短縮、絞り、低パルス、距離、遮蔽、線量記録</td></tr>
+      <tr><td>治療そのもの</td><td>塞栓後症候群、再膨張性肺水腫、肝性脳症、出血</td><td>手技特異的な観察と説明</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>5-3. 放射線防護は「時間・距離・遮蔽＋絞り」</h2>
+  <ul>
+    <li>必要最小限の透視時間・撮影回数、低いパルスレート、最終透視像保持（last-image hold）を使う。</li>
+    <li>照射野を絞り、患者を検出器へ近づけ、X線管から離す。拡大、斜位、長時間同一角度は皮膚線量を増やす。</li>
+    <li>天井吊り・テーブル下遮蔽、鉛エプロン、甲状腺防護、眼防護を使い、手を直接線へ入れない。</li>
+    <li>線量が高い手技では記録と患者フォローを行う。閾値を一つだけ暗記せず、装置表示値は皮膚の実吸収線量と同一ではないと理解する。</li>
+  </ul>
+</section>
+
+<section class="part-page" id="part2">
+  <div class="n">PART II</div>
+  <h1>頻出手技を一本の物語にする</h1>
+  <p>病名ごとの暗記をやめ、目的、標的、血流、経路、道具、治療終点、合併症までをつなげる。</p>
+</section>
+
+<section id="bleeding">
+  <h1 class="chapter">6. 出血・仮性動脈瘤</h1>
+  <h2>6-1. 緊急出血の標準思考</h2>
+  <div class="flow">
+    <div class="box">蘇生・凝固補正<br>外科／内視鏡と連携</div><div class="arrow">→</div>
+    <div class="box">造影CT<br>出血点と解剖</div><div class="arrow">→</div>
+    <div class="box">選択造影<br>流入・流出・吻合</div><div class="arrow">→</div>
+    <div class="box">超選択的塞栓<br>臓器温存</div><div class="arrow">→</div>
+    <div class="box">再造影<br>別経路も確認</div>
+  </div>
+  <ul>
+    <li>造影CTの<strong>活動性血管外漏出</strong>は重要だが、間欠出血では見えない。臨床経過、仮性瘤、異常血管、ドレーンからの出血も合わせる。</li>
+    <li>血管造影でも漏出が必ず出るわけではない。術前CTで責任血管を絞り、必要なら誘発造影や経験的塞栓を慎重に検討する。</li>
+    <li>消化管は吻合が多い。上部消化管は側副血行が豊富で虚血に比較的強い一方、下部消化管は超選択性がより重要。</li>
+    <li>凝固障害、ショック、細い蛇行血管、カテーテルが十分近づけない状況ではNBCAが有利なことがある。正常枝への広範流入は腸管壊死を招く。</li>
+  </ul>
+
+  <h2>6-2. 術後仮性動脈瘤</h2>
+  <p>膵液・胆汁・感染・ドレーン刺激で動脈壁が破綻し、術後数日〜数週に前兆出血（sentinel bleed）から大量出血へ進むことがある。膵頭十二指腸切除後の胃十二指腸動脈断端は頻出である。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>選択肢</th><th>長所</th><th>注意</th></tr></thead>
+    <tbody>
+      <tr><td>コイルisolation</td><td>確実な前後閉塞。デバイス入手性が高い。</td><td>総／固有肝動脈を閉塞する場合、門脈血流・側副血行・肝虚血を評価。</td></tr>
+      <tr><td>ステントグラフト</td><td>破綻部を覆い親血管を温存。</td><td>径、ランディング、屈曲、感染、分枝閉塞、緊急時の在庫。</td></tr>
+      <tr><td>瘤内packing</td><td>親血管を残せる場合がある。</td><td>仮性瘤壁は脆く、単独では再出血・破裂の懸念。</td></tr>
+      <tr><td>近位のみ塞栓</td><td>早い。</td><td>側副路から逆行性再出血。原則として不十分。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>6-3. 消化管出血の材料</h2>
+  <p><strong>コイル：</strong>カテーテルを出血点直近へ進められ、凝固能がある場合に精密な閉塞が可能。<strong>NBCA：</strong>凝固能に依存しにくく、速い止血が可能だが、注入範囲の制御が難しい。ゼラチンは状況により使うが、末梢消化管の確実な一点止血ではコイル／NBCAが試験の軸となる。</p>
+  <div class="callout exam"><strong>過去問連動：</strong>2017問63（外傷性胸壁出血の材料）、2019問62・2024問69（術後仮性瘤）、2024問71（下部消化管出血）、2025問72（脾動脈瘤isolation）。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』消化管出血 p28–40（PDF p40–52）、内臓動脈瘤 p173–186（PDF p185–198）。『IVRマニュアル 第2版』p97–102（PDF p115–120）、p152–155（PDF p170–173）。</div>
+</section>
+
+<section id="bae">
+  <h1 class="chapter">7. 気管支動脈塞栓術（BAE）</h1>
+  <h2>7-1. まず「出血源」と「責任血管」を分ける</h2>
+  <p>喀血の多くは気管支動脈を含む体循環系からだが、肺動脈仮性動脈瘤など肺動脈系もある。慢性炎症では胸膜癒着を介して、内胸動脈、肋間動脈、鎖骨下動脈系、下横隔動脈など<strong>非気管支性体循環動脈</strong>が関与する。</p>
+  <div class="card-grid">
+    <div class="card"><h3>術前造影CTで探す</h3><ul><li>出血側・病変部位</li><li>気管支動脈の起始と径</li><li>非気管支性体循環動脈</li><li>肺動脈瘤・仮性瘤</li><li>胸膜肥厚・癒着</li></ul></div>
+    <div class="card"><h3>血管造影で探す</h3><ul><li>異常血管増生</li><li>拡張・蛇行</li><li>病変濃染</li><li>気管支動脈―肺動脈シャント</li><li>仮性動脈瘤</li></ul></div>
+  </div>
+  <div class="callout exam"><strong>重要：</strong>造影剤の明瞭な血管外漏出は、喀血の責任血管で必須所見ではなく、むしろ見えないことが多い。2025問70はこの点を直接問う。</div>
+
+  <h2>7-2. 塞栓の考え方</h2>
+  <ul>
+    <li>塞栓前の各造影で、脊髄・心・脳など重要構造を灌流する枝と危険吻合の有無を厳格に確認する。責任枝を超選択し、<strong>危険枝を確実に回避でき、逆流させない位置</strong>から塞栓する。回避不能な危険吻合があれば、そのカテーテル位置からはいずれの塞栓材も注入しない。遠位超選択、危険吻合の保護、別経路が安全に成立する場合だけ再検討する。</li>
+    <li>過去問では粒子状材料が軸。現行CIRSEでは非球形PVA粒子が第一選択で、ゼラチンスポンジ単独は耐久性に乏しく推奨されない。旧版記載と現行推奨を分ける。</li>
+    <li>ただし現代の実務では、仮性瘤、高流量シャント、危険吻合保護など特定状況でコイルが使われる。選択肢の文脈を読む。</li>
+    <li>原疾患は残るため再喀血はありうる。「成功すれば再発は極めて稀」は誤り。</li>
+  </ul>
+
+  <h2>7-3. 合併症</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>合併症</th><th>機序・手がかり</th><th>試験上の要点</th></tr></thead>
+    <tbody>
+      <tr><td><strong>脊髄梗塞</strong></td><td>脊髄動脈への非標的塞栓。下肢運動・感覚障害。</td><td>最重篤。術中・術後に神経症状を確認。</td></tr>
+      <tr><td>食道・気管支虚血</td><td>小粒子・液体の広範流入、危険吻合。</td><td>徹底的な末梢塞栓が常に良いわけではない。</td></tr>
+      <tr><td>大動脈／末梢塞栓</td><td>塞栓材逆流、カテーテル不安定。</td><td>注入中に逆流を監視。</td></tr>
+      <tr><td>解離・穿孔</td><td>ワイヤー、カテーテル、攣縮。</td><td>抵抗時に押し込まない。</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout exam"><strong>BAEの5語：</strong><span class="mnemonic">造影CT・異常血管・非気管支動脈・脊髄枝・再発</span></div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』p2–13（PDF p14–25）。『IVRマニュアル 第2版』p164–167（PDF p182–185）。『IVR（改訂版）』p91–96（PDF p115–120）。現行照合：CIRSE Standards of Practice on BAE（2022）。</div>
+</section>
+
+<section id="portal">
+  <h1 class="chapter">8. BRTOとTIPS：門脈圧のシーソー</h1>
+  <div class="balance">
+    <div class="up"><h3>BRTO：短絡を閉じる</h3><p>胃腎シャントなどの排血路をバルーンで閉塞し、胃静脈瘤へ逆行性に硬化剤を入れる。<strong>門脈系へ血液を戻すため、門脈圧は上がりうる。</strong></p></div>
+    <div class="down"><h3>TIPS：短絡を作る</h3><p>肝静脈と門脈を肝内でつなぎ、門脈血を体循環へ逃がす。<strong>門脈圧は下がるが、解毒前の血液が迂回し肝性脳症を増やしうる。</strong></p></div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>BRTO</th><th>TIPS</th></tr></thead>
+    <tbody>
+      <tr><td>主目的</td><td>胃静脈瘤／シャント性脳症の原因短絡を閉鎖</td><td>門脈圧亢進を減圧</td></tr>
+      <tr><td>主な適応</td><td>胃腎シャントを伴う胃静脈瘤、シャント性脳症</td><td>難治性静脈瘤出血、難治性腹水など</td></tr>
+      <tr><td>門脈圧</td><td>上昇しうる</td><td>低下</td></tr>
+      <tr><td>肝性脳症</td><td>改善しうる</td><td>悪化・新規発症</td></tr>
+      <tr><td>代表的問題</td><td>食道静脈瘤・腹水増悪、門脈血栓、硬化剤流出</td><td>脳症、心不全、肝不全、シャント狭窄／閉塞</td></tr>
+      <tr><td>画像</td><td>バルーン閉塞下逆行性静脈造影</td><td>肝内の門脈―肝静脈ステント</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>8-1. BRTOの順序</h2>
+  <div class="flow">
+    <div class="box">胃腎シャントへ<br>バルーン</div><div class="arrow">→</div>
+    <div class="box">閉塞下逆行性造影<br>瘤と側副路</div><div class="arrow">→</div>
+    <div class="box">側副排血路処理／<br>少量ずつ段階的注入</div><div class="arrow">→</div>
+    <div class="box">硬化剤停滞</div><div class="arrow">→</div>
+    <div class="box">閉塞維持・確認</div>
+  </div>
+  <ul>
+    <li>造影剤が左下横隔静脈などへ逃げると、胃静脈瘤へ硬化剤が停滞しない。コイル／硬化、追加バルーン、少量ずつ段階的に注入するstepwise injectionなどで側副路を処理する。</li>
+    <li>肺静脈交通など大循環への危険な流出を見逃さない。</li>
+    <li>EOは溶血性腎障害を起こしうるため、書籍ではハプトグロビン併用が記載される。薬剤・用量は現在の施設手順を優先する。</li>
+  </ul>
+
+  <h2>8-2. TIPSの順序と注意</h2>
+  <p>通常、内頸静脈から肝静脈へ進み、肝実質を通して門脈枝を穿刺し、肝内経路（tract）を拡張してcovered stentを留置する。手技前には肝予備能、既往脳症、心機能・肺高血圧、感染、胆道閉塞、門脈解剖を評価する。</p>
+  <ul>
+    <li><strong>適応：</strong>内視鏡・薬物で制御困難な静脈瘤出血、難治性腹水など。</li>
+    <li><strong>一般に禁忌：</strong>重症心不全、重度肺高血圧、制御不能な感染／敗血症、重症かつ制御不能な肝性脳症。肝予備能低下や脳症既往などの個別リスクとは分け、絶対・相対の分類は指針と病態で確認する。</li>
+    <li><strong>終点：</strong>圧較差を下げすぎれば脳症・肝不全、下げ足りなければ再出血。固定の一数値だけで判断しない。</li>
+  </ul>
+  <div class="callout exam"><strong>過去問連動：</strong>2016問64、2020問46、2023問57はBRTOの造影・側副路処理。2019問63はTIPSの適応（胃静脈瘤・難治性腹水）と肝性脳症の位置づけ。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』BRTO p230–259（PDF p242–271）、TIPS p260–263（PDF p272–275）。『IVRマニュアル 第2版』TIPS p168–173（PDF p186–191）、B-RTO p174–180（PDF p192–198）。『IVR（改訂版）』TIPS p139–147（PDF p163–171）、BRTO p148–151（PDF p172–175）。</div>
+</section>
+
+<section id="tace">
+  <h1 class="chapter">9. TACEと肝外供血路</h1>
+  <h2>9-1. 原理</h2>
+  <p>HCCは肝細胞癌、cTACEは抗癌薬とリピオドールを用いる従来型TACE、DEB-TACEは薬剤溶出性ビーズを用いるTACEである。正常肝実質は門脈血流が主体、古典的HCCは肝動脈血流が主体という差を利用し、腫瘍栄養動脈へ抗癌薬と塞栓物質を選択的に投与する。目的は<strong>腫瘍内に薬剤を届け、虚血を加えながら正常肝を温存する</strong>こと。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>cTACE</th><th>DEB-TACE</th></tr></thead>
+    <tbody>
+      <tr><td>基本</td><td>抗癌薬＋リピオドール乳化物、続いて粒子／ゼラチン</td><td>薬剤溶出性マイクロスフィア</td></tr>
+      <tr><td>画像</td><td>リピオドール集積が単純CTで見える</td><td>塞栓中にvascular lakeが見えることがある</td></tr>
+      <tr><td>注意</td><td>胆道障害、非標的塞栓、肝不全</td><td>粒径、終点、vascular lakeへの追加対応</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>9-2. 肝外供血路</h2>
+  <p>腫瘍が肝表面・ドーム部にあり、大きい、再治療後、肝動脈が閉塞している場合は肝外供血を考える。<strong>右下横隔動脈</strong>は代表的で、腫瘍がなくても肝内動脈と交通しうる。塞栓時は横隔膜、肺、食道、皮膚などへの非標的流入に注意する。</p>
+  <h3>肝外供血を疑う手がかり</h3>
+  <ul>
+    <li>肝動脈造影で腫瘍全体が染まらない。</li>
+    <li>肝ドーム、被膜下、bare area（肝右葉の無漿膜野）、胆嚢床などに接する。</li>
+    <li>右下横隔動脈、内胸動脈、肋間動脈、胃・大網動脈などが発達する。</li>
+    <li>過去のTACEで肝動脈が狭窄・閉塞している。</li>
+  </ul>
+
+  <h2>9-3. vascular lake</h2>
+  <p>DEB-TACE中、腫瘍内に限局した造影剤の湖状貯留（vascular lake）を認めることがある。腫瘍外への自由な漏出＝破裂と即断せず、腫瘍内の貯留位置と形を確認する。vascular lakeを認めたから自動的に塞栓終了というわけではなく、追加塞栓や安全な終点を判断する。</p>
+  <div class="callout exam"><strong>過去問連動：</strong>2017問64（右下横隔動脈）、2025問71（DEB-TACEのvascular lake）。隣接分野ではHCCの肝予備能・門脈腫瘍栓・RFAとの適応比較も問われる。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』TACE p42–60（PDF p54–72）、塞栓物質 p394–416（PDF p406–428）。</div>
+</section>
+
+<section id="aneurysm">
+  <h1 class="chapter">10. 動脈瘤・血管奇形</h1>
+  <h2>10-1. 真性瘤と仮性瘤</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>真性動脈瘤</th><th>仮性動脈瘤</th></tr></thead>
+    <tbody>
+      <tr><td>壁</td><td>動脈壁の層を含む</td><td>壁破綻後の血腫・周囲組織で保たれる</td></tr>
+      <tr><td>原因</td><td>動脈硬化、血行力学、結合織、分節性動脈中膜融解など</td><td>外傷、手術、穿刺、感染、膵炎・膵液</td></tr>
+      <tr><td>治療適応</td><td>部位、径、増大、症状、妊娠などで判断</td><td>内臓・腎動脈仮性瘤は破裂リスクが高く原則早期治療。小さな臓器内病変などを観察する場合は、背景を個別評価し厳密な画像フォローを行う。</td></tr>
+      <tr><td>手技</td><td>packing、isolation、stent graftなど</td><td>流入・流出路があり親血管を犠牲にできる場合はisolation／sandwich。流出路がない場合は瘤内・流入路塞栓、親血管温存が必要ならcovered stentなどを比較。</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>膵十二指腸動脈瘤：</strong>腹腔動脈根部狭窄でSMAから膵十二指腸アーケードを介する側副血流が増え、血行力学的ストレスで形成される。破裂リスクが径と相関しにくく、現行CIRSE文書でも部位特異的に大きさにかかわらない治療が支持される。</p>
+  <p><strong>脾動脈瘤：</strong>書籍は真性瘤2 cmを目安にするが、現行指針では2〜3 cm閾値を巡り議論があり、症状、増大、形状、妊娠可能性、部位を合わせる。試験では「仮性瘤は径を問わず」「isolation後も側副で脾血流が残る」を優先する。</p>
+
+  <h2>10-2. 高流量AVMと低流量静脈奇形</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>AVM（高流量）</th><th>静脈奇形（低流量）</th></tr></thead>
+    <tbody>
+      <tr><td>画像</td><td>拡張した流入動脈、nidus、早期静脈還流、MRI flow void</td><td>T2高信号の分葉状腔、緩徐な造影、静脈石</td></tr>
+      <tr><td>治療標的</td><td>nidus／短絡点</td><td>異常静脈腔</td></tr>
+      <tr><td>材料</td><td>NBCA、エタノールなど＋フローコントロール</td><td>ポリドカノール等の硬化療法</td></tr>
+      <tr><td>失敗</td><td>近位動脈だけコイル→側副路発達、再治療困難</td><td>高流量と誤認して硬化剤が全身流出</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout danger"><strong>エタノール：</strong>強力な内皮障害で根治性が期待できる一方、疼痛、皮膚・神経壊死、肺高血圧、心肺虚脱など重篤な副作用がある。試験で「強力だから何にでも適する」とは考えない。</div>
+
+  <h2>10-3. 血管炎と腎梗塞の画像</h2>
+  <p>腎動脈造影で<strong>末梢動脈の多発微小動脈瘤と口径不整</strong>を見たら中小動脈の血管炎を考える。腎実質相の<strong>楔状・斑状造影欠損</strong>は腎梗塞を示す。発熱だけで感染性動脈瘤と決めず、感染源、病変分布、nidusや早期静脈還流の有無を確認する。過去問は2018問55で、2019問64（殿部AVM）、2021問46（膵十二指腸動脈瘤）、2025問72（脾動脈瘤）、隣接領域の2020問45［泌尿器］（腎AVF）も関連づける。</p>
+</section>
+
+<section id="venous">
+  <h1 class="chapter">11. 静脈・アクセス系IVR</h1>
+  <h2>11-1. IVCフィルター</h2>
+  <p>代表的適応は、<strong>急性DVT／PEがあり抗凝固療法を行えない</strong>状況。抗凝固が有効に行える一般的VTEへ一律に留置することは勧めない。回収可能型は、肺塞栓防護が不要になった時点で回収可能性を評価し、追跡管理を行う。</p>
+  <ul>
+    <li>通常は腎静脈流入部より尾側に留置する。</li>
+    <li>フィルターは既存血栓を治療せず、DVT形成を防ぐ薬でもない。</li>
+    <li>長期留置では血栓、閉塞、傾斜、穿通、破損、移動、回収困難が問題。</li>
+  </ul>
+  <div class="callout exam"><strong>過去問：</strong>2015問44［心血管］、2025問69。脳出血直後の急性DVTは抗凝固困難で、試験上もっとも強い適応。</div>
+
+  <h2>11-2. 透析シャントPTA</h2>
+  <p>狭窄をバルーンで拡張し、脱血不良・静脈圧上昇・再循環・血流低下を改善する。拡張後に局所腫脹・疼痛と血管外漏出を認めたら血管損傷を考える。</p>
+  <div class="flow">
+    <div class="box">漏出を確認</div><div class="arrow">→</div>
+    <div class="box">低圧バルーンで内側から圧迫</div><div class="arrow">＋</div>
+    <div class="box">外から用手圧迫</div><div class="arrow">→</div>
+    <div class="box">持続ならstent graft／外科</div>
+  </div>
+  <p>高圧でさらに拡張するのは損傷を悪化させうる。まずタンポナーデを行う（2022問58）。</p>
+
+  <h2>11-3. 副腎静脈サンプリング（AVS）</h2>
+  <p>原発性アルドステロン症で、手術を考える際に片側過剰分泌か両側性かを判定する。CTの結節だけで機能側を断定しない。</p>
+  <ul>
+    <li>右副腎静脈は短くIVCへ直接合流し、選択が難しい。</li>
+    <li>左副腎静脈は左下横隔静脈と共通幹を作り左腎静脈へ。</li>
+    <li>アルドステロンだけでなくコルチゾールを測り、選択性と希釈を補正する。</li>
+    <li>ACTH負荷・判定比の数値は施設差がある。試験では解剖と測定目的を優先。</li>
+  </ul>
+
+  <h2>11-4. PICC・ポート</h2>
+  <p>PICCでは尺側皮静脈が一般に候補になりやすいが、静脈名だけで決めず、超音波で径、カテーテル／静脈比、血栓、動脈・神経との位置関係を確認する。将来腎代替療法を要しうるCKD患者では透析アクセス用静脈の温存を優先し、PICC自体を可能なら避ける。ポートでは感染、血栓、カテーテル閉塞・断裂、気胸、pinch-off、先端位置を評価する。単純写真ではカテーテルの全走行を追い、急な屈曲や断裂、先端の深さを確認する。</p>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』VAIVT p276–283（PDF p288–295）、CVポート p284–293（PDF p296–305）、IVCフィルター p294–297（PDF p306–309）、AVS p318–321（PDF p330–333）。</div>
+</section>
+
+<section id="endoleak">
+  <h1 class="chapter">12. EVAR後エンドリーク</h1>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>機序</th><th>試験の一言</th></tr></thead>
+    <tbody>
+      <tr><td><strong>I</strong></td><td>近位（Ia）／遠位（Ib）のシール不全</td><td>高圧。原則修復が必要。</td></tr>
+      <tr><td><strong>II</strong></td><td>腰動脈、下腸間膜動脈など分枝から瘤内へ逆行性流入</td><td>最頻出。遅延相で見えやすい。瘤増大なしなら監視。</td></tr>
+      <tr><td><strong>III</strong></td><td>グラフト接合部離開・破損</td><td>高圧。再ライニングなど。</td></tr>
+      <tr><td><strong>IV</strong></td><td>グラフト多孔性</td><td>早期・びまん性。現行機器では稀。</td></tr>
+      <tr><td><strong>V</strong></td><td>明瞭なリークなしに瘤圧・瘤径が増大するendotension</td><td>「造影されない＝問題なし」とは限らない。</td></tr>
+    </tbody>
+  </table></div>
+  <h2>Type IIの治療原則</h2>
+  <p>造影剤の存在だけで治療せず、瘤径増大や持続を評価する。治療時は流入動脈の近位だけでなく、<strong>nidusに相当する瘤内腔と流入・流出交通</strong>を塞栓する。内腸骨動脈本幹を近位で塞いでも、多数の側副路が残れば消失しない。</p>
+  <div class="callout exam"><strong>過去問連動：</strong>2018問62、2020問26、2025問73はいずれもType II。近位・遠位シール部からではなく、分枝を介し遅れて瘤嚢辺縁が造影される。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』EVAR p188–196（PDF p200–208）。現行照合：CIRSE endoleak standards（2024）。</div>
+</section>
+
+<section id="nonvascular">
+  <h1 class="chapter">13. 生検・ドレナージ・焼灼</h1>
+  <h2>13-1. 安全な穿刺経路</h2>
+  <p>経路は「最短」だけで選ばない。<strong>血管、腸管、胸膜、葉間、神経、胆嚢・胆管、膵管、尿路</strong>を避け、出血時に対処可能な経路を選ぶ。画像上の塊を反射的に生検せず、肺AVMなどの血管性病変は穿刺しない。副腎腫瘤では生検前に褐色細胞腫を生化学的に除外し、播種リスクは疾患ごとに生検適応と将来の切除経路を検討する。絶対的な危険、疾患別の事前評価、相対的な回避理由を一括して「生検禁忌」としない。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ガイド</th><th>長所</th><th>弱点</th></tr></thead>
+    <tbody>
+      <tr><td>超音波</td><td>リアルタイム、無被曝、血流表示、針を連続監視</td><td>空気・骨・深部、術者依存</td></tr>
+      <tr><td>CT</td><td>深部・肺・骨、周囲臓器との位置関係</td><td>間欠的確認、被曝、呼吸再現性</td></tr>
+      <tr><td>透視</td><td>管腔・骨・造影された経路、ワイヤー操作</td><td>軟部コントラスト</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>13-2. 生検の頻出合併症</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>手技</th><th>多い／重要な合併症</th><th>初期対応・試験軸</th></tr></thead>
+    <tbody>
+      <tr><td>肺生検</td><td>気胸、肺出血・喀血。稀だが全身性動脈空気塞栓。</td><td>喀血は患側下で健側を守る。空気塞栓は100%酸素・ABC安定化。神経／循環器症状があれば高圧酸素療法を緊急相談。</td></tr>
+      <tr><td>腎腫瘍生検</td><td>腎周囲血腫、血尿、AVF／仮性瘤。</td><td>最も多いのは腎周囲血腫。</td></tr>
+      <tr><td>肝生検</td><td>出血、胆道出血、感染、穿刺経路播種。</td><td>凝固・腹水・経路を確認。</td></tr>
+      <tr><td>骨・軟部生検</td><td>出血、感染、神経損傷、病的骨折。</td><td>将来の切除経路を汚染しない。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>13-3. 胸水・膿瘍ドレナージ</h2>
+  <ul>
+    <li>胸水を急速・大量に排液した後、数時間で患側肺に浸潤影と呼吸苦：<strong>再膨張性肺水腫</strong>。</li>
+    <li>膿瘍は標的を確実に穿刺し、内容を培養し、柔らかいワイヤーで腔内を保ち、側孔が腔内へ収まるよう留置する。</li>
+    <li>膿瘍を高圧で造影すると菌血症・敗血症を招きうる。排液量急減は閉塞・屈曲・逸脱、持続大量排液は消化管／胆道／膵管瘻を疑う。</li>
+    <li>抜去は症状、炎症、画像、排液量・性状、瘻孔の有無を総合する。古い書籍の一数値だけで決めない。</li>
+  </ul>
+
+  <h2>13-4. RFA・MWA・凍結</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>RFA</th><th>MWA</th><th>凍結療法</th></tr></thead>
+    <tbody>
+      <tr><td>原理</td><td>高周波電流による抵抗加熱</td><td>マイクロ波による誘電加熱</td><td>凍結・解凍で細胞障害</td></tr>
+      <tr><td>見え方</td><td>ガスでUS/CTが見にくくなる</td><td>ガスを伴う熱凝固域</td><td>凍結域（ice ball）をCT/MRIで確認しやすい</td></tr>
+      <tr><td>弱点</td><td>heat-sink、炭化、電極近傍の偏り</td><td>大きな凝固域による周囲臓器損傷</td><td>出血、処置時間、複数の凍結針を要すること、広範凍結後の全身反応であるcryo-shock（稀）</td></tr>
+      <tr><td>共通</td><td colspan="3">病変全体＋安全域、周囲臓器保護、熱／冷却sink、穿刺経路播種・出血を考える。</td></tr>
+    </tbody>
+  </table></div>
+  <p>腎の小径腫瘍では凍結療法とRFAが過去問の選択肢。位置に応じて、水で周囲臓器との間を広げるhydrodissection、ガスで広げるpneumodissection、体位変換、尿管保護などを用いる。heat-sinkは近くの血流に熱が奪われる現象、probeは焼灼・凍結に用いる針状器具である。凍結域（ice ball）が見えても、細胞致死域はその外縁と完全には一致しない。</p>
+
+  <h2>13-5. VATSマーカー</h2>
+  <p>小型肺結節を胸腔鏡で同定するため病変近傍へマーカーを置く。穿刺経路は、病変から適切な距離、肺実質通過距離、葉間胸膜、太い血管、肺嚢胞、胸膜直下過ぎによる脱落を比較する。2次元の「最短」だけでなく、葉間を越えない3次元経路を選ぶ。</p>
+  <div class="callout exam"><strong>過去問連動：</strong>2017問31・2023問20（再膨張性肺水腫）、2024問70（腎腫瘍局所療法）、2024問74（VATSマーカー）、2025問68（腎生検血腫）、2025問74（肺結節に対するIVR）。隣接：2021問59（肺生検後喀血）、2022問57（肺生検後空気塞栓）。</div>
+  <div class="source"><strong>添付参照：</strong>『皆伝! IVRの知恵 第2版』US穿刺 p326–327、CT穿刺 p328–335、ドレナージ p339–345、RFA p351–353（各PDFは+12）。『IVRマニュアル 第2版』生検 p251–255（PDF p269–273）、RFA p265–274（PDF p283–292）、凍結 p275–280（PDF p293–298）、膿瘍ドレナージ p281–284（PDF p299–302）。</div>
+</section>
+
+<section id="organs">
+  <h1 class="chapter">14. 腎・子宮・肺・AF前CTの直前整理</h1>
+  <h2>14-1. 腎血管筋脂肪腫（AML）</h2>
+  <ul>
+    <li>脂肪、血管、平滑筋からなり、多発・両側なら結節性硬化症を考える。</li>
+    <li>出血リスクは腫瘍径だけでなく、症状、増大、妊娠、血管成分、瘤径、TSC背景をみる。</li>
+    <li>過去問では「4 cm以上」が治療目安として出たが、現代の散発性AMLでは4 cmを単独の絶対基準にしない。一方、TSC関連では日本の2023指針が4 cmまたは瘤5 mmを予防治療の目安として弱く推奨する。</li>
+    <li>破裂時は腎機能温存を意識した超選択的塞栓。EOは一般的動脈塞栓材ではない。</li>
+  </ul>
+
+  <h2>14-2. 子宮動脈塞栓術（UAE）</h2>
+  <p>症候性子宮筋腫では両側子宮動脈を塞栓し、腫瘍血流を低下させる。主な材料はマイクロスフィア／粒子。コイルで近位を閉じる治療ではない。</p>
+  <ul>
+    <li>合併症：塞栓後疼痛・発熱、感染、無月経、卵巣機能低下、子宮壊死、非標的塞栓。</li>
+    <li><strong>絶対的禁忌：</strong>妊娠、活動性骨盤内炎症、子宮・付属器の悪性またはその疑い。</li>
+    <li><strong>妊孕性温存希望：</strong>症候性子宮筋腫でも原則として行わないという弱い推奨。絶対的禁忌とは分け、代替治療、手術リスク、本人の希望を踏まえて十分な説明下に個別判断する。</li>
+    <li>産科出血ではDIC・ショックの有無が材料選択へ影響し、凝固能に依存しにくいNBCAが有利な場合がある。</li>
+  </ul>
+
+  <h2>14-3. 腎小径腫瘍</h2>
+  <p>部分切除が標準的選択肢だが、高齢、併存疾患、単腎、再発、多発などで画像下局所治療を検討する。過去問では凍結療法とRFAが適切。治療前生検、病変位置、尿路・腸管・膵・神経との距離、腎機能を評価する。</p>
+
+  <h2>14-4. 肺結節</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>目的</th><th>IVR</th><th>典型的な使い分け</th></tr></thead>
+    <tbody>
+      <tr><td>診断</td><td>CTガイド下針生検</td><td>経気管支で届きにくい末梢病変など</td></tr>
+      <tr><td>外科支援</td><td>VATSマーカー</td><td>小型・淡い・深部病変の術中同定</td></tr>
+      <tr><td>放射線治療支援</td><td>金マーカー</td><td>定位治療の位置合わせ</td></tr>
+      <tr><td>局所治療</td><td>RFA／MWA／凍結</td><td>手術困難な限局病変など</td></tr>
+      <tr><td>止血</td><td>BAE</td><td>喀血がある場合。単なる肺結節の診断治療ではない。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>14-5. AFアブレーション前CT</h2>
+  <p>心房細動（AF）のカテーテルアブレーション前CTでは、肺静脈だけでなく、左房・左心耳と静脈アクセス経路を確認する。</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>確認点</th><th>画像の読み方</th><th>試験の要点</th></tr></thead>
+    <tbody>
+      <tr><td>左心耳の造影不良</td><td>早期相の低吸収域が遅延相・平衡相で造影されるかを見る</td><td>遅れて造影されれば血流うっ滞を示唆。造影欠損が残れば血栓を疑う。</td></tr>
+      <tr><td>肺静脈解剖</td><td>本数、共通幹、過剰肺静脈、左房への開口を確認</td><td>焼灼範囲と合併症回避に関わる。</td></tr>
+      <tr><td>下大静脈欠損</td><td>IVCの連続性と拡張した奇静脈・半奇静脈を追う</td><td>奇静脈連結では下半身静脈血が上大静脈へ還流し、通常の大腿静脈アプローチを変えうる。</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout exam"><strong>過去問連動：</strong>2024問37は早期相の左心耳造影不良が平衡相で充填される血流うっ滞、2025問37は下大静脈欠損と奇静脈連結を問う。AF前CTは両問の画像所見と解説を再構成した。</div>
+</section>
+
+<section class="part-page" id="part3">
+  <div class="n">PART III</div>
+  <h1>演習と全件監査表</h1>
+  <p>答えを見ずに「目的→標的→血流→経路→道具→終点→合併症」を一文で説明する。画像問題はアプリで対応年度を開いて確認する。</p>
+</section>
+
+<section id="pitfalls">
+  <h1 class="chapter">15. 選択肢の引っかけ</h1>
+  <div class="table-wrap"><table>
+    <thead><tr><th>引っかけ</th><th>見破る質問</th><th>典型例</th></tr></thead>
+    <tbody>
+      <tr><td>強い材料ほどよい</td><td>正常枝へ流れたときの害は？</td><td>BAEにエタノール、UAEにNBCAを一律選択</td></tr>
+      <tr><td>入口だけ塞げば止まる</td><td>反対側・側副路から戻らないか？</td><td>仮性瘤、膵十二指腸アーケード、Type II endoleak</td></tr>
+      <tr><td>造影剤漏出がない＝出血なし</td><td>間欠出血・圧迫・低血圧では？</td><td>BAE、消化管出血</td></tr>
+      <tr><td>術後に再発しない</td><td>原疾患と側副路は残るか？</td><td>BAE、TACE、AVM</td></tr>
+      <tr><td>血流を完全消失させる</td><td>病変だけか、臓器灌流もか？</td><td>脾動脈瘤isolation後も脾血流は残る</td></tr>
+      <tr><td>画像上の塊は生検</td><td>血管性病変ではないか？</td><td>肺AVMへの針生検</td></tr>
+      <tr><td>同じ門脈圧治療</td><td>短絡を閉じるか作るか？</td><td>BRTOとTIPS</td></tr>
+      <tr><td>フィルター＝抗凝固の代わり</td><td>抗凝固が本当に禁忌か？</td><td>既往出血だけのDVT</td></tr>
+      <tr><td>一つの径で適応を決める</td><td>部位・症状・増大・背景は？</td><td>AML 4 cm、脾動脈瘤の2 cm基準と3 cm基準</td></tr>
+      <tr><td>「常に・必ず・極めて稀」</td><td>例外が普通にあるか？</td><td>回収型filterは必ず回収、BAE再発は極めて稀</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="questions">
+  <h1 class="chapter">16. 画像観察＋知識確認40問</h1>
+  <p>前半の6題は、アプリで過去問画像を開いて観察する実戦練習である。後半の40問は、過去問の論点を再構成した<strong>文章による知識確認問題</strong>であり、画像読影問題の代わりではない。過去問本文・画像は転載していない。</p>
+
+  <h2>16-1. 画像観察6題</h2>
+  <p>選択肢を見る前に、画像上で指定されたものを指し、その後に「目的→標的→血流→経路→道具→終点→合併症」を一文で説明する。</p>
+  <div class="table-wrap"><table class="small">
+    <thead><tr><th>アプリで開く問題</th><th>画像だけで先に確認すること</th><th>言語化する判断</th></tr></thead>
+    <tbody>
+      <tr><td>2024 Q69・ID 1677</td><td>GDA断端の仮性瘤、流入側、流出側、保つべき肝血流</td><td>なぜ近位側だけでなくisolationを考えるのか</td></tr>
+      <tr><td>2025 Q70・ID 1778</td><td>胸部CTの気管支拡張、小葉中心性病変、病変の左右・広がり、胸膜病変</td><td>CTから責任領域と非気管支動脈関与を予測し、血管造影で明瞭な漏出が必須でない理由</td></tr>
+      <tr><td>2023 Q57・ID 1585</td><td>バルーン閉塞下造影の側副排血路と胃静脈瘤内の停滞</td><td>側副路処理後に少量ずつ注入する理由。疑義注記も確認</td></tr>
+      <tr><td>2025 Q73・ID 1781</td><td>遅延相で瘤嚢へ入る分枝、近位・遠位シール部</td><td>Type II endoleakとType Iをどう区別するか</td></tr>
+      <tr><td>2024 Q74・ID 1682</td><td>病変、葉間胸膜、太い肺血管、嚢胞、胸膜までの距離</td><td>単なる最短距離ではなく安全な3次元経路を選ぶ理由</td></tr>
+      <tr><td>2024 Q37・ID 1645</td><td>早期相と平衡相で左心耳の造影不良がどう変化するか</td><td>血流うっ滞と持続する血栓性造影欠損の違い</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>16-2. オリジナル知識確認40問</h2>
+  <p>複数選択は明記している。各問で、選んだ根拠を15秒で説明できるか確認する。</p>
+
+  <h2>セットA：共通原理・塞栓物質（1〜10）</h2>
+  <div class="question"><div class="qno">問1</div><p>流入路と流出路があり、親血管を犠牲にできる術後仮性動脈瘤に対する基本的な塞栓方針として最も適切なのはどれか。</p><ol type="a"><li>瘤内へ細粒子だけを注入する</li><li>流入動脈の近位だけを閉塞する</li><li>流出側と流入側を挟むように閉塞する</li><li>サイズが2 cm未満なら必ず観察する</li><li>血管造影で漏出がなければ治療しない</li></ol></div>
+  <div class="question"><div class="qno">問2</div><p>一般に一時的塞栓物質として扱うのはどれか。</p><ol type="a"><li>金属コイル</li><li>NBCA</li><li>血管塞栓用プラグ</li><li>ゼラチンスポンジ</li><li>無水エタノール</li></ol></div>
+  <div class="question"><div class="qno">問3</div><p>NBCAについて正しいのはどれか。2つ選べ。</p><ol type="a"><li>凝固能に強く依存して閉塞する</li><li>血液との接触で重合する</li><li>リピオドール混合で視認性と重合挙動を調整する</li><li>カテーテル接着は起こらない</li><li>非標的塞栓の危険は粒子より常に低い</li></ol></div>
+  <div class="question"><div class="qno">問4</div><p>再治療の可能性が高い末梢病変に対し、責任動脈の起始部をコイルで閉塞する欠点はどれか。</p><ol type="a"><li>コイルが一時的に吸収される</li><li>末梢への再アクセスが困難になる</li><li>血管壁の内皮を化学的に破壊する</li><li>必ず全身性肺塞栓を生じる</li><li>造影CTで見えない</li></ol></div>
+  <div class="question"><div class="qno">問5</div><p>症候性子宮筋腫に対する子宮動脈塞栓術で主に用いる材料はどれか。</p><ol type="a"><li>マイクロスフィア</li><li>太径vascular plug</li><li>EO</li><li>金属コイルによる両側近位閉塞</li><li>エタノールの大量注入</li></ol></div>
+  <div class="question"><div class="qno">問6</div><p>高流量AVMに対する考え方として誤っているのはどれか。</p><ol type="a"><li>nidusと流出静脈を評価する</li><li>早期静脈還流を確認する</li><li>流れを制御して液体塞栓材を用いることがある</li><li>近位の主幹動脈だけを閉塞すれば再発しない</li><li>非標的流出を予測する</li></ol></div>
+  <div class="question"><div class="qno">問7</div><p>膵頭十二指腸切除後、GDA断端仮性動脈瘤から出血している。親血管を温存したい場合に考慮するのはどれか。</p><ol type="a"><li>covered stent</li><li>マイクロスフィア</li><li>EO</li><li>ポリドカノール</li><li>経過観察のみ</li></ol></div>
+  <div class="question"><div class="qno">問8</div><p>凝固障害を伴う消化管出血で、細い責任枝へ到達し速やかな止血を得たい。選択肢の中で最も合理的なのはどれか。</p><ol type="a"><li>NBCA</li><li>EO</li><li>大径vascular plug</li><li>ポリドカノールfoam</li><li>近位主幹動脈へのステント</li></ol></div>
+  <div class="question"><div class="qno">問9</div><p>腹腔動脈狭窄に関連する膵十二指腸動脈瘤について正しいのはどれか。2つ選べ。</p><ol type="a"><li>血行力学的ストレスが関与する</li><li>サイズにかかわらず治療を考える</li><li>脳動脈瘤合併が診断の必須条件である</li><li>すべて仮性動脈瘤である</li><li>腹腔動脈狭窄とは無関係である</li></ol></div>
+  <div class="question"><div class="qno">問10</div><p>脾動脈瘤をisolationした直後の説明として誤っているのはどれか。</p><ol type="a"><li>瘤への血流消失を確認する</li><li>短胃動脈などの側副血行を考える</li><li>脾実質血流は必ず完全に消失する</li><li>コイルとplugを組み合わせることがある</li><li>流入側と流出側を閉塞する</li></ol></div>
+
+  <h2 class="page-break">セットB：BAE・門脈・肝（11〜20）</h2>
+  <div class="question"><div class="qno">問11</div><p>慢性炎症性肺疾患の喀血で、血管造影上もっとも認めにくい所見はどれか。</p><ol type="a"><li>気管支動脈の拡張・蛇行</li><li>異常血管増生</li><li>非気管支性体循環動脈の関与</li><li>気管支動脈―肺動脈シャント</li><li>明瞭な造影剤血管外漏出</li></ol></div>
+  <div class="question"><div class="qno">問12</div><p>BAEのもっとも重篤な合併症はどれか。</p><ol type="a"><li>一過性発熱</li><li>脊髄梗塞</li><li>穿刺部皮下出血</li><li>悪心</li><li>軽度胸痛</li></ol></div>
+  <div class="question"><div class="qno">問13</div><p>BAE前の造影CTで評価すべきものはどれか。2つ選べ。</p><ol type="a"><li>気管支動脈の起始</li><li>非気管支性体循環動脈</li><li>肝静脈圧較差</li><li>副腎静脈の左右比</li><li>胃腎シャント径だけ</li></ol></div>
+  <div class="question"><div class="qno">問14</div><p>BAEに関する記述で誤っているのはどれか。</p><ol type="a"><li>原疾患が残れば再喀血しうる</li><li>肺癌による喀血も適応になりうる</li><li>脊髄枝を確認する</li><li>近位コイル単独が常に第一選択である</li><li>術後に下肢神経症状を確認する</li></ol></div>
+  <div class="question"><div class="qno">問15</div><p>BRTO後に起こりうる変化はどれか。2つ選べ。</p><ol type="a"><li>門脈圧低下</li><li>食道静脈瘤増悪</li><li>シャント性肝性脳症の改善</li><li>必ず難治性腹水が改善</li><li>門脈血流の消失が治療目標</li></ol></div>
+  <div class="question"><div class="qno">問16</div><p>BRTOのバルーン閉塞下造影で、左下横隔静脈へ造影剤が流出し胃静脈瘤への停滞が不十分である。次の考え方として適切なのはどれか。</p><ol type="a"><li>側副排血路処理またはstepwise injectionを検討する</li><li>直ちにTIPSを閉塞する</li><li>肺動脈へ粒子を注入する</li><li>親動脈をコイルでisolationする</li><li>造影剤流出は無視して大量硬化剤を急速注入する</li></ol></div>
+  <div class="question"><div class="qno">問17</div><p>TIPSの適応となりうるのはどれか。2つ選べ。</p><ol type="a"><li>難治性腹水</li><li>内視鏡治療で制御困難な静脈瘤出血</li><li>制御不能な重症肝性脳症</li><li>重症右心不全</li><li>活動性敗血症</li></ol></div>
+  <div class="question"><div class="qno">問18</div><p>TIPS後に増加しうる合併症はどれか。</p><ol type="a"><li>肝性脳症</li><li>胃腎シャント閉塞による門脈圧上昇</li><li>EOによる溶血</li><li>子宮壊死</li><li>脊髄梗塞</li></ol></div>
+  <div class="question"><div class="qno">問19</div><p>肝ドーム部HCCの肝外供血路としてもっとも代表的なのはどれか。</p><ol type="a"><li>右下横隔動脈</li><li>左副腎静脈</li><li>下腸間膜静脈</li><li>内頸静脈</li><li>奇静脈</li></ol></div>
+  <div class="question"><div class="qno">問20</div><p>DEB-TACE中、腫瘍内に限局した湖状の造影剤貯留を認めた。最も適切な表現はどれか。</p><ol type="a"><li>endoleak</li><li>vascular lake</li><li>pinch-off</li><li>Rasmussen aneurysm</li><li>portal venous gas</li></ol></div>
+
+  <h2 class="page-break">セットC：静脈・アクセス・endoleak（21〜30）</h2>
+  <div class="question"><div class="qno">問21</div><p>IVCフィルターの適応がもっとも強いのはどれか。</p><ol type="a"><li>抗凝固可能ながん患者の初発DVT</li><li>脳出血直後の急性近位DVT</li><li>既往に消化管出血があるが現在は止血しているDVT</li><li>慢性血栓塞栓性肺高血圧症のみ</li><li>無症候性下腿浮腫</li></ol></div>
+  <div class="question"><div class="qno">問22</div><p>通常のIVCフィルター留置位置はどれか。</p><ol type="a"><li>腎静脈流入部より尾側のIVC</li><li>右房内</li><li>肝静脈内</li><li>腎静脈流入部より必ず頭側</li><li>上大静脈</li></ol></div>
+  <div class="question"><div class="qno">問23</div><p>透析シャントPTA直後、拡張部に血管外漏出と腫脹を認めた。初期対応として最も適切なのはどれか。</p><ol type="a"><li>さらに高圧で拡張する</li><li>低圧バルーンタンポナーデと用手圧迫</li><li>必ずシャントを外科的に閉鎖する</li><li>経過観察のみ</li><li>無水エタノールを注入する</li></ol></div>
+  <div class="question"><div class="qno">問24</div><p>副腎静脈の解剖について正しいのはどれか。</p><ol type="a"><li>右副腎静脈は通常左腎静脈へ入る</li><li>左副腎静脈は通常IVCへ直接入る</li><li>右副腎静脈は短くIVCへ直接入る</li><li>左右とも内頸静脈へ入る</li><li>左右とも下大静脈フィルターを通過する</li></ol></div>
+  <div class="question"><div class="qno">問25</div><p>原発性アルドステロン症の局在診断で行うAVSで、コルチゾールも測定する主目的はどれか。</p><ol type="a"><li>腎機能を測る</li><li>副腎静脈からの採血成功と希釈を評価する</li><li>血栓の有無を判断する</li><li>造影剤アレルギーを予測する</li><li>カテーテル径を選ぶ</li></ol></div>
+  <div class="question"><div class="qno">問26</div><p>将来の透析用血管温存が問題とならない患者で、上腕PICCの穿刺候補として選択肢中もっとも一般的な静脈はどれか。</p><ol type="a"><li>尺側皮静脈</li><li>上腕動脈</li><li>橈骨動脈</li><li>外頸動脈</li><li>大伏在静脈</li></ol></div>
+  <div class="question"><div class="qno">問27</div><p>EVAR後、遅延相で腰動脈から瘤嚢内へ逆行性造影を認めた。分類はどれか。</p><ol type="a"><li>Type I</li><li>Type II</li><li>Type III</li><li>Type IV</li><li>Type V</li></ol></div>
+  <div class="question"><div class="qno">問28</div><p>EVAR後のグラフト接合部離開によるendoleakはどれか。</p><ol type="a"><li>Type I</li><li>Type II</li><li>Type III</li><li>Type IV</li><li>Type V</li></ol></div>
+  <div class="question"><div class="qno">問29</div><p>左肺の経皮的生検直後に喀血を認めた。まず健側肺を守る体位はどれか。</p><ol type="a"><li>左側臥位</li><li>右側臥位</li><li>腹臥位</li><li>Trendelenburg位</li><li>立位歩行</li></ol></div>
+  <div class="question"><div class="qno">問30</div><p>CTガイド下肺生検直後に全身性動脈空気塞栓を疑った。初期対応として最も重要なのはどれか。</p><ol type="a"><li>高濃度酸素投与</li><li>経口水分負荷</li><li>子宮動脈塞栓</li><li>BRTO</li><li>造影剤急速静注</li></ol></div>
+
+  <h2 class="page-break">セットD：非血管・統合（31〜40）</h2>
+  <div class="question"><div class="qno">問31</div><p>画像上確認される軽微なものも含め、腎腫瘍の経皮的生検で頻度が最も高い合併症はどれか。</p><ol type="a"><li>気胸</li><li>播種</li><li>腎周囲血腫</li><li>脊髄梗塞</li><li>食道静脈瘤</li></ol></div>
+  <div class="question"><div class="qno">問32</div><p>長期間虚脱していた左肺の大量胸水を排液し、6時間後に左肺優位の浸潤影と呼吸苦が出現した。最も考えられるのはどれか。</p><ol type="a"><li>再膨張性肺水腫</li><li>急性肺塞栓症</li><li>右心不全</li><li>肺AVM</li><li>TIPS閉塞</li></ol></div>
+  <div class="question"><div class="qno">問33</div><p>膿瘍ドレナージについて誤っているのはどれか。</p><ol type="a"><li>穿刺前に腸管・血管を避ける経路を決める</li><li>内容を培養へ提出する</li><li>膿瘍腔を高圧で繰り返し造影する</li><li>側孔を腔内へ収める</li><li>持続大量排液では瘻孔を疑う</li></ol></div>
+  <div class="question"><div class="qno">問34</div><p>小径腎細胞癌に対する画像下局所治療はどれか。2つ選べ。</p><ol type="a"><li>凍結療法</li><li>RFA</li><li>EO硬化療法</li><li>BRTO</li><li>IVCフィルター</li></ol></div>
+  <div class="question"><div class="qno">問35</div><p>RFAで太い血管近傍の焼灼が不十分になりうる主因はどれか。</p><ol type="a"><li>heat-sink effect</li><li>vascular lake</li><li>pinch-off</li><li>endotension</li><li>steal syndrome</li></ol></div>
+  <div class="question"><div class="qno">問36</div><p>凍結療法の特徴として正しいのはどれか。2つ選べ。</p><ol type="a"><li>ice ballを画像で確認しやすい</li><li>複数probeで凍結域を形成できる</li><li>出血は絶対に起こらない</li><li>腫瘍辺縁の安全域は不要である</li><li>周囲臓器保護は不要である</li></ol></div>
+  <div class="question"><div class="qno">問37</div><p>肺小結節に対するVATSマーカー留置の経路選択で避けるべきものはどれか。2つ選べ。</p><ol type="a"><li>葉間胸膜を不必要に横断する経路</li><li>太い肺血管を横切る経路</li><li>病変近傍へ到達する短い経路</li><li>肺嚢胞を避ける経路</li><li>呼吸変動を考慮した経路</li></ol></div>
+  <div class="question"><div class="qno">問38</div><p>腎AMLの治療適応について最も適切なのはどれか。</p><ol type="a"><li>4 cm以上なら背景を問わず必ず塞栓する</li><li>径だけでなく症状、増大、瘤、妊娠、TSC背景を評価する</li><li>出血しても塞栓術は禁忌である</li><li>両側多発ならVHLだけを考える</li><li>EOが標準の塞栓物質である</li></ol></div>
+  <div class="question"><div class="qno">問39</div><p>鎖骨下静脈経由の中心静脈ポートで特徴的に注意する機械的合併症はどれか。</p><ol type="a"><li>pinch-offによるカテーテル断裂</li><li>再膨張性肺水腫</li><li>vascular lake</li><li>肝性脳症</li><li>Type II endoleak</li></ol></div>
+  <div class="question"><div class="qno">問40</div><p>組み合わせで正しいのはどれか。2つ選べ。</p><ol type="a"><li>BRTO―門脈圧低下</li><li>TIPS―肝性脳症悪化</li><li>BAE―造影剤漏出が必須</li><li>流入路・流出路があり親血管を犠牲にできる仮性動脈瘤―isolation</li><li>肺AVM―CTガイド下生検</li></ol></div>
+</section>
+
+<section id="answers">
+  <h1 class="chapter">17. 解答・解説</h1>
+  <div class="answer"><span class="key">1 c</span>　この条件では、流出側と流入側を閉塞するisolation／sandwich法が基本。親血管温存が必要な場合や流出路がない場合は、covered stent、瘤内または流入路塞栓などを検討する。</div>
+  <div class="answer"><span class="key">2 d</span>　ゼラチンスポンジは一般に一時的塞栓として整理する。他は永久的／長期閉塞。</div>
+  <div class="answer"><span class="key">3 b, c</span>　NBCAは血液中で重合し、リピオドール混合で視認性・到達を調整する。凝固能に依存しにくく、接着と非標的塞栓が重要。</div>
+  <div class="answer"><span class="key">4 b</span>　近位コイルは将来の末梢アクセスを閉ざし、側副路再発にも弱い。</div>
+  <div class="answer"><span class="key">5 a</span>　症候性子宮筋腫UAEではマイクロスフィアなど粒子状材料が中心。</div>
+  <div class="answer"><span class="key">6 d</span>　近位主幹動脈だけの閉塞はnidusを残し、側副路を発達させる。</div>
+  <div class="answer"><span class="key">7 a</span>　covered stentは破綻部を覆いながら親血管を温存できる。解剖・感染・在庫に制約。</div>
+  <div class="answer"><span class="key">8 a</span>　NBCAは凝固能に依存しにくく、細径・蛇行血管で有用。ただし注入制御が前提。</div>
+  <div class="answer"><span class="key">9 a, b</span>　腹腔動脈狭窄に伴う側副血流増加が関与し、膵十二指腸動脈瘤は径にかかわらない治療を考える。</div>
+  <div class="answer"><span class="key">10 c</span>　瘤血流は止めても、短胃・胃大網動脈などにより脾実質灌流は残りうる。</div>
+
+  <div class="answer"><span class="key">11 e</span>　慢性喀血では異常血管増生、拡張・蛇行、シャント、非気管支動脈が多く、明瞭な造影剤血管外漏出（extravasation）は比較的稀。</div>
+  <div class="answer"><span class="key">12 b</span>　脊髄動脈への非標的塞栓による脊髄梗塞が最重篤。</div>
+  <div class="answer"><span class="key">13 a, b</span>　BAE前CTAは気管支動脈と非気管支性体循環動脈、肺動脈病変をマッピングする。</div>
+  <div class="answer"><span class="key">14 d</span>　近位コイル単独を一律の第一選択にはしない。特定状況のコイル使用とは区別する。</div>
+  <div class="answer"><span class="key">15 b, c</span>　BRTOは短絡閉鎖で門脈圧を上げ、食道静脈瘤を悪化させうる一方、シャント性脳症を改善しうる。</div>
+  <div class="answer"><span class="key">16 a</span>　側副排血路を処理し、少量ずつの注入で胃静脈瘤内停滞を得る。</div>
+  <div class="answer"><span class="key">17 a, b</span>　難治性腹水・制御困難な静脈瘤出血が代表。制御不能な重症肝性脳症、重症右心不全、活動性敗血症は一般に禁忌または重大な除外要因で、絶対・相対の分類は指針と病態による。</div>
+  <div class="answer"><span class="key">18 a</span>　門脈血が肝を迂回するため肝性脳症が増える。</div>
+  <div class="answer"><span class="key">19 a</span>　右下横隔動脈は肝ドーム部HCCの代表的肝外供血路。</div>
+  <div class="answer"><span class="key">20 b</span>　DEB-TACE中の腫瘍内の湖状造影剤貯留がvascular lake。</div>
+
+  <div class="answer"><span class="key">21 b</span>　急性VTEがあり、脳出血直後で抗凝固できない状況が代表的適応。</div>
+  <div class="answer"><span class="key">22 a</span>　通常は腎静脈合流部より尾側。</div>
+  <div class="answer"><span class="key">23 b</span>　低圧バルーンで内側からタンポナーデし、外から圧迫。止血不良ならstent graft／外科。</div>
+  <div class="answer"><span class="key">24 c</span>　右は短くIVCへ直接、左は左下横隔静脈と共通幹を作り左腎静脈へ。</div>
+  <div class="answer"><span class="key">25 b</span>　原発性アルドステロン症のAVSでは、コルチゾール比で選択的採血の成否を評価し、アルドステロン／コルチゾール比で血液希釈を補正する。</div>
+  <div class="answer"><span class="key">26 a</span>　尺側皮静脈は一般に径が大きく直線的で候補になりやすい。ただし超音波で血管径、カテーテル／静脈比、血栓、動脈・神経との位置関係を確認し、将来の透析アクセスも考慮する。</div>
+  <div class="answer"><span class="key">27 b</span>　分枝から逆行性流入するType II。</div>
+  <div class="answer"><span class="key">28 c</span>　接合部離開・グラフト破損はType III。</div>
+  <div class="answer"><span class="key">29 a</span>　患側である左を下にし、健側肺への血液流入を防ぐ。</div>
+  <div class="answer"><span class="key">30 a</span>　可能なら100%酸素を直ちに投与し、ABCを安定化する。神経・循環器症状を伴う場合は、重症度の印象だけで待たず、高圧酸素療法について緊急相談する。</div>
+
+  <div class="answer"><span class="key">31 c</span>　画像上確認される軽微なものを含め、腎腫瘍生検では出血性合併症、とくに腎周囲血腫が多い。</div>
+  <div class="answer"><span class="key">32 a</span>　長期虚脱肺の急速再膨張後、数時間で患側肺水腫を来す。</div>
+  <div class="answer"><span class="key">33 c</span>　高圧造影は菌血症・敗血症を招きうる。</div>
+  <div class="answer"><span class="key">34 a, b</span>　小径腎癌の画像下局所治療として凍結療法とRFA。</div>
+  <div class="answer"><span class="key">35 a</span>　流れる血液が熱を奪うheat-sink effect。</div>
+  <div class="answer"><span class="key">36 a, b</span>　凍結域であるice ballの可視化と複数の凍結針で治療域を作れることが特徴。出血・周囲臓器損傷に注意し、腫瘍辺縁の安全域も必要。</div>
+  <div class="answer"><span class="key">37 a, b</span>　葉間と太い血管を避け、肺実質距離・病変との距離・嚢胞を比較する。</div>
+  <div class="answer"><span class="key">38 b</span>　径は一要素。TSC関連と散発性でも判断が異なる。</div>
+  <div class="answer"><span class="key">39 a</span>　鎖骨と第1肋骨間で圧迫されるpinch-offは断裂・塞栓の原因。</div>
+  <div class="answer"><span class="key">40 b, d</span>　TIPSは脳症を悪化させうる。流入路・流出路があり親血管を犠牲にできる仮性瘤ではisolationを考える。BRTOは門圧を上げうる。</div>
+</section>
+
+<section id="past-index">
+  <h1 class="chapter">18. 過去問34問の全件索引</h1>
+  <p>アプリで「放射線診断専門医認定試験」2015〜2025年のうち、カテゴリーが「IVR」の34問を全件確認した。下表の「登録解答」は<strong>現在のアプリ登録値</strong>であり、公式正答の保証ではない。問題文・画像・選択肢はアプリ側で確認し、この表は復習の道標として使う。</p>
+  <div class="table-wrap"><table class="tight very-small">
+    <thead><tr><th>年度・問</th><th>ID</th><th>主題</th><th>登録解答</th><th>一行で残す知識</th></tr></thead>
+    <tbody>
+      <tr><td>2015 Q45†</td><td>949</td><td>鎖骨下動脈仮性瘤</td><td>e</td><td>バルーンで血管壁を圧迫する発想。画像と選択肢を再確認。</td></tr>
+      <tr><td>2016 Q64</td><td>1048</td><td>BRTO</td><td>c</td><td>胃腎短絡をバルーン閉塞し、逆行性に胃静脈瘤を閉鎖。</td></tr>
+      <tr><td>2017 Q31</td><td>1095</td><td>胸水ドレナージ</td><td>b</td><td>長期虚脱肺の再膨張後に再膨張性肺水腫。</td></tr>
+      <tr><td>2017 Q63</td><td>1127</td><td>外傷性出血</td><td>b, c</td><td>一時塞栓のゼラチンと局所閉塞のfibered coilを使い分ける。</td></tr>
+      <tr><td>2017 Q64</td><td>1128</td><td>HCC肝外供血</td><td>e</td><td>肝ドーム部では右下横隔動脈を疑う。</td></tr>
+      <tr><td>2018 Q23</td><td>1167</td><td>ライン・チューブ</td><td>e</td><td>走行と先端から留置血管を同定する。</td></tr>
+      <tr><td>2018 Q55</td><td>1199</td><td>血管炎・腎梗塞</td><td>a, c</td><td>多発動脈瘤と臓器梗塞を病態で結ぶ。</td></tr>
+      <tr><td>2018 Q61</td><td>1205</td><td>BAE</td><td>c, d</td><td>術前CTAと、非標的脊髄動脈塞栓による脊髄梗塞。</td></tr>
+      <tr><td>2019 Q62</td><td>1286</td><td>術後仮性瘤</td><td>b, d</td><td>isolationとcovered stentによる親血管温存。</td></tr>
+      <tr><td>2019 Q63</td><td>1287</td><td>TIPS</td><td>a, c</td><td>制御困難な静脈瘤出血と難治性腹水が代表的対象。</td></tr>
+      <tr><td>2019 Q64†</td><td>1288</td><td>高流量AVM</td><td>a, d</td><td>nidusを意識し、NBCA／エタノールの強さと危険を比較。</td></tr>
+      <tr><td>2020 Q46</td><td>1350</td><td>BRTO側副路</td><td>b</td><td>硬化剤流出路を先に処理して標的内停滞を得る。</td></tr>
+      <tr><td>2021 Q46</td><td>1414</td><td>膵十二指腸動脈瘤</td><td>b</td><td>腹腔動脈狭窄との関連、破裂リスク、側副血行を読む。</td></tr>
+      <tr><td>2021 Q57</td><td>1425</td><td>UAE合併症</td><td>b</td><td>卵巣血流への影響と無月経を含む合併症。</td></tr>
+      <tr><td>2021 Q58</td><td>1426</td><td>BAE安全確認</td><td>c</td><td>手技中の神経症状は脊髄虚血を警戒。</td></tr>
+      <tr><td>2022 Q58</td><td>1506</td><td>透析シャントPTA破裂</td><td>e</td><td>低圧バルーンタンポナーデと用手圧迫が初期対応。</td></tr>
+      <tr><td>2022 Q59</td><td>1507</td><td>AVS</td><td>b, e</td><td>右副腎静脈の短い走行とコルチゾールによる選択性評価。</td></tr>
+      <tr><td>2023 Q20</td><td>1548</td><td>胸水ドレナージ</td><td>d</td><td>排液後数時間の患側浸潤影は再膨張性肺水腫。</td></tr>
+      <tr><td>2023 Q57†</td><td>1585</td><td>BRTO手順</td><td>b</td><td>側副路処理後、少量ずつ注入して胃静脈瘤内停滞を確認。胃静脈瘤描出の有無に疑義注記。</td></tr>
+      <tr><td>2024 Q37</td><td>1645</td><td>心房細動アブレーション前CT</td><td>d</td><td>左房内血流停滞と血栓を造影相・遅延像で区別。</td></tr>
+      <tr><td>2024 Q58</td><td>1666</td><td>腎AML・TSC</td><td>c</td><td>両側多発AMLと出血リスクからTSC背景を考える。</td></tr>
+      <tr><td>2024 Q69</td><td>1677</td><td>GDA断端仮性瘤</td><td>d</td><td>近位だけでなく流出側と流入側をcoil isolation。</td></tr>
+      <tr><td>2024 Q70</td><td>1678</td><td>小径腎腫瘍</td><td>a, c</td><td>画像下局所治療は凍結療法とRFA。</td></tr>
+      <tr><td>2024 Q71</td><td>1679</td><td>下部消化管出血</td><td>b, e</td><td>超選択的coil／NBCAを病態・凝固能・到達性で選ぶ。</td></tr>
+      <tr><td>2024 Q72</td><td>1680</td><td>子宮筋腫UAE</td><td>c</td><td>腫瘍血管床を狙う粒子／マイクロスフィア。</td></tr>
+      <tr><td>2024 Q73</td><td>1681</td><td>PICC</td><td>d</td><td>尺側皮静脈は候補になりやすいが、超音波所見とCKD背景も確認。</td></tr>
+      <tr><td>2024 Q74†</td><td>1682</td><td>VATSマーカー</td><td>c</td><td>太い血管・葉間・嚢胞を避けた安全な経路を画像で選ぶ。</td></tr>
+      <tr><td>2025 Q37</td><td>1745</td><td>AFアブレーション前解剖</td><td>a, b</td><td>IVC欠損と奇静脈連結は静脈アクセスを変える。</td></tr>
+      <tr><td>2025 Q68</td><td>1776</td><td>腎腫瘍生検</td><td>d</td><td>最も多いのは出血性合併症、とくに腎周囲血腫。</td></tr>
+      <tr><td>2025 Q69</td><td>1777</td><td>IVCフィルター</td><td>b</td><td>脳出血直後の急性DVTは抗凝固禁忌の代表例。</td></tr>
+      <tr><td>2025 Q70</td><td>1778</td><td>BAE所見</td><td>b</td><td>慢性喀血では明瞭な造影剤漏出は比較的少ない。</td></tr>
+      <tr><td>2025 Q71</td><td>1779</td><td>DEB-TACE</td><td>d</td><td>腫瘍内の湖状造影剤貯留はvascular lake。</td></tr>
+      <tr><td>2025 Q72</td><td>1780</td><td>脾動脈瘤isolation</td><td>d</td><td>瘤を止めても側副路により脾実質灌流は残りうる。</td></tr>
+      <tr><td>2025 Q74</td><td>1782</td><td>肺結節IVR</td><td>d</td><td>生検・焼灼・マーカー留置と、喀血治療のBAEを区別。</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warning"><strong>† 解答監査上の注意：</strong>2015 Q45、2019 Q64、2023 Q57にはアプリ内で「疑義あり」の注記があり、2024 Q74にも登録解答への異論を示すコメントがある。これらは答えの文字を単独暗記せず、画像・原典・病態を優先する。</div>
+  <h2>カテゴリー外だが併せて見る問題</h2>
+  <p class="small">IVR分類だけでは拾えない周辺問題として、IVCフィルター（ID 948）、静脈奇形（1126）、Type II endoleak（1206・1330・1781）、CVポート（1207）、腎AVF塞栓（1349）、肺AVM（1392）、肺生検合併症（1427・1505）、超音波周波数（1525）、RCC凍結（1586）、AML塞栓（1587）、RPOC（1670）も復習対象になる。</p>
+</section>
+
+<section id="sources">
+  <h1 class="chapter">19. 添付書籍ページ案内・参考資料</h1>
+  <p>本文は3冊を横断して再構成した。下表は<strong>図を見て理解したいときの逆引き</strong>で、ページは原則として書籍の印刷ページを示す。PDFビューア上のページ番号は版面の前付け分だけずれる。</p>
+  <div class="table-wrap"><table class="tight small">
+    <thead><tr><th>添付資料</th><th>重点ページ（印刷頁）</th><th>PDF頁の目安</th><th>使いどころ</th></tr></thead>
+    <tbody>
+      <tr><td>『皆伝! IVRの知恵 第2版』（金芳堂、2018）</td><td>BAE 2–13、消化管出血 28–40、TACE 42–60、AML 107–109、UAE 116–121、血管奇形 151–172、内臓動脈瘤 173–186、BRTO 230–259、TIPS 260–263、VAIVT 276–283、IVC filter 294–297、AVS 318–321、塞栓物質 394–418</td><td>印刷頁＋12</td><td>実践的な手技の勘所と塞栓物質の比較</td></tr>
+      <tr><td>『IVRマニュアル 第2版』</td><td>基礎 6–26、消化管出血・仮性瘤 97–102、塞栓物質 109–113、動脈瘤 152–155、BAE 164–167、TIPS 168–173、BRTO 174–180、生検 251–255、RFA 265–274、凍結 275–280、ドレナージ 281–284、安全管理 314–370</td><td>印刷頁＋18</td><td>体系的な原理、適応、合併症、安全管理</td></tr>
+      <tr><td>『IVR』（改訂版、2005）</td><td>基本器具・塞栓物質 5–13、造影剤 14–19、被曝 20–25、肺RFA 79–82、BAE 91–96、肝RFA 129–132、TIPS 139–147、BRTO 148–151、PTBD 157–166、腎腫瘍塞栓 205、腎RFA 206–207、腎腫瘍Q&amp;A 211、動脈瘤 301–306、膿瘍ドレナージ 378–384、CT生検 385–391</td><td>印刷頁＋24</td><td>古典的原理と模式図。数値・製品・適応は旧版として扱う</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><strong>書籍の読み順：</strong>試験論点を本資料で把握 → 上表の症例図・血管走行を見る → 過去問画像で「流入・流出・危険枝・治療終点」を指差す。古い成功率、薬剤量、デバイス径、被曝限度をそのまま暗記しない。</div>
+
+  <h2>現行情報の確認に用いた主な学会資料（文書年を併記）</h2>
+  <ul class="small">
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9117352/">CIRSE BAE Standards（2022）</a>：術前CTA、責任血管、塞栓材料、重要臓器枝・危険吻合の回避。</li>
+    <li><a href="https://www.sirweb.org/for-press/society-of-interventional-radiology-publishes-ivc-filter-guidelines/">SIR IVC filter guideline summary（2020）</a>：一律留置を避け、抗凝固禁忌などで検討し、不要後は回収を追跡。</li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10770226/">CIRSE visceral/renal aneurysm standards（2024）</a>：仮性瘤の流入・流出路、親血管温存、部位・径・症状に基づく治療判断。</li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10844414/">CIRSE endoleak standards（2024）</a>：endoleak分類、Type IIの監視と治療判断。</li>
+    <li><a href="https://pubmed.ncbi.nlm.nih.gov/39550753/">CIRSE TIPS standards（2024）</a>：TIPSの適応、禁忌評価、脳症・心機能。</li>
+    <li><a href="https://www.jstage.jst.go.jp/article/interventionalradiology/10/0/10_2024-0025/_pdf/-char/en">日本IVR学会 子宮筋腫UAEガイドライン英語版（2025）</a>：絶対的禁忌、妊孕性温存、塞栓物質。</li>
+    <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12519924/">Safe vascular access（2025）</a>：PICCの超音波評価、カテーテル／静脈比、CKD患者の静脈温存。</li>
+    <li><a href="https://www.jsir.or.jp/docs/nbca/130107_NBCA.pdf">日本IVR学会 NBCAガイドライン（2012）</a>、<a href="https://www.jsir.or.jp/docs/guideline/gelatin_sponge%20guidelines2410.pdf">ゼラチンスポンジ使用ガイドライン（2024）</a>、<a href="https://www.jsir.or.jp/docs/guideline/%E3%82%A8%E3%82%BF%E3%83%8E%E3%83%BC%E3%83%AB%E3%82%AC%E3%82%A4%E3%83%89%E3%83%A9%E3%82%A4%E3%83%B32016%E3%83%9B%E3%83%BC%E3%83%A0%E3%83%9A%E3%83%BC%E3%82%B8%E5%85%AC%E9%96%8B%E7%94%A8.pdf">エタノール使用ガイドライン（2016）</a>。</li>
+    <li><a href="https://www.jsir.or.jp/about/guide_line/va2024/">日本IVR学会 内臓動脈瘤・腎動脈瘤診療ガイドライン（2024）</a>。</li>
+  </ul>
+  <p class="source"><strong>作成方法：</strong>過去問DBは読み取り専用で集計し、ユーザー履歴は参照していない。添付PDFから図表を転載せず、概念を文章・模式化して再構成した。リンクと医学情報は2026年8月7日確認。実臨床用の手技書ではない。</p>
+</section>
+
+<section id="last-check">
+  <h1 class="chapter">20. 試験直前チェックリスト</h1>
+  <div class="card-grid small">
+    <div class="card"><h3>血流と塞栓</h3><ul>
+      <li>□ 一時的／永久的、近位／末梢、凝固能依存を説明できる</li>
+      <li>□ packingとisolationを図なしで説明できる</li>
+      <li>□ NBCAの逆流・接着・非標的塞栓を言える</li>
+      <li>□ 高流量AVMでnidusを残す危険を言える</li>
+      <li>□ 脾動脈瘤治療後も側副血流が残ると説明できる</li>
+    </ul></div>
+    <div class="card"><h3>頻出手技</h3><ul>
+      <li>□ BAE前CTA、非気管支動脈、脊髄動脈を確認した</li>
+      <li>□ BRTOとTIPSの門脈圧・脳症を逆向きに言える</li>
+      <li>□ TACEの肝外供血路とvascular lakeを言える</li>
+      <li>□ Type II endoleakの流入・流出枝を考えられる</li>
+      <li>□ IVC filterを抗凝固の代用品にしていない</li>
+    </ul></div>
+    <div class="card"><h3>穿刺と合併症</h3><ul>
+      <li>□ 肺生検後喀血＝患側下、動脈空気塞栓＝100%酸素・ABC・高圧酸素を緊急相談</li>
+      <li>□ 腎腫瘍生検＝腎周囲血腫</li>
+      <li>□ 胸水排液後＝再膨張性肺水腫</li>
+      <li>□ 膿瘍腔・感染胆管を強圧造影しない</li>
+      <li>□ シャントPTA破裂＝低圧balloon＋圧迫</li>
+    </ul></div>
+    <div class="card"><h3>画像の最終確認</h3><ul>
+      <li>□ 病変、流入路、流出路、危険枝を指せる</li>
+      <li>□ 造影前・治療前・治療後を取り違えない</li>
+      <li>□ extravasationがない＝出血源なし、としない</li>
+      <li>□ カテーテル先端と側孔の位置を確認する</li>
+      <li>□ 解答監査上の注意がある4問を画像とともに再確認した</li>
+    </ul></div>
+  </div>
+
+  <h2>7日で一周するなら</h2>
+  <div class="table-wrap"><table class="tight small">
+    <thead><tr><th>日</th><th>範囲</th><th>到達目標</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>ミニ用語集・第0〜5章</td><td>目的→標的→血流→経路→道具→終点→合併症の順で話す。</td></tr>
+      <tr><td>2</td><td>第6・7章</td><td>仮性瘤isolationとBAEの危険枝を描く。</td></tr>
+      <tr><td>3</td><td>第8・9章</td><td>BRTO/TIPSを比較し、TACE肝外供血路を覚える。</td></tr>
+      <tr><td>4</td><td>第10〜12章</td><td>動脈瘤、AVM、静脈アクセス、endoleakを整理。</td></tr>
+      <tr><td>5</td><td>第13〜15章</td><td>生検・ドレナージ・焼灼、AF前CTの要点と引っかけを即答。</td></tr>
+      <tr><td>6</td><td>第16・17章</td><td>画像観察6題と40問を解き、誤答を7段階のどこかに分類。</td></tr>
+      <tr><td>7</td><td>第18〜20章＋過去問</td><td>34問を全件確認し、チェック欄を埋める。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>略語・専門語の最終確認</h2>
+  <p class="small">冒頭のミニ用語集へ戻り、<strong>DSA／CTA、BAE／BRTO／TIPS、TACE／DEB-TACE／UAE、PVA／NBCA／EO、DVT／PE／VTE、HCC／AML／TSC、PICC、EVAR、RFA／MWA、VATS、nidus、packing／isolation、endpoint、flow void、heat-sink、hydrodissection</strong>を日本語で一言説明する。</p>
+  <div class="callout exam"><strong>最後の一言：</strong>手技名を思い出せなくても、目的、標的、血流、到達経路、道具、治療終点、合併症の順に戻れば選択肢は削れる。IVRは「器具の暗記」ではなく、画像で経路と危険を管理する問題である。</div>
+</section>
+
+</main>
+</body>
+</html>

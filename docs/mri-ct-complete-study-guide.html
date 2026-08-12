@@ -1,0 +1,2684 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MRI・CT 原理と撮像法 完全学習ノート</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 16mm; }
+@media print {
+  html, body { background: #fff !important; }
+  body { margin: 0; }
+  a { color: inherit; text-decoration: none; }
+  .cover { break-after: page; }
+  .toc { break-after: page; }
+  hr:has(+ h1) { display: none; }
+  h1.part-title { break-before: page; break-after: page; }
+  h1.chapter-title { break-before: auto; break-after: avoid-page; }
+  h2, h3 { break-after: avoid-page; }
+  pre, blockquote { break-inside: avoid; }
+  tr { break-inside: avoid; }
+  thead { display: table-header-group; }
+}
+* { box-sizing: border-box; }
+html { background: #e9eef3; }
+body {
+  margin: 0 auto;
+  max-width: 210mm;
+  color: #172331;
+  background: #fff;
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-size: 10pt;
+  line-height: 1.72;
+  letter-spacing: .012em;
+  counter-reset: chapter;
+}
+main { padding: 0 2mm 8mm; }
+.cover {
+  min-height: 267mm;
+  margin: -14mm -14mm 0;
+  padding: 34mm 20mm 24mm;
+  color: #f7fbff;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(47,181,181,.30), transparent 30%),
+    linear-gradient(145deg, #10273c 0%, #173a57 52%, #17626c 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cover-kicker { color: #8fe1df; font-size: 11pt; font-weight: 700; letter-spacing: .16em; }
+.cover h1 { margin: 8mm 0 4mm; font-size: 31pt; line-height: 1.25; letter-spacing: .02em; }
+.cover h2 { margin: 0; font-size: 16pt; color: #dcecf4; font-weight: 500; }
+.cover .route { margin-top: 13mm; padding-left: 5mm; border-left: 3px solid #66cbc7; font-size: 12pt; line-height: 2; }
+.cover .meta { color: #d3e5ed; font-size: 9pt; }
+.cover .badge { display: inline-block; margin-right: 2mm; padding: 1.4mm 3mm; border: 1px solid rgba(255,255,255,.45); border-radius: 99px; }
+.document-title { display: none; }
+.toc { padding: 8mm 3mm 0; }
+.toc h1 { margin-bottom: 6mm; font-size: 22pt; color: #123f5b; }
+.toc ol { columns: 2; column-gap: 10mm; padding: 0; list-style: none; }
+.toc li { break-inside: avoid; margin: 0 0 1.8mm; line-height: 1.35; }
+.toc a { color: #253848; text-decoration: none; }
+.toc-major { margin-top: 2.8mm !important; font-weight: 700; }
+.toc-minor { padding-left: 4mm; color: #526574; font-size: 8.7pt; }
+h1.part-title {
+  min-height: 235mm;
+  margin: 0 -2mm;
+  padding: 80mm 12mm 0;
+  color: #fff;
+  background: linear-gradient(150deg, #153b57, #176f73);
+  font-size: 29pt;
+  line-height: 1.25;
+}
+h1.chapter-title {
+  margin: 0 0 7mm;
+  padding: 9mm 0 4mm;
+  color: #103d59;
+  border-bottom: 2px solid #44a7a6;
+  font-size: 22pt;
+  line-height: 1.25;
+}
+h2 { margin: 8mm 0 3mm; color: #175a68; font-size: 15pt; line-height: 1.35; }
+h3 { margin: 6mm 0 2mm; color: #375d71; font-size: 11.5pt; }
+p { margin: 0 0 3.2mm; }
+strong { color: #0b5260; font-weight: 700; }
+em { color: #3f5668; }
+hr { border: 0; border-top: 1px solid #cbd7df; margin: 7mm 0; }
+blockquote {
+  margin: 5mm 0;
+  padding: 4mm 5mm;
+  color: #263e4d;
+  background: #edf7f7;
+  border-left: 4px solid #339e9c;
+  border-radius: 0 3mm 3mm 0;
+}
+code {
+  padding: .15em .38em;
+  color: #782d45;
+  background: #f6edf1;
+  border-radius: 3px;
+  font-family: "Noto Sans Mono CJK JP", "Noto Sans Mono", monospace;
+  font-size: .92em;
+}
+pre {
+  margin: 4mm 0 5mm;
+  padding: 4mm 5mm;
+  overflow: hidden;
+  color: #eaf7f7;
+  background: #163243;
+  border-radius: 3mm;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+pre code { padding: 0; color: inherit; background: transparent; font-size: 8.8pt; }
+ul, ol { margin: 1.5mm 0 4mm; padding-left: 6mm; }
+li { margin: 0 0 1.5mm; padding-left: 1mm; }
+li::marker { color: #2d8c8d; font-weight: 700; }
+.table-wrap { margin: 4mm 0 5mm; }
+table { width: 100%; border-collapse: collapse; font-size: 8.45pt; line-height: 1.5; }
+th { padding: 2.2mm 2.4mm; color: #fff; background: #1c6570; border: 1px solid #1c6570; text-align: left; vertical-align: top; }
+td { padding: 2mm 2.4mm; border: 1px solid #c7d5dc; vertical-align: top; }
+tbody tr:nth-child(even) td { background: #f3f7f8; }
+td code { white-space: nowrap; }
+a { color: #146b82; text-underline-offset: 2px; }
+@media screen {
+  body { padding: 14mm; box-shadow: 0 0 28px rgba(24,49,68,.18); }
+  .cover { margin: -14mm -14mm 12mm; }
+  h1.part-title { margin: 0 -2mm 8mm; min-height: 180mm; }
+}
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div>
+    <div class="cover-kicker">診断放射線学・完全学習資料</div>
+    <h1>MRI・CT<br>原理と撮像法</h1>
+    <h2>過去問頻出事項から逆算した「これ1冊」</h2>
+    <div class="route">原理 → 撮像条件 → 画像の見え方<br>画質 → アーチファクト → 安全 → 演習</div>
+  </div>
+  <div class="meta">
+    <p><span class="badge">3冊統合</span><span class="badge">現行知識で補正</span><span class="badge">44問＋解説</span></p>
+    <p>2026年8月3日版<br>診断放射線科専門医試験を中心とする画像診断学習用</p>
+  </div>
+</section>
+
+<nav class="toc"><h1>目次</h1><ol>
+<li class="toc-minor"><a href="#section-2">過去問頻出事項から逆算した「これ1冊」</a></li>
+<li class="toc-minor"><a href="#section-3">最初に覚える10行</a></li>
+<li class="toc-major"><a href="#section-4">0. 過去問からみた優先順位</a></li>
+<li class="toc-major"><a href="#section-6">第I部　MRI</a></li>
+<li class="toc-major"><a href="#section-7">1. MRIは何を画像にしているか</a></li>
+<li class="toc-minor"><a href="#section-8">1-1. 信号が生まれるまで</a></li>
+<li class="toc-minor"><a href="#section-9">1-2. T1・T2・T2*を一本の物語にする</a></li>
+<li class="toc-minor"><a href="#section-11">1-3. プロトン密度だけでは信号は決まらない</a></li>
+<li class="toc-major"><a href="#section-13">2. 位置情報とk空間</a></li>
+<li class="toc-minor"><a href="#section-14">2-1. 3本の傾斜磁場の役割</a></li>
+<li class="toc-minor"><a href="#section-16">2-2. k空間は「画像の設計図」</a></li>
+<li class="toc-minor"><a href="#section-17">2-3. 撮像視野（FOV）・マトリックス・ボクセル</a></li>
+<li class="toc-minor"><a href="#section-18">2-4. 撮像時間</a></li>
+<li class="toc-major"><a href="#section-20">3. 基本撮像法を系統立てる</a></li>
+<li class="toc-minor"><a href="#section-21">3-1. SEと高速／ターボスピンエコー（FSE/TSE）</a></li>
+<li class="toc-minor"><a href="#section-22">3-2. GRE系</a></li>
+<li class="toc-minor"><a href="#section-23">3-3. IR：TIで特定組織を消す</a></li>
+<li class="toc-minor"><a href="#section-24">3-4. EPI、並列撮像、3D撮像</a></li>
+<li class="toc-major"><a href="#section-25">4. 脂肪、水、血液を分ける</a></li>
+<li class="toc-minor"><a href="#section-26">4-1. 脂肪抑制法の使い分け</a></li>
+<li class="toc-minor"><a href="#section-28">4-2. 磁化率と血液産物</a></li>
+<li class="toc-minor"><a href="#section-29">4-3. 造影剤が「光る」のではない</a></li>
+<li class="toc-major"><a href="#section-30">5. DWI・ADC・DTI：最頻出の機能画像</a></li>
+<li class="toc-minor"><a href="#section-31">5-1. DWIの原理</a></li>
+<li class="toc-minor"><a href="#section-32">5-2. DWIとADCの4象限</a></li>
+<li class="toc-minor"><a href="#section-34">5-3. IVIM、DTI、トラクトグラフィ</a></li>
+<li class="toc-major"><a href="#section-35">6. 血流・灌流・機能を撮る</a></li>
+<li class="toc-minor"><a href="#section-36">6-1. MRAは3つの原理に分ける</a></li>
+<li class="toc-minor"><a href="#section-37">6-2. 代表的な機能・定量MRI</a></li>
+<li class="toc-minor"><a href="#section-38">6-3. MRCPと強いT2強調</a></li>
+<li class="toc-major"><a href="#section-39">7. MRIの画質と撮像条件の兼ね合い</a></li>
+<li class="toc-minor"><a href="#section-40">7-1. SNRの基本</a></li>
+<li class="toc-major"><a href="#section-42">8. MRIアーチファクト完全表</a></li>
+<li class="toc-major"><a href="#section-43">9. MRI安全</a></li>
+<li class="toc-major"><a href="#section-45">10. MRIの代表的な撮像構成：何を選ぶか</a></li>
+<li class="toc-major"><a href="#section-46">MRI章の最終確認</a></li>
+<li class="toc-major"><a href="#section-47">第II部　CT</a></li>
+<li class="toc-major"><a href="#section-48">11. CTは何を画像にしているか</a></li>
+<li class="toc-minor"><a href="#section-49">11-1. X線が検出器へ届くまで</a></li>
+<li class="toc-minor"><a href="#section-51">11-2. CT値（HU）</a></li>
+<li class="toc-minor"><a href="#section-52">11-3. ウィンドウは「表示」であって再構成ではない</a></li>
+<li class="toc-major"><a href="#section-53">12. 装置構成・幾何学・撮影方式</a></li>
+<li class="toc-minor"><a href="#section-54">12-1. 主要部品</a></li>
+<li class="toc-minor"><a href="#section-55">12-2. 逐次撮影、ヘリカル撮影、多列検出器CT</a></li>
+<li class="toc-minor"><a href="#section-57">12-3. ヘリカルピッチ</a></li>
+<li class="toc-minor"><a href="#section-59">12-4. 撮影視野と表示・再構成視野</a></li>
+<li class="toc-major"><a href="#section-60">13. 投影データから断層像へ：画像再構成</a></li>
+<li class="toc-minor"><a href="#section-61">13-1. 単純な逆投影だけではぼける</a></li>
+<li class="toc-minor"><a href="#section-62">13-2. 現代の再構成法</a></li>
+<li class="toc-minor"><a href="#section-63">13-3. データ収集、再構成、表示を混ぜない</a></li>
+<li class="toc-major"><a href="#section-64">14. CT画質の4軸</a></li>
+<li class="toc-minor"><a href="#section-65">14-1. 面内空間分解能</a></li>
+<li class="toc-minor"><a href="#section-66">14-2. z軸分解能</a></li>
+<li class="toc-minor"><a href="#section-67">14-3. 低コントラスト分解能</a></li>
+<li class="toc-minor"><a href="#section-68">14-4. 時間分解能</a></li>
+<li class="toc-minor"><a href="#section-69">14-5. 撮影・再構成条件を変えたときの一覧</a></li>
+<li class="toc-minor"><a href="#section-71">14-6. 自動露出制御（AEC）と管電流変調</a></li>
+<li class="toc-major"><a href="#section-72">15. CTアーチファクト完全表</a></li>
+<li class="toc-major"><a href="#section-74">16. 造影CT：量・速さ・時相を分ける</a></li>
+<li class="toc-minor"><a href="#section-75">16-1. 3つの量</a></li>
+<li class="toc-minor"><a href="#section-76">16-2. 撮影時相の決め方</a></li>
+<li class="toc-minor"><a href="#section-77">16-3. 造影剤安全</a></li>
+<li class="toc-major"><a href="#section-78">17. 後処理：3D画像だけを見ない</a></li>
+<li class="toc-major"><a href="#section-79">18. CT線量と最適化</a></li>
+<li class="toc-minor"><a href="#section-80">18-1. 指標を区別する</a></li>
+<li class="toc-minor"><a href="#section-81">18-2. 正当化と最適化</a></li>
+<li class="toc-minor"><a href="#section-82">18-3. 線量を下げる実務</a></li>
+<li class="toc-major"><a href="#section-83">19. 発展的CT技術</a></li>
+<li class="toc-minor"><a href="#section-84">19-1. 心臓CT</a></li>
+<li class="toc-minor"><a href="#section-85">19-2. 二重エネルギー／スペクトラルCT</a></li>
+<li class="toc-minor"><a href="#section-86">19-3. フォトンカウンティングCT</a></li>
+<li class="toc-minor"><a href="#section-87">19-4. CT灌流画像</a></li>
+<li class="toc-minor"><a href="#section-88">19-5. CT透視と複合画像装置</a></li>
+<li class="toc-major"><a href="#section-89">20. 品質保証・品質管理と代表的な撮影手順</a></li>
+<li class="toc-minor"><a href="#section-90">20-1. 品質保証（QA）と品質管理（QC）</a></li>
+<li class="toc-minor"><a href="#section-91">20-2. 代表的な撮影手順：目的から逆算する</a></li>
+<li class="toc-major"><a href="#section-92">CT章の最終確認</a></li>
+<li class="toc-major"><a href="#section-93">第III部　統合して使う</a></li>
+<li class="toc-major"><a href="#section-94">21. MRIとCTの選び分け</a></li>
+<li class="toc-minor"><a href="#section-95">21-1. 代表的な臨床選択</a></li>
+<li class="toc-major"><a href="#section-96">22. 未知の画像・撮像法を読む手順</a></li>
+<li class="toc-minor"><a href="#section-97">22-1. MRI</a></li>
+<li class="toc-minor"><a href="#section-98">22-2. CT</a></li>
+<li class="toc-major"><a href="#section-99">23. 過去問のひっかけ集</a></li>
+<li class="toc-minor"><a href="#section-100">MRI</a></li>
+<li class="toc-minor"><a href="#section-101">CT</a></li>
+<li class="toc-major"><a href="#section-102">24. 数式・関係式 集約表</a></li>
+<li class="toc-minor"><a href="#section-103">MRI</a></li>
+<li class="toc-minor"><a href="#section-104">CT</a></li>
+<li class="toc-major"><a href="#section-105">25. 用語ミニ辞典</a></li>
+<li class="toc-major"><a href="#section-106">26. オリジナル確認問題 44問</a></li>
+<li class="toc-minor"><a href="#section-107">MRI 1〜18</a></li>
+<li class="toc-minor"><a href="#section-108">CT 19〜36</a></li>
+<li class="toc-minor"><a href="#section-109">頻出補充 37〜44</a></li>
+<li class="toc-major"><a href="#section-110">27. 解答と一行解説</a></li>
+<li class="toc-major"><a href="#section-111">28. 7日間で仕上げる読み方</a></li>
+<li class="toc-major"><a href="#section-112">29. 参照範囲と現行化</a></li>
+<li class="toc-minor"><a href="#section-113">提供された3冊</a></li>
+<li class="toc-minor"><a href="#section-115">現行安全・線量の一次資料</a></li>
+<li class="toc-major"><a href="#section-116">30. 最終まとめ</a></li>
+</ol></nav>
+<main><h1 id="section-1" class="document-title">MRI・CTの原理と撮像法 完全学習ノート</h1>
+<h2 id="section-2" class="">過去問頻出事項から逆算した「これ1冊」</h2>
+<p><strong>対象</strong>：診断放射線科専門医試験を中心とする画像診断の学習 <strong>版</strong>：2026年8月3日 <strong>参照書</strong>：『MRIに強くなるための原理の基本 やさしく、深く教えます』『わかりやすいMRI 2』『MDCTの基本 パワーテキスト』 <strong>編集方針</strong>：3冊の要点を再構成し、過去問で必要な周辺知識と現在の安全・線量概念を補った。図表はすべて本資料用の概念図であり、原書の図を転載していない。</p>
+<blockquote>この資料の目標は、用語を暗記することではなく、<strong>撮像条件を変えたときに、信号・コントラスト・分解能・時間・アーチファクト・安全性がどう動くかを説明できること</strong>である。装置名や固定の数値は施設・メーカー・磁場強度で変わるため、原理と方向性を優先する。</blockquote>
+<hr>
+<h2 id="section-3" class="">最初に覚える10行</h2>
+<ol>
+<li>磁気共鳴画像（MRI）は主に水素原子核の<strong>共鳴後の信号</strong>を、コンピュータ断層撮影（CT）はX線の<strong>線減弱係数</strong>を画像にする。</li>
+<li>スピンエコー（SE）系MRIのT1強調は原則「短い繰り返し時間（TR）・短いエコー時間（TE）」、T2強調は「長いTR・長いTE」、プロトン密度（PD）強調は「長いTR・短いTE」。グラジエントエコー（GRE）ではフリップ角と定常状態、反転回復法（IR）では反転時間（TI）も重要。</li>
+<li>SEは180°パルスで静的な磁場不均一による位相ずれを再収束し<strong>T2</strong>をみる。GREは180°パルスを使わず、<strong>T2</strong>*と磁化率に敏感。</li>
+<li>k空間の中央は信号とコントラスト、周辺は輪郭と細部に強く寄与する。どこから収集するかは撮像法によって異なる。</li>
+<li>拡散強調像（DWI）が高信号というだけで拡散制限と断定しない。<strong>DWI高信号＋見かけの拡散係数（ADC）低値</strong>を確認する。</li>
+<li>MRIでは、位相方向に動きのゴーストと折り返し、周波数方向に化学シフト・アーチファクト1型が出やすい。</li>
+<li>ハンスフィールド単位（HU）で表すCT値は <code>HU = 1000 × (μ − μ水) / μ水</code>。水0 HU、空気−1000 HUが基準。</li>
+<li>CTの量子雑音は概ね <code>1 / √mAs</code>、線量は概ね管電流時間積（mAs）に比例する。線量を半分にしても雑音は2倍ではなく約√2倍。</li>
+<li>CTのz軸分解能は再構成スライス厚だけでなく、検出器幅・ピッチ・補間・再構成法に依存する。</li>
+<li>容積CT線量指数（CTDIvol）は装置出力の指標で、線量長積（DLP）は <code>DLP = CTDIvol × 撮影長</code>。どちらも個々の患者の吸収線量そのものではない。</li>
+</ol>
+<hr>
+<h1 id="section-4" class="chapter-title">0. 過去問からみた優先順位</h1>
+<p>本アプリに収録された診断放射線科試験2015〜2025年の問題を確認すると、MRI・CTは臓器別問題にも広く埋め込まれている。直接「原理・撮像法」を問う問題では、MRIがほぼ毎年出題され、CTは問題数が少ない一方、問われる論点が絞られている。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>優先度</th>
+<th>MRI</th>
+<th>CT</th>
+</tr></thead><tbody>
+<tr>
+<td>S：必ず説明できる</td>
+<td>SE・高速スピンエコー（FSE）・GRE、TR/TE/TI、T1/T2/T2*、DWI/ADC、k空間、信号対雑音比（SNR）とマトリックス、脂肪抑制、磁化率</td>
+<td>CT値、ピッチ・スライス厚・z軸分解能、管電圧（kVp）・管電流時間積（mAs）と画質・線量、ビームハードニング、金属アーチファクト、CTDIvol・DLP</td>
+</tr>
+<tr>
+<td>A：頻出</td>
+<td>エコープラナー法（EPI）、並列撮像、MR血管撮像（MRA）、化学シフト、動き・折り返し、ガドリニウム（Gd）・超常磁性酸化鉄（SPIO）、逆位相、MRエラストグラフィ（MRE）</td>
+<td>ヘリカルCT・多列検出器CT（MDCT）、再構成関数、部分容積効果、造影時相、心電図同期、二重エネルギーCT（DECT）・仮想単色画像（VMI）・金属アーチファクト低減（MAR）</td>
+</tr>
+<tr>
+<td>B：周辺知識</td>
+<td>拡散テンソル画像（DTI）・異方性比率（FA）、ボクセル内インコヒーレント運動（IVIM）、動脈スピン標識（ASL）、動的磁化率コントラスト灌流（DSC）／動的造影MRI（DCE）、磁化率強調像（SWI）、MR胆管膵管撮影（MRCP）、遅延造影（LGE）、血中酸素濃度依存（BOLD）、MRスペクトロスコピー（MRS）</td>
+<td>逐次近似・深層学習再構成、サイズ別線量推定値（SSDE）、多断面再構成（MPR）・最大値投影（MIP）・ボリュームレンダリング（VR）、灌流、フォトンカウンティングCT</td>
+</tr>
+</tbody></table></div>
+<h3 id="section-5" class="">よく出る設問の形</h3>
+<ul>
+<li>「正しい／誤っている組合せ」を、<strong>撮像条件を変えたときの方向</strong>で判定する。</li>
+<li>画像や臨床目的から、使われた撮像法・再構成・アーチファクトを同定する。</li>
+<li>似た用語を対比する：T2対T2*、短い反転時間による脂肪抑制（STIR）対周波数選択的脂肪抑制、飛越時間法（TOF）対位相コントラスト法（PC）、CTDIvol対DLPなど。</li>
+<li>一見もっともらしい絶対表現を見抜く：「常に」「アーチファクトがない」「線量そのもの」「高信号なら拡散制限」などは疑う。</li>
+</ul>
+<hr>
+<h1 id="section-6" class="part-title">第I部　MRI</h1>
+<h1 id="section-7" class="chapter-title">1. MRIは何を画像にしているか</h1>
+<h2 id="section-8" class="">1-1. 信号が生まれるまで</h2>
+<blockquote><strong>まずこの理解</strong>：体内の水素原子核を「向きのそろいにくい小さな磁石」、静磁場を「小さな磁石をわずかに整列させる力」、高周波パルスを「そろった磁化を横へ倒す合図」と考えるとよい。これは比喩であり、正確には、水素原子核の磁気モーメントが静磁場中でわずかな分布差を生じ、集団としての磁化が高周波磁場に共鳴して向きを変える現象である。</blockquote>
+<p><strong>体内で何が起こるか</strong>：MRIでは、体内に多い水素原子核（プロトン）を主な信号源とする。個々の水素原子核は磁気モーメントをもち、静磁場 <code>B0</code> に入ると、静磁場と平行な状態が反平行な状態よりわずかに多くなる。この小さな差が集まって、静磁場方向の縦磁化 <code>Mz</code> が生じる。同時に、水素原子核は <code>B0</code> の周りを歳差運動する。</p>
+<p><strong>装置が何をするか</strong>：装置は、水素原子核の歳差運動と同じラーモア周波数の高周波（RF）磁場 <code>B1</code> を加え、磁化を傾けて横磁化 <code>Mxy</code> を作る。RFを止めると、縦磁化は回復し、横磁化は位相がばらついて減衰する。受信コイルが横磁化の時間変化を電気信号として検出し、傾斜磁場が位置情報を付ける。</p>
+<p><strong>画像にどう表れるか</strong>：組織ごとの水素原子核の量、縦磁化の回復速度、横磁化の減衰速度の違いが信号差となる。受信した信号をk空間に並べ、フーリエ変換すると画像になる。</p>
+<pre><code>B0をかける
+   ↓  水素原子核の分布にわずかな偏り → 縦磁化 Mz
+ラーモア周波数のRFを加える
+   ↓  共鳴して磁化が傾く → 横磁化 Mxyが生じる
+RFを止める
+   ├─ 縦方向へ戻る：T1緩和
+   └─ 横方向の位相が崩れる：T2/T2*緩和
+受信コイルが時間変化する横磁化を検出
+   ↓
+傾斜磁場で位置情報を付与 → k空間 → フーリエ変換 → 画像</code></pre>
+<p>ラーモア周波数は</p>
+<p><code>f0 = (γrad / 2π) B0</code></p>
+<p>である。ここで <code>γrad</code> は角磁気回転比（単位 rad/s/T）である。水素では <code>γrad / 2π ≈ 42.58 MHz/T</code> なので、1.5 Tでは約63.9 MHz、3 Tでは約127.7 MHzとなる。</p>
+<p>RF磁場 <code>B1</code> によるフリップ角は、磁場の強さと加える時間の積で決まる。理想化すると、角磁気回転比 <code>γrad</code> を用いて</p>
+<p><code>α = γrad ∫ B1(t) dt = 2π (γrad/2π) ∫ B1(t) dt</code></p>
+<p>と表せる。平衡磁化を角度αだけ倒すと、直後の成分は概念的に <code>Mz = M0 cos α</code>、<code>Mxy = M0 sin α</code> である。</p>
+<p><strong>試験の要点</strong>：静磁場が強いほど共鳴周波数は高い。RFは信号そのものを直接作るのではなく、縦磁化を傾けて受信可能な横磁化を作る。画像の明暗は「水素があるか」だけでなく、その後のT1回復とT2/T2*減衰をいつ測るかで変わる。</p>
+<h2 id="section-9" class="">1-2. T1・T2・T2*を一本の物語にする</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>現象</th>
+<th>何が回復／減衰するか</th>
+<th>理想式</th>
+<th>主に反映する撮像</th>
+</tr></thead><tbody>
+<tr>
+<td>T1緩和（スピン・格子緩和）</td>
+<td>縦磁化Mzの回復</td>
+<td><code>Mz(t)=M0[1−exp(−t/T1)]</code>（90°後）</td>
+<td>T1強調、スポイルドGRE、IR</td>
+</tr>
+<tr>
+<td>T2緩和（スピン・スピン緩和）</td>
+<td>スピン間相互作用による横磁化の減衰</td>
+<td><code>Mxy(t)=Mxy(0)exp(−t/T2)</code></td>
+<td>SE/FSEのT2強調</td>
+</tr>
+<tr>
+<td>T2*減衰</td>
+<td>T2＋静的磁場不均一・磁化率差</td>
+<td><code>1/T2* = 1/T2 + 1/T2′</code></td>
+<td>GRE、GRE-EPI、SWI、BOLD</td>
+</tr>
+</tbody></table></div>
+<p>通常は <code>T2 ≤ T1</code>、かつ <code>T2* ≤ T2</code>。180°再収束パルスは、時間的にほぼ一定な周波数ずれを再収束できるため、SEではT2*ではなくT2に近いエコーが得られる。ただし、真のスピン・スピン相互作用や拡散による不可逆な位相分散は元に戻せない。</p>
+<h3 id="section-10" class="">T1・T2を直感で覚える</h3>
+<ul>
+<li>T1：<strong>縦磁化の充電速度</strong>にたとえられる。正確には、縦磁化が平衡状態へ回復する時定数であり、短い組織ほど次のRFまでに早く回復する。</li>
+<li>T2：<strong>横磁化の足並みがそろっていられる時間</strong>にたとえられる。正確には、スピン・スピン相互作用により横磁化が減衰する時定数であり、長い組織ほどTEを待っても信号が残る。</li>
+<li>T2*：T2による不可逆な減衰に、装置や組織境界の静的な磁場むらによる可逆的な位相ずれが加わった見かけの減衰である。</li>
+</ul>
+<h2 id="section-11" class="">1-3. プロトン密度だけでは信号は決まらない</h2>
+<p>信号強度は、プロトン密度、T1、T2/T2*だけでなく、撮像法、TR、TE、TI、フリップ角、コイル感度、ボクセル、血流、拡散、磁化率、造影剤、再構成などの積み重ねで決まる。したがって「この物質は必ず高信号」と暗記せず、<strong>どの撮像法で、どの条件か</strong>を必ず付ける。</p>
+<p>代表的な傾向：</p>
+<ul>
+<li>脂肪：短いT1でT1高信号。脂肪抑制や同位相・逆位相画像で同定する。</li>
+<li>自由水・浮腫：長いT2でT2高信号。単純液体はFLAIRで抑制される。</li>
+<li>急性〜亜急性血腫：時期により酸素化ヘモグロビン、脱酸素化ヘモグロビン、メトヘモグロビン、ヘモジデリンへ変化し、T1・T2・磁化率が変わる。</li>
+<li>鉄・ヘモジデリン・空気・金属：局所磁場を乱し、特にT2*/GRE/SWIで信号低下とブルーミングを生じる。</li>
+<li>石灰化：多くは低信号だがMRI単独で鉄との区別が難しいことがあり、CTが有用。</li>
+<li>高蛋白・粘稠液：蛋白濃度や水分量によりT1短縮やT2短縮が起こり、単純な「液体＝T2高」から外れる。</li>
+<li>コラーゲンの多い線維性組織：動きやすい水素原子核が少なく、しばしばT2低信号。</li>
+<li>マジックアングル：腱などの規則的なコラーゲン線維がB0に対して約55°になると、短TE画像で偽高信号を示す。長TEのT2強調で軽減する。</li>
+</ul>
+<h3 id="section-12" class="">血腫の時相を最小限で整理</h3>
+<div class="table-wrap"><table><thead><tr>
+<th>概略時相</th>
+<th>主成分</th>
+<th>典型的T1</th>
+<th>典型的T2/T2*</th>
+<th>手がかり</th>
+</tr></thead><tbody>
+<tr>
+<td>超急性期</td>
+<td>細胞内酸素化ヘモグロビン</td>
+<td>等〜低</td>
+<td>T2高</td>
+<td>CTで急性血腫、MRIでは時相依存</td>
+</tr>
+<tr>
+<td>急性期</td>
+<td>細胞内脱酸素化ヘモグロビン</td>
+<td>等〜低</td>
+<td>T2/T2*低</td>
+<td>磁化率効果が出る</td>
+</tr>
+<tr>
+<td>亜急性期早期</td>
+<td>細胞内メトヘモグロビン</td>
+<td>高</td>
+<td>T2低</td>
+<td>T1高＋T2低</td>
+</tr>
+<tr>
+<td>亜急性期後期</td>
+<td>細胞外メトヘモグロビン</td>
+<td>高</td>
+<td>T2高</td>
+<td>T1/T2とも高くなりやすい</td>
+</tr>
+<tr>
+<td>慢性期の辺縁</td>
+<td>ヘモジデリン／フェリチン</td>
+<td>低〜等</td>
+<td>T2/T2*低</td>
+<td>GRE/SWIで辺縁のブルーミング</td>
+</tr>
+</tbody></table></div>
+<p>これは教育的な概略で、磁場強度、撮像法、部位、酸素化、再出血により所見は混在する。血腫の時相を1枚の画像だけで断定しない。</p>
+<hr>
+<h1 id="section-13" class="chapter-title">2. 位置情報とk空間</h1>
+<h2 id="section-14" class="">2-1. 3本の傾斜磁場の役割</h2>
+<p>傾斜磁場コイルは、位置に比例して磁場の強さを少しずつ変える。x・y・zの各軸は固定の役割をもつのではなく、選んだ断面に応じて次の3役へ割り当てられる。</p>
+<ol>
+<li><strong>スライス選択</strong>：RF照射中に傾斜磁場を加え、特定の周波数帯に対応する位置だけを励起する。</li>
+<li><strong>位相エンコード</strong>：短時間だけ傾斜磁場を加え、位置ごとに異なる位相を残す。強さを変えながら撮像を繰り返す。</li>
+<li><strong>周波数エンコード（読み出し）</strong>：信号の読み出し中に傾斜磁場を加え、位置を周波数差に変える。</li>
+</ol>
+<p>スライス厚は、RFパルスが励起する周波数帯域を狭くするほど、またスライス選択傾斜磁場を強くするほど薄くなる。概念式は</p>
+<p><code>Δz = BW_RF / [(γrad/2π) Gslice]</code></p>
+<p>である。<code>BW_RF</code> はRFパルスの周波数帯域、<code>Gslice</code> はスライス選択傾斜磁場の強さを表す。傾斜磁場をどれだけ速く立ち上げられるかをスルーレートという。高い傾斜磁場性能は薄いスライス、短いTE、EPI、DWIに有利だが、騒音と末梢神経刺激が制約になる。</p>
+<h3 id="section-15" class="">3種類のコイルを混同しない</h3>
+<ul>
+<li><strong>主磁石</strong>：静磁場B0を作る。通常の超電導MRIでは常時磁場が存在する。</li>
+<li><strong>傾斜磁場コイル</strong>：B0へ位置依存の小さな変化を重ね、スライス選択・位相エンコード・周波数エンコードを行う。急速な切替えが騒音と末梢神経刺激を生む。</li>
+<li><strong>RFコイル</strong>：B1の送信、信号の受信、または両方を担う。送信専用・受信専用・送受信兼用があり、全身コイルで送信し、局所のフェーズドアレイコイルで受信する構成も一般的である。表面コイルは近くで高いSNRを得やすいが感度が不均一である。フェーズドアレイコイルは複数の小コイルを組み合わせ、広い撮像範囲と並列撮像を両立する。受信コイルを対象へ近づけ、コイル内で対象が占める割合を高めるとSNRに有利である。</li>
+</ul>
+<h2 id="section-16" class="">2-2. k空間は「画像の設計図」</h2>
+<blockquote><strong>まずこの理解</strong>：k空間を「画像の設計図」と考えると、中央には全体の明暗やコントラスト、周辺には細かな輪郭が多く記録される。ただし、中央が画像の中央、周辺が画像の端に対応するわけではない。正確には、k空間は信号の空間周波数と位相を並べる生データ領域であり、1点ずつがフーリエ変換後の画像全体へ寄与する。</blockquote>
+<p><strong>体内で何が起こるか</strong>：RFで生じた横磁化は、組織の位置に応じて異なる位相と周波数をもつようになる。</p>
+<p><strong>装置が何をするか</strong>：傾斜磁場の強さと加える時刻を変え、位相エンコード方向と読み出し方向の信号を順番に収集してk空間へ配置する。</p>
+<p><strong>画像にどう表れるか</strong>：k空間中央の欠損や不整合は画像全体の信号とコントラストに強く影響し、周辺の欠損は輪郭をぼかす。収集後にフーリエ変換して位置ごとの画像へ戻す。</p>
+<pre><code>             ky（位相方向）
+                 ↑
+  周辺：高空間周波数 │ 周辺：輪郭・細部
+  ─────────────────────→ kx（読み出し方向）
+                 ●
+       中央：低空間周波数・信号・コントラスト
+
+中央だけ → ぼやけるが大まかなコントラストは残る
+周辺不足 → 輪郭が鈍る
+中央の動き・不整合 → 画像全体に強いアーチファクト</code></pre>
+<p>「k空間は中央から収集する」とは限らない。直線順、中心優先、中心後回し、放射状などの収集順があり、造影MRAや動態撮像では、中央をいつ取得するかが造影のタイミングを左右する。</p>
+<p>部分フーリエ法は、理想的な実数画像のフーリエデータがもつ共役対称性と位相推定を利用し、k空間の半分より多い部分を収集して残りを推定する。時間を短縮できるが、SNR低下、位相誤差、再構成アーチファクトが代価となる。単純な「鏡写し」や「SNRが必ず1/2」ではない。</p>
+<p>キーホール法／ビューシェアリングは、動態撮像でコントラストを担うk空間中央を頻回に更新し、周辺データを前後の時相から流用する。見かけの時間分解能は上がるが、急速な変化の時間方向のぼけや、古い輪郭情報が残る。</p>
+<p>2次元（2D）撮像では通常、1回の読み出しでkx方向の1行を収集し、位相エンコードを変えてky方向を埋める。3次元（3D）撮像ではスラブを励起し、さらにkz方向にも位相エンコードを行う。</p>
+<p><strong>試験の要点</strong>：k空間中央は主に信号とコントラスト、周辺は主に輪郭と細部に寄与する。どの領域も画像全体へ寄与し、収集順は一定ではない。位相エンコード回数を減らせば時間は短くなるが、分解能低下や折り返しなどの代価が生じる。</p>
+<h2 id="section-17" class="">2-3. 撮像視野（FOV）・マトリックス・ボクセル</h2>
+<p><code>画素寸法 = FOV / マトリックス</code></p>
+<p><code>ボクセル体積 = Δx × Δy × スライス厚</code></p>
+<p>同じFOVならマトリックスを増やすと画素は小さくなり、公称空間分解能は上がるが、1ボクセルの信号が減ってSNRは下がる。位相方向のマトリックスを増やすと、通常は撮像時間も延びる。読み出し方向のマトリックスを増やす場合は、同じ標本化時間なら受信帯域幅との関係も変わるため、単純な暗記にしない。</p>
+<p>FOVとk空間の標本化間隔の関係は、概念的に <code>FOV = 1/Δk</code> であり、分解能は最大空間周波数 <code>kmax</code> で決まる。FOVを小さくしすぎて被写体が範囲外へ出ると、折り返しが起きる。</p>
+<h2 id="section-18" class="">2-4. 撮像時間</h2>
+<p>2D FSEの概算は</p>
+<p><code>TA ≈ TR × Ny × NEX / (ETL × R) × 部分フーリエ実収集率</code></p>
+<p>3Dでは、さらにスライスエンコード数 <code>Nz</code> が関係する。ここで <code>Ny</code> は位相エンコード数、<code>NEX</code> は加算回数、<code>ETL</code> はエコートレイン長、<code>R</code> は並列撮像の加速係数、部分フーリエ実収集率は6/8のように1未満で表す。実機では定常状態を作るための準備パルス、呼吸・心電図（ECG）同期、同時多断面励起（SMS）、ビューシェアリングなどが加わるため、この式は条件を比べるための概算と考える。</p>
+<h3 id="section-19" class="">時間を短くする主な方法</h3>
+<ul>
+<li>位相方向のマトリックスやNEXを減らす。</li>
+<li>ETL（ターボ係数）を増やす。</li>
+<li>並列撮像、部分フーリエ法、圧縮センシングを使う。</li>
+<li>1回励起法、EPI、放射状収集など、目的に合う読み出し法へ変える。</li>
+<li>TRを短くする。ただしコントラスト、比吸収率（SAR）、定常状態も変わる。</li>
+</ul>
+<p>時間短縮には、SNR低下、ぼけ、折り返し、アーチファクト、コントラスト変化などの代価がある。</p>
+<hr>
+<h1 id="section-20" class="chapter-title">3. 基本撮像法を系統立てる</h1>
+<h2 id="section-21" class="">3-1. SEと高速／ターボスピンエコー（FSE/TSE）</h2>
+<blockquote><strong>まずこの理解</strong>：横磁化の足並みが磁場むらで崩れたとき、180°パルスは「先頭と最後尾を入れ替え、再び集合させる折り返し点」にたとえられる。ただし、この比喩で戻せるのは時間的にほぼ一定な周波数差による位相ずれだけである。スピン同士の相互作用による真のT2減衰は戻せない。</blockquote>
+<p><strong>体内で何が起こるか</strong>：90°パルスで横磁化が生じた後、スピンの位相はT2緩和と静的な磁場むらの両方でばらつく。</p>
+<p><strong>装置が何をするか</strong>：SEはTEの中間で180°パルスを1回加え、静的な磁場むらによる位相ずれを再収束させる。FSE/TSEは1回の励起後に180°系パルスを繰り返し、複数のエコーでk空間の複数行を収集する。</p>
+<p><strong>画像にどう表れるか</strong>：SE/FSEでは静的な磁場むらによる位相ずれが再収束され、横磁化の減衰はT2に従う。ただし、T1・プロトン密度・T2のどのコントラストを強調するかはTRとTEで決まる。FSE/TSEは速いが、長いエコートレインではエコーごとの信号差がk空間に混ざり、T2ぼけや混合コントラストを生じる。</p>
+<pre><code>SE：   90° ───── 180° ───── エコー
+                 TE/2      TE/2
+
+FSE：  90° ─ 180°-E1 ─ 180°-E2 ─ 180°-E3 …
+                  各エコーでk空間の別の行を収集
+                  中央の行を埋めるエコーのTE＝実効TE</code></pre>
+<p>SE信号の簡略式は</p>
+<p><code>S_SE ∝ ρ [1 − exp(−TR/T1)] exp(−TE/T2)</code></p>
+<ul>
+<li><strong>短TR</strong>：T1回復差が残る → T1強調が強い。</li>
+<li><strong>長TR</strong>：T1差が減る。</li>
+<li><strong>長TE</strong>：T2減衰差が広がる → T2強調が強いが全体信号は低下。</li>
+<li><strong>短TE</strong>：T2差を抑える。</li>
+</ul>
+<div class="table-wrap"><table><thead><tr>
+<th>画像</th>
+<th>TR</th>
+<th>TE</th>
+<th>主なコントラスト</th>
+</tr></thead><tbody>
+<tr>
+<td>T1強調SE</td>
+<td>短い</td>
+<td>短い</td>
+<td>T1差</td>
+</tr>
+<tr>
+<td>T2強調SE/FSE</td>
+<td>長い</td>
+<td>長い</td>
+<td>T2差</td>
+</tr>
+<tr>
+<td>PD強調</td>
+<td>長い</td>
+<td>短い</td>
+<td>プロトン密度差</td>
+</tr>
+</tbody></table></div>
+<p>FSE/TSEは1回の励起後に複数のエコーを得るため高速だが、長いETLではT2減衰によりk空間の行ごとに信号が変わり、ぼけや混合コントラストが生じる。180°系パルスが多いほど、RFエネルギー付与による比吸収率（SAR）と磁化移動（MT）効果が増え得る。通常のSEより磁化率アーチファクトが弱く、J結合効果の低減により脂肪が比較的高信号になりやすいことも重要である。</p>
+<p>1回励起FSE（HASTE/SSFSE）は、1回の励起で画像の大部分を収集するため動きに強く、MRCP、MR尿路撮影（MRU）、腹部T2強調像に有用である。ただし、T2ぼけ、分解能低下、信号低下などに注意する。</p>
+<p><strong>試験の要点</strong>：SEの180°パルスが再収束できるのは静的な磁場不均一による可逆的な位相ずれであり、真のT2減衰ではない。FSEの実効TEは、k空間中央を収集したエコーの時刻で決まる。ETLを増やすと撮像は速くなるが、T2ぼけとSARに注意する。</p>
+<h2 id="section-22" class="">3-2. GRE系</h2>
+<blockquote><strong>まずこの理解</strong>：GREは「180°パルスで足並みをそろえ直さず、傾斜磁場を反転してエコーを作る速い方法」である。正確には、傾斜磁場によって生じた位相ずれは傾斜磁場の反転で再収束できるが、静的なB0不均一による位相ずれは補正できない。このため信号はT2ではなくT2*減衰の影響を受ける。</blockquote>
+<p><strong>体内で何が起こるか</strong>：励起後の横磁化は、T2緩和に加えて静的な磁場むらや磁化率差でも位相がばらつく。</p>
+<p><strong>装置が何をするか</strong>：GREは180°再収束パルスを使わず、傾斜磁場を反転してエコーを作る。短いTR・TEと小さなフリップ角を使いやすい。</p>
+<p><strong>画像にどう表れるか</strong>：高速なT1強調3D撮像や動態造影に向く一方、T2*と磁化率に敏感で、出血・鉄・空気・金属を強く描出し、歪みや信号欠損も生じやすい。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>GRE系</th>
+<th>横磁化の扱い</th>
+<th>主なコントラスト・用途</th>
+<th>弱点</th>
+</tr></thead><tbody>
+<tr>
+<td>スポイルドGRE</td>
+<td>残留横磁化をRFまたは傾斜磁場で消す</td>
+<td>T1強調、動態造影、3D撮像</td>
+<td>B1不均一、条件に依存するT1コントラスト</td>
+</tr>
+<tr>
+<td>コヒーレントGRE</td>
+<td>残留横磁化と刺激エコーを利用</td>
+<td>T2/T2*混合、関節など</td>
+<td>血流と定常状態の複雑さ</td>
+</tr>
+<tr>
+<td>平衡型定常自由歳差運動（bSSFP）</td>
+<td>各TRで全傾斜磁場の積分値を均衡</td>
+<td>おおむねT2/T1比、血液・液体高信号、心臓動画</td>
+<td>共鳴周波数ずれによる帯状信号欠損、SAR</td>
+</tr>
+<tr>
+<td>GRE-EPI</td>
+<td>長い傾斜磁場エコートレイン</td>
+<td>BOLD、超高速撮像</td>
+<td>磁化率歪み、N/2ゴースト</td>
+</tr>
+</tbody></table></div>
+<p>スポイルドGREの定常状態信号は</p>
+<p><code>S ∝ ρ sinα (1−E1) / (1−E1 cosα) × exp(−TE/T2*)</code></p>
+<p><code>E1 = exp(−TR/T1)</code> である。一定のTRで信号を最大にするエルンスト角は</p>
+<p><code>cos αE = exp(−TR/T1)</code></p>
+<p>である。実際の「T1強調が最大」と「SNRが最大」は同じ意味ではなく、目的組織、コントラスト、SARを考えて設定する。</p>
+<p><strong>試験の要点</strong>：SEは180°パルスで静的な磁場むらを補正してT2を反映し、GREは補正しないためT2*と磁化率に敏感である。GREのコントラストはTR・TEだけでなく、フリップ角と定常状態にも左右される。</p>
+<h2 id="section-23" class="">3-3. IR：TIで特定組織を消す</h2>
+<p>理想的な180°反転パルス後の縦磁化は</p>
+<p><code>Mz(TI) = M0 [1 − 2 exp(−TI/T1)]</code></p>
+<p>であり、信号がゼロになる時点は <code>TI ≈ T1 ln 2</code> である。実際にはTR、フリップ角、読み出し法で変わる。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>撮像法</th>
+<th>信号をゼロにするもの</th>
+<th>主用途</th>
+<th>重要な注意</th>
+</tr></thead><tbody>
+<tr>
+<td>STIR</td>
+<td>短T1の脂肪</td>
+<td>全身・骨髄・B0不均一部の脂肪抑制</td>
+<td>T1依存で非特異的。造影でT1短縮した組織も抑え得るため、原則としてGd造影後の病変評価に不適</td>
+</tr>
+<tr>
+<td>液体減弱反転回復法（FLAIR）</td>
+<td>長T1の脳脊髄液（CSF）</td>
+<td>脳浮腫、脱髄、くも膜下腔病変</td>
+<td>不完全抑制、血流、酸素・蛋白・造影によるCSF高信号に注意</td>
+</tr>
+<tr>
+<td>LGE用IR／位相感応型反転回復法（PSIR）</td>
+<td>正常心筋など</td>
+<td>梗塞・線維化</td>
+<td>TI設定と撮像時期が重要。PSIRは信号ゼロ点のずれに比較的強い</td>
+</tr>
+</tbody></table></div>
+<p>脂肪のT1はCSFよりはるかに短いため、通常は <strong>STIRのTI &lt; FLAIRのTI</strong> となる。固定TI値は磁場強度、TR、反転効率で変わる。</p>
+<h2 id="section-24" class="">3-4. EPI、並列撮像、3D撮像</h2>
+<p>EPIは位相エンコード用の小さな傾斜磁場と読み出し傾斜磁場の反転を繰り返し、1回または少数回の励起でk空間をジグザグに読む。DWIでは主にSE-EPIが使われ、中心エコーはT2寄りとなる。DSCやBOLDでは主にGRE-EPIが使われ、T2*を反映する。DWIには非EPIのTSE法や読み出し分割法もあり、灌流撮像にはDCEやASLもある。エコー間隔が長いと、共鳴周波数ずれによる位相方向の歪みが増える。</p>
+<p>並列撮像は複数コイルの感度分布を位置情報として利用し、位相エンコードを間引く。感度符号化法（SENSE）は主に画像空間で、自己校正型k空間法（GRAPPA）は主にk空間で不足データを補う代表法である。加速係数をRとすると</p>
+<p><code>SNR_R ≈ SNR_0 / (g √R)</code></p>
+<p>となる。ここで <code>SNR_0</code> は未加速時のSNRである。幾何係数（g因子）は、コイルの配置に由来する雑音増幅を表す。並列撮像は撮像時間だけでなく、EPIのエコートレインと歪み、FSEのSARも減らせる。</p>
+<p>3D撮像は、薄い連続スライス、等方性ボクセル、多断面再構成、高いSNR効率に有利だが、撮像時間、広範囲の体動、スラブ内コントラスト、SARに注意する。2D撮像は各スライスを独立に励起でき、体動の影響を局所化しやすいが、スライス間隔、交差干渉、厚いスライスになりやすい点に注意する。</p>
+<hr>
+<h1 id="section-25" class="chapter-title">4. 脂肪、水、血液を分ける</h1>
+<h2 id="section-26" class="">4-1. 脂肪抑制法の使い分け</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>原理</th>
+<th>長所</th>
+<th>弱点・注意点</th>
+</tr></thead><tbody>
+<tr>
+<td>STIR</td>
+<td>脂肪の短いT1に合わせ、IRで脂肪信号をゼロにする</td>
+<td>B0不均一に比較的強く、広範囲・金属近傍で使いやすい</td>
+<td>脂肪特異的でない、SNR低下、Gd造影後の増強評価に不適</td>
+</tr>
+<tr>
+<td>化学シフト選択飽和法（CHESS）／周波数選択的脂肪抑制（FS）</td>
+<td>水と脂肪の共鳴周波数差を使い、脂肪だけを飽和させる</td>
+<td>脂肪特異的で、造影T1強調像に使用できる</td>
+<td>B0/B1不均一、金属、大きなFOVで抑制むら</td>
+</tr>
+<tr>
+<td>周波数選択的断熱反転回復法（SPAIR）</td>
+<td>脂肪を周波数選択的な断熱反転パルスで反転し、TI後に信号をゼロにする</td>
+<td>脂肪特異的で、SPIRよりB1不均一に比較的強い</td>
+<td>B0、TI、RF負荷、撮像時間に依存</td>
+</tr>
+<tr>
+<td>周波数選択的反転回復法（SPIR）</td>
+<td>脂肪を周波数選択的な非断熱反転パルスで反転し、TI後に信号をゼロにする</td>
+<td>脂肪特異的</td>
+<td>B0/B1、反転角、TIに依存</td>
+</tr>
+<tr>
+<td>ディクソン法</td>
+<td>水と脂肪の位相差から水画像と脂肪画像を再構成</td>
+<td>均一性が高く、同位相・逆位相画像も得られる</td>
+<td>体動、磁場分布推定、分離失敗、脂肪の多峰性モデルに依存</td>
+</tr>
+<tr>
+<td>水選択励起法</td>
+<td>二項RFパルスなどで水を選択的に励起</td>
+<td>脂肪抑制ができ、比較的高速</td>
+<td>B0/B1と撮像法に制約</td>
+</tr>
+</tbody></table></div>
+<p>水と脂肪の化学シフト差は約3.5 ppmである。周波数差は磁場強度に比例し、約224 Hz（1.5 T）、447 Hz（3 T）となる。</p>
+<h3 id="section-27" class="">化学シフト・アーチファクトの2種類</h3>
+<ol>
+<li><strong>1型</strong>：水と脂肪が読み出し方向の異なる位置へずれる。画素単位のずれは <code>Δf /（1画素当たりのBW）</code> である。高磁場・狭い帯域幅で増悪し、広いBW・脂肪抑制で軽減する。読み出し方向を変えてもずれの量は減らないが、重要部位からアーチファクトを退避できる。</li>
+<li><strong>2型</strong>：同一ボクセル内に水と脂肪があると、逆位相で両者が相殺され、境界に黒い縁を作るインディアインク徴候や実質の信号低下となる。脂肪肝や副腎腺腫などの微量脂肪検出に使う。</li>
+</ol>
+<p>目安として、1.5 Tでは逆位相／同位相が約2.2/4.4 ms、3 Tでは約1.1/2.2 msとなるが、脂肪スペクトルの多峰性や装置実装により調整される。<strong>逆位相での信号低下には、水と脂肪が同一ボクセル内に共存する必要がある</strong>。</p>
+<h2 id="section-28" class="">4-2. 磁化率と血液産物</h2>
+<p>局所の磁化率差はB0を乱し、位相分散、信号欠損、形状の歪みを生む。GRE、長いTE、高磁場、EPIで強くなる。SE/FSE、短いTE、小さいボクセル、適切な静磁場均一化（シミング）は、ボクセル内位相分散とブルーミングを減らす。広いBWと短いエコー間隔は、主に幾何学的な歪みと位置ずれを減らす。ただし、BWを広げるだけでは失われた信号を再収束できない。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>磁性</th>
+<th>B0への反応</th>
+<th>代表</th>
+<th>画像・安全との関係</th>
+</tr></thead><tbody>
+<tr>
+<td>反磁性</td>
+<td>ごく弱く反発</td>
+<td>多くの生体組織、水</td>
+<td>磁化率差は小さい</td>
+</tr>
+<tr>
+<td>常磁性</td>
+<td>弱く引かれる</td>
+<td>Gd、脱酸素化ヘモグロビンなど</td>
+<td>局所のT1/T2*へ影響</td>
+</tr>
+<tr>
+<td>超常磁性</td>
+<td>強い局所磁化を示すが残留磁化は小さい</td>
+<td>SPIO、鉄粒子</td>
+<td>強いT2/T2*短縮とブルーミング</td>
+</tr>
+<tr>
+<td>強磁性</td>
+<td>強く磁化され、磁場を除いても磁化が残り得る</td>
+<td>一部の鉄系物体</td>
+<td>吸着・飛来、回転力、強いアーチファクト。材質同定が必要</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>T2* GRE：微小出血、ヘモジデリン、鉄沈着、静脈を検出する。</li>
+<li>SWI：強度情報と位相情報を組み合わせ、磁化率差を強調する。ブルーミングの大きさは病変の実寸ではない。</li>
+<li>磁化率定量画像（QSM）：位相から磁化率を定量推定するが、再構成法、撮像方向、背景磁場除去の影響を受ける。</li>
+<li>石灰化と血液産物はともに低信号になり得る。位相画像やQSMが参考になるが、CTで確認するのが確実な場面が多い。</li>
+</ul>
+<h2 id="section-29" class="">4-3. 造影剤が「光る」のではない</h2>
+<p>Gdキレートは、近傍にある水の水素原子核の緩和を促進する。</p>
+<p><code>1/T1 = 1/T1,0 + r1 [C]</code></p>
+<p><code>1/T2 = 1/T2,0 + r2 [C]</code></p>
+<p>ここで <code>[C]</code> は造影剤濃度、<code>r1</code> と <code>r2</code> はそれぞれT1・T2緩和能を表す。</p>
+<p>通常濃度では、T1短縮をT1強調像の高信号として捉える。T1強調DCEでは初回通過を信号増強として測り、T2/T2<em>強調DSCでは局所濃度上昇を信号低下として測る。非常に高濃度ではT2/T2</em>短縮が優位になり得る。したがって、造影剤そのものが「光る」のではなく、濃度、撮像法、撮像時期が重要である。</p>
+<ul>
+<li>動的造影MRI（DCE）：T1強調像で時間的な増強を評価する。得られる変化には血流、血管透過性、細胞外腔などが混在する。</li>
+<li>動的磁化率コントラスト灌流（DSC）：主に脳で、造影剤の初回通過時に生じるT2*信号低下を測る。<code>ΔR2*(t)=−ln[S(t)/S0]/TE</code> で信号を緩和速度変化へ換算し、曲線面積から脳血液量（CBV）を推定する。逆畳み込みなどにより脳血流量（CBF）と平均通過時間（MTT）を求める。</li>
+<li>肝細胞特異性造影剤：動態相に加え、肝細胞への取り込みと胆汁排泄を遅い相でみる。肝機能、撮像時期、輸送体の影響を受ける。</li>
+<li>SPIO：超常磁性酸化鉄により、主にT2/T2*を短縮して信号を低下させる。製剤の利用可能性は時期・地域で異なる。</li>
+</ul>
+<hr>
+<h1 id="section-30" class="chapter-title">5. DWI・ADC・DTI：最頻出の機能画像</h1>
+<h2 id="section-31" class="">5-1. DWIの原理</h2>
+<blockquote><strong>まずこの理解</strong>：対になった傾斜磁場を「同じ強さで逆向きに押す2回の印」と考える。2回の間に動かなかった水素原子核では印が打ち消し合うが、移動した水素原子核では打ち消し切れず、信号が減る。これは比喩であり、正確には、2つの拡散検出用傾斜磁場が位置に応じた位相を与え、間に拡散したスピンほど再収束後の位相分散が大きくなる。</blockquote>
+<p><strong>体内で何が起こるか</strong>：水分子は熱運動によって不規則に移動する。細胞腫脹、細胞密度の上昇、粘稠な内容物などで水の見かけの移動が小さくなると、拡散制限として観察される。</p>
+<p><strong>装置が何をするか</strong>：装置は対になった拡散検出用傾斜磁場（MPG）を加える。静止スピンは2つ目のMPGで再収束するが、間に移動したスピンは完全には再収束せず、位相がばらついて信号が低下する。拡散への感度はb値で表す。</p>
+<p><strong>画像にどう表れるか</strong>：自由に拡散する水は高b値DWIで信号が下がる。拡散が制限された組織は信号低下が小さいため、周囲に比べて高信号に見え、ADCは低値になる。</p>
+<p>矩形のMPGでは、b値は傾斜磁場強度の二乗、各パルスの長さ、2つのパルス間隔で決まる。数式では</p>
+<p><code>b = γrad² G² δ² (Δ − δ/3)</code></p>
+<p>と表す。<code>γrad</code> は角磁気回転比、Gは傾斜磁場強度、δは各傾斜磁場パルスの持続時間、Δは2つの傾斜磁場パルスの開始間隔である。Gは二乗で効くため、単純な「傾斜磁場強度×時間」ではない。臨床でb値は通常s/mm²、ADCはmm²/sで表すため、式へ代入するときは傾斜磁場、長さ、時間の単位をそろえる。</p>
+<p>単一指数モデルでは、b値を上げたときの信号低下からADCを求める。</p>
+<p><code>S(b) = S0 exp(−b × ADC)</code></p>
+<p>2点なら</p>
+<p><code>ADC = −ln[S(b)/S0] / b</code></p>
+<p>一般の2点 <code>b0, b1</code> では <code>ADC = ln(Sb0/Sb1)/(b1−b0)</code> となる。</p>
+<p><strong>試験の要点</strong>：DWI高信号だけでは拡散制限と断定できない。T2が長い病変も高信号になり得るため、ADC低値を必ず確認する。b値を上げると拡散強調は強くなるが、全体のSNRは下がり、歪みや雑音の影響が増える。</p>
+<h2 id="section-32" class="">5-2. DWIとADCの4象限</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>DWI</th>
+<th>ADC</th>
+<th>解釈の出発点</th>
+<th>例・注意</th>
+</tr></thead><tbody>
+<tr>
+<td>高</td>
+<td>低</td>
+<td>真の拡散制限を支持</td>
+<td>急性梗塞、膿瘍、高細胞性腫瘍など。ただし重なりあり</td>
+</tr>
+<tr>
+<td>高</td>
+<td>高〜正常</td>
+<td>T2透過効果（T2シャインスルー）</td>
+<td>T2の長い病変。ADCを見ずに拡散制限としない</td>
+</tr>
+<tr>
+<td>低</td>
+<td>低</td>
+<td>T2暗黒化（T2ブラックアウト）または低いプロトン密度・SNR</td>
+<td>出血、鉄、強い線維化など。画質も確認</td>
+</tr>
+<tr>
+<td>低</td>
+<td>高または不安定</td>
+<td>自由拡散、または低SNRのためADC計算自体が不確か</td>
+<td>CSF、壊死・嚢胞など。b0画像、T2強調像、雑音下限、元画像と照合</td>
+</tr>
+</tbody></table></div>
+<p>ADCは純粋な細胞密度計ではない。b値、灌流、TE、脂肪抑制、雑音下限、壊死、粘稠度、治療、時間経過で変わる。絶対値の閾値は、臓器、装置、撮像条件をまたいで安易に共通化しない。</p>
+<h3 id="section-33" class="">典型的な出題のひっかけ</h3>
+<ul>
+<li>急性梗塞：一般に発症早期からDWI高・ADC低。慢性期にはADCが上昇し得る。</li>
+<li>膿瘍腔：粘稠な細胞・蛋白内容で制限し得るが、すべての嚢胞性病変を一律に分けられるわけではない。</li>
+<li>類表皮嚢胞：DWI高・ADC低が手がかり。くも膜嚢胞は通常、自由拡散を示す。</li>
+<li>高細胞性腫瘍：低ADC傾向だが、腫瘍種や悪性度をADC単独で確定しない。</li>
+</ul>
+<p>標準的な1回励起SE-EPI DWIは速い一方、側頭骨、頭蓋底、金属近傍で磁化率歪みが強い。非EPI DWI（TSE系など）は歪みが少なく小病変を描きやすいため、特に中耳真珠腫などで有用である。ただし、撮像時間、体動、撮像範囲との間に兼ね合いがある。</p>
+<h2 id="section-34" class="">5-3. IVIM、DTI、トラクトグラフィ</h2>
+<p>低b値には毛細血管内の微小灌流が混ざる。IVIMは概念的に</p>
+<p><code>S/S0 = (1−f) exp(−bD) + f exp(−bD*)</code></p>
+<p>と表し、真の拡散係数D、灌流成分比f、偽拡散係数D*を分ける。ただし、推定は不安定で、b値の配置、雑音、体動に強く依存する。</p>
+<p>DTIは複数方向のDWIから拡散テンソルを推定する。FAは0に近いほど等方性、1に近いほど一方向性が強い。主固有ベクトルを連結したトラクトグラフィは<strong>推定された経路</strong>であり、交差・接近する線維、浮腫、腫瘍、低SNR、追跡閾値に弱い。実在する線維束の証明ではない。</p>
+<hr>
+<h1 id="section-35" class="chapter-title">6. 血流・灌流・機能を撮る</h1>
+<h2 id="section-36" class="">6-1. MRAは3つの原理に分ける</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>主要原理</th>
+<th>得意</th>
+<th>典型的な注意点</th>
+</tr></thead><tbody>
+<tr>
+<td>TOF</td>
+<td>飽和した静止組織へ、まだ飽和していない血液が流入して高信号</td>
+<td>頭蓋内動脈、非造影</td>
+<td>遅い血流・面内血流の飽和、乱流・狭窄後の信号低下、T1高信号物質</td>
+</tr>
+<tr>
+<td>PC</td>
+<td>一対の傾斜磁場後の位相差が速度に比例</td>
+<td>方向・流速・流量定量、静脈</td>
+<td>速度エンコード値（VENC）が低すぎると位相折り返し、高すぎると遅い血流への感度低下</td>
+</tr>
+<tr>
+<td>造影MRA（CE-MRA）</td>
+<td>Gdによる血液T1短縮＋高速3DスポイルドGRE</td>
+<td>広範囲を短時間で撮像でき、TOFの飽和に比較的左右されにくい</td>
+<td>造影剤注入と撮像の時機、静脈の重なり、体動、腎機能・造影反応</td>
+</tr>
+</tbody></table></div>
+<p>SE系では、速い血流が90°パルス、180°パルス、信号読み出しの間にスライス外へ出ると、必要なパルスをすべて受けないため低信号となる。これを血流による信号欠損（フローボイド）という。一方、GRE/TOFでは、まだRFを受けていない流入血液が高信号になり得る。<strong>血流は常に高信号または低信号なのではなく、受けるパルスとスライス内の滞在時間で決まる。</strong></p>
+<p>PC-MRIでは、移動するスピンに一対の傾斜磁場を加えると、速度に比例した位相差が残る。関係式は <code>Δφ = γrad M1 v</code> であり、<code>M1</code> は傾斜磁場の一次モーメント、<code>v</code> は速度を表す。一般的な表示規約では <code>v = (Δφ/π) × VENC</code> と対応させ、実速度の絶対値がVENCを超えると位相が折り返す。VENCが高すぎると小さな速度差を表現しにくい。静止成分は差分で消え、移動スピンの位相差が残る。<strong>速度依存の位相差を測る方法であり、ドプラ効果を測る方法ではない。</strong></p>
+<p>2D TOFはスライスごとに未飽和血液を受け入れるため、遅い血流や広範囲の撮像に比較的強いが、スライス間の不整合と面内分解能に限界がある。3D TOFは薄い連続スライスと高分解能に有利だが、厚いスラブ内で遅い血流や面内血流が飽和する。複数重複薄スラブ収集法（MOTSA）は、複数の薄いスラブを重ねて両者を折衷する。</p>
+<p>TOFのMIPはわかりやすいが、血管の重なり、飽和、部分容積効果により狭窄を過大・過小評価し得る。必ず元画像を確認する。</p>
+<h2 id="section-37" class="">6-2. 代表的な機能・定量MRI</h2>
+<ul>
+<li><strong>ASL</strong>：上流血液のスピンを磁気的に標識し、標識画像と対照画像の差からCBFを推定する。造影剤は不要である。血液到達時間、低SNR、標識効率に注意する。</li>
+<li><strong>DCE</strong>：造影T1強調像の時系列から増強曲線や薬物動態の指標を推定する。造影剤注入、時間分解能、T1マッピング、解析モデルに依存する。</li>
+<li><strong>DSC</strong>：造影剤の初回通過によるT2*信号低下を測る。造影剤漏出の補正、動脈入力関数、到達遅延の影響を受ける。</li>
+<li><strong>BOLD機能的MRI（fMRI）</strong>：神経活動に伴うCBF増加が酸素消費増加を上回ると、脱酸素化ヘモグロビンが減り、T2*信号が相対的に上昇する。この時系列を血行動態反応と統計解析で評価する<strong>間接指標</strong>である。</li>
+<li><strong>MRE</strong>：外部振動によるせん断波を、運動エンコード用傾斜磁場で検出し、逆問題を解いて硬さの分布図を作る。肝線維化が代表的な用途である。炎症、うっ血、食後、鉄沈着、加振器との接触状態も値に影響する。</li>
+<li><strong>MRS／化学シフト画像（CSI）</strong>：化学シフトを代謝物スペクトルとして測る。脳ではN-アセチルアスパラギン酸（NAA）、コリン（Cho）、クレアチン（Cr）、乳酸、脂質などが代表的である。TE、ボクセル、シミング、部分容積効果に依存するため、ピーク比だけで診断しない。</li>
+<li><strong>LGE</strong>：Gdが細胞外腔の拡大部や洗い出し遅延部に相対的に残る時相で、IR/PSIRにより正常心筋の信号をゼロにし、瘢痕・線維化を高信号にする。虚血性病変では心内膜下から全層性へ広がる冠動脈支配に沿った分布、非虚血性病変では心筋中層や心外膜下の分布が手がかりとなるが、臨床情報と他の撮像法を統合する。</li>
+</ul>
+<h2 id="section-38" class="">6-3. MRCPと強いT2強調</h2>
+<p>胆汁・膵液などの静止液を、非常に長いTEによる強いT2強調で高信号にし、背景信号を抑える。2D厚スラブ法は速いが、構造の重なりと部分容積効果が多い。3D薄スラブ法は詳細な描出とMPRに優れるが、体動に弱い。MIPだけでは小結石や狭窄が隠れることがあるため、薄い元画像を併読する。</p>
+<hr>
+<h1 id="section-39" class="chapter-title">7. MRIの画質と撮像条件の兼ね合い</h1>
+<h2 id="section-40" class="">7-1. SNRの基本</h2>
+<blockquote><strong>まずこの理解</strong>：1ボクセルを「信号を受け取る升」と考えると、升を大きくするほど多くの信号が入り、画像は滑らかになるが、細部は粗くなる。小さくすると細部は見やすいが、受け取る信号が減ってざらつく。これは比喩であり、正確には、単純化した条件では1ボクセルの信号はボクセル体積におおむね比例し、雑音との比であるSNRは小さいボクセルほど低下する。</blockquote>
+<p><strong>体内で何が起こるか</strong>：組織はそれぞれ異なる強さと時間変化をもつMR信号を出す。撮像条件は、どの時点の信号差を強調するかを変える。</p>
+<p><strong>装置が何をするか</strong>：装置はTR、TE、フリップ角、FOV、マトリックス、スライス厚、NEX、受信帯域幅などを変え、収集する信号量と標本化の細かさを調整する。</p>
+<p><strong>画像にどう表れるか</strong>：ある条件を改善すると別の条件が悪化することが多い。たとえば、ボクセルを小さくすれば公称分解能は上がるがSNRは下がり、NEXを増やせばSNRは上がるが時間が延びる。</p>
+<p>単純化すると、SNRはボクセル体積とコイル感度に大きく依存し、NEXに対して <code>√NEX</code> で増える。受信帯域幅を広げると、1画素当たりの雑音が増えてSNRは低下する。一方で、化学シフト、EPI歪み、読み出し時間を減らせる。以下の表は<strong>他条件を一定とした一次的な傾向</strong>であり、定常状態、再構成、装置制御により単調に変わらない場合がある。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>変更</th>
+<th>信号・コントラスト</th>
+<th>分解能</th>
+<th>時間</th>
+<th>アーチファクト・安全</th>
+</tr></thead><tbody>
+<tr>
+<td>TR↑</td>
+<td>T1差↓、SNR↑傾向</td>
+<td>原則不変</td>
+<td>↑</td>
+<td>RF/SARは低下しやすい</td>
+</tr>
+<tr>
+<td>TE↑</td>
+<td>T2/T2*差↑、全体信号↓</td>
+<td>原則不変</td>
+<td>条件依存</td>
+<td>磁化率・体動の影響↑</td>
+</tr>
+<tr>
+<td>フリップ角↑</td>
+<td>スポイルドGREではエルンスト角までは信号↑。飽和とT1強調は強くなりやすいが、信号とコントラストは組織T1・TR依存で単調ではない</td>
+<td>原則不変</td>
+<td>原則不変</td>
+<td>RF負荷/SAR↑、B1依存↑</td>
+</tr>
+<tr>
+<td>FOV↓（マトリックス一定）</td>
+<td>ボクセル↓でSNR↓</td>
+<td>画素寸法↓、公称面内分解能↑</td>
+<td>原則不変</td>
+<td>折り返し危険↑</td>
+</tr>
+<tr>
+<td>マトリックス↑（FOV固定）</td>
+<td>ボクセル↓でSNR↓</td>
+<td>画素寸法↓、公称面内分解能↑</td>
+<td>位相方向なら↑</td>
+<td>ギブス・アーチファクト↓、体動混入の機会↑</td>
+</tr>
+<tr>
+<td>スライス厚↓</td>
+<td>SNR↓</td>
+<td>z軸分解能↑</td>
+<td>2Dではスライス数次第</td>
+<td>部分容積効果↓</td>
+</tr>
+<tr>
+<td>NEX↑</td>
+<td>SNR <code>∝√NEX</code></td>
+<td>不変</td>
+<td><code>∝NEX</code></td>
+<td>体動が平均化されることもある</td>
+</tr>
+<tr>
+<td>受信BW↑</td>
+<td>SNR↓</td>
+<td>化学シフトの画素ずれ↓</td>
+<td>読み出し時間短縮</td>
+<td>歪み↓、最短TE短縮、騒音↑の場合</td>
+</tr>
+<tr>
+<td>ETL↑</td>
+<td>エコーの混合</td>
+<td>T2ぼけ↑</td>
+<td>↓</td>
+<td>再収束パルス条件によりSARが増え得る、FSEで脂肪高信号</td>
+</tr>
+<tr>
+<td>並列撮像のR↑</td>
+<td>SNR <code>1/(g√R)</code></td>
+<td>公称分解能は維持</td>
+<td>↓</td>
+<td>残留折り返し、EPI歪み↓</td>
+</tr>
+<tr>
+<td>b値↑</td>
+<td>DWIの拡散強調↑、信号↓</td>
+<td>公称分解能は同じ</td>
+<td>TEが延長し得る</td>
+<td>歪み、渦電流の影響、雑音下限</td>
+</tr>
+<tr>
+<td>B0↑</td>
+<td>SNR↑が期待</td>
+<td>高分解能化が可能</td>
+<td>同等または短縮可能</td>
+<td>T1延長、SAR・化学シフトの周波数差・磁化率効果・B1むら↑</td>
+</tr>
+</tbody></table></div>
+<p><strong>試験の要点</strong>：条件変更問題では、必ず「他条件が一定」という前提を確認する。分解能、SNR、撮像時間、アーチファクト、安全性の5項目を同時に追う。とくに、マトリックス増加は分解能↑・SNR↓・位相方向なら時間↑、NEX増加はSNRが <code>√NEX</code> に比例・時間がNEXに比例、受信BW増加はSNR↓・化学シフトと歪み↓が基本である。</p>
+<h3 id="section-41" class="">受信帯域幅の頻出ポイント</h3>
+<ul>
+<li>広いBW：短い標本化間隔、短い読み出し時間・エコー間隔となり、化学シフトと歪みは減るが、SNRは下がる。</li>
+<li>狭いBW：SNRは上がるが、化学シフト、金属・磁化率による歪みが増え、最短TEが長くなり得る。</li>
+<li><strong>BWを広げれば空間分解能そのものが必ず上がるわけではない</strong>。マトリックス、FOV、傾斜磁場、標本化を合わせて考える。</li>
+</ul>
+<hr>
+<h1 id="section-42" class="chapter-title">8. MRIアーチファクト完全表</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>アーチファクト</th>
+<th>原因・見え方</th>
+<th>悪化条件</th>
+<th>主な対策</th>
+</tr></thead><tbody>
+<tr>
+<td>体動ゴースト</td>
+<td>直交格子状の収集では主に位相方向に反復像</td>
+<td>呼吸、拍動、長時間撮像</td>
+<td>固定・説明、呼吸／心電図同期、位相方向変更、高速化、放射状収集、回転ブレード状収集（PROPELLER）、飽和帯</td>
+</tr>
+<tr>
+<td>血流・拍動ゴースト</td>
+<td>血管やCSFから位相方向に反復像</td>
+<td>拍動性血流、長いTE</td>
+<td>流れ補正、飽和帯、同期、位相方向変更</td>
+</tr>
+<tr>
+<td>折り返し</td>
+<td>FOV外の被写体が反対側へ折り返る</td>
+<td>小さいFOV、標本化不足</td>
+<td>位相方向の過剰標本化、折り返し防止、FOV↑、飽和帯、コイル選択、位相方向変更</td>
+</tr>
+<tr>
+<td>化学シフト1型</td>
+<td>水と脂肪の境界が読み出し方向へずれる</td>
+<td>高いB0、狭いBW</td>
+<td>BW↑、脂肪抑制、読み出し方向変更</td>
+</tr>
+<tr>
+<td>化学シフト2型</td>
+<td>逆位相で同一ボクセル内の水と脂肪が相殺し、黒縁が出る</td>
+<td>同一ボクセル内の水と脂肪</td>
+<td>同位相画像を確認、ディクソン法、ボクセル縮小</td>
+</tr>
+<tr>
+<td>磁化率アーチファクト</td>
+<td>空気・金属・血液産物の周囲に信号欠損、歪み、ブルーミング</td>
+<td>GRE/EPI、高いB0、長いTE、狭いBW、大きなボクセル</td>
+<td>SE/FSE、短いTE、小さいボクセル、シミング。BW↑は主に歪みを低減。観察角傾斜法（VAT）、金属補正用スライスエンコード（SEMAC）、複数周波数帯収集（MAVRIC）は金属対策</td>
+</tr>
+<tr>
+<td>ギブス（打ち切り）アーチファクト</td>
+<td>高コントラスト境界に平行な縞が並び、脊髄内の偽線などを作る</td>
+<td>マトリックス不足、急峻な打ち切り</td>
+<td>マトリックスまたはk空間収集範囲↑、フィルタ。ただしぼけとの兼ね合いあり</td>
+</tr>
+<tr>
+<td>N/2（ナイキスト）ゴースト</td>
+<td>EPIで半FOVずれたゴースト</td>
+<td>奇数・偶数エコーの不整合、渦電流、体動</td>
+<td>位相補正、シミング、並列撮像、短いエコートレイン</td>
+</tr>
+<tr>
+<td>bSSFPの帯状信号欠損</td>
+<td>暗い帯が生じる</td>
+<td>共鳴周波数ずれ、長いTR</td>
+<td>シミング、TR短縮、中心周波数変更、位相サイクル法</td>
+</tr>
+<tr>
+<td>ジッパー・アーチファクト</td>
+<td>外来RF混入による直線状高信号</td>
+<td>RF遮蔽扉やコイルの不良</td>
+<td>撮像室と扉を確認、RF発生源を除去、保守点検</td>
+</tr>
+<tr>
+<td>B1・誘電体シェーディング</td>
+<td>広い陰影や局所信号低下</td>
+<td>高いB0、腹部、大きな体格</td>
+<td>B1シミング、多重送信、撮像法の調整。誘電体パッド／RFシムパッドは装置・製品との適合と使用条件を確認し、辺縁の局所加熱に注意</td>
+</tr>
+<tr>
+<td>交差干渉</td>
+<td>隣接する2Dスライスの信号低下</td>
+<td>スライスの重なり、不完全なスライス形状</td>
+<td>スライス間隔、交互収集、3D撮像。交互収集中の体動では奇数・偶数スライス群が交互にずれ得る</td>
+</tr>
+<tr>
+<td>渦電流</td>
+<td>DWIの位置ずれ、せん断、拡大・縮小</td>
+<td>強く速い傾斜磁場</td>
+<td>磁気遮蔽、事前補償、補正、位置合わせ</td>
+</tr>
+<tr>
+<td>部分容積効果</td>
+<td>異なる組織が平均化</td>
+<td>厚いスライス、大きなボクセル</td>
+<td>薄いスライス、等方性3D撮像、直交断面</td>
+</tr>
+<tr>
+<td>マジックアングル</td>
+<td>腱・靱帯が短TEで偽高信号</td>
+<td>B0に対して約55°、短いTE</td>
+<td>長いTEのT2強調像で確認、体位変更</td>
+</tr>
+<tr>
+<td>スパイク／ヘリンボーン</td>
+<td>画像全体に縞や斜線</td>
+<td>k空間の単一点異常</td>
+<td>生データとコイルを確認、再撮像、保守点検</td>
+</tr>
+</tbody></table></div>
+<p>アーチファクト問題は、まず <strong>方向</strong>（位相方向か読み出し方向か）、次に <strong>撮像法への依存性</strong>（GRE/EPIかSEか）、最後に <strong>条件を変えたときの増減</strong>をみる。</p>
+<hr>
+<h1 id="section-43" class="chapter-title">9. MRI安全</h1>
+<p>MRIは電離放射線を使わないが、「無害」ではない。安全上の危険を、静磁場、時間変化する傾斜磁場、RF磁場、装置冷却系、造影剤に分けて考える。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>要因</th>
+<th>主な危険</th>
+<th>基本対策</th>
+</tr></thead><tbody>
+<tr>
+<td>静磁場B0とその空間勾配（漏洩磁場）</td>
+<td>強磁性物体の吸着・飛来、体内機器の移動・回転、機器誤作動</td>
+<td>入室者と物品の確認、MR表示と条件の照合、区域管理、入室直前の最終確認</td>
+</tr>
+<tr>
+<td>時間変化する傾斜磁場</td>
+<td>大きな騒音、末梢神経刺激</td>
+<td>聴覚保護、規制モード、患者との連絡手段</td>
+</tr>
+<tr>
+<td>RF磁場B1</td>
+<td>全身・局所加熱、導電ループや接触部の熱傷、体内機器・導線の加熱</td>
+<td>SAR・時間平均RF磁場指標（B1+rms）の管理、ケーブルを皮膚から離す、皮膚同士の接触を避けて緩衝材を入れる、機器条件の遵守</td>
+</tr>
+<tr>
+<td>冷媒・クエンチ（該当装置）</td>
+<td>酸欠、冷気、圧力上昇、非常時対応</td>
+<td>機種、仕様、法令、施設設計に応じ、排気管、緊急排気、圧力逃がし、必要時の酸素濃度計、避難手順・訓練を整える。少量冷媒型ではクエンチ排気管が不要な場合があり、永久磁石型は冷媒を使わない。緊急停止と磁石のクエンチを混同しない</td>
+</tr>
+<tr>
+<td>Gd造影剤</td>
+<td>急性反応、血管外漏出、腎性全身性線維症（NSF）、体内残留への配慮</td>
+<td>適応、製剤グループ、腎機能、妊娠を評価し、必要最少量を用いて急性反応へ備える</td>
+</tr>
+</tbody></table></div>
+<p>超電導MRIのB0は通常24時間存在し続け、操作卓や一般電源を切っても強磁性物体の吸着・飛来の危険は残る。SARは厳密にはコイル、体格、撮像法で決まるが、概念的にはB0、フリップ角、RFパルスの使用割合が高いほど増え、FSEの多数の再収束パルスは注意を要する。未使用・未接続の表面コイル、心電図導線・電極などの導電物を患者と一緒に装置開口部へ残さず、必要な接続と絶縁を撮像前に目視確認する。</p>
+<p><strong>MR Safe（MR安全）</strong>はすべてのMR環境で既知の危険がないもの、<strong>MR Conditional（条件付きMR対応）</strong>は記載された磁場強度、空間勾配、SAR・B1+rms、コイル、位置、撮像時間などの条件下だけ安全なもの、<strong>MR Unsafe（MR危険）</strong>はMR環境で危険をもたらすものである。たとえば3 TでMR Conditionalと確認されても、表示条件に記載のない1.5 Tや0.55 Tが自動的に安全とは限らない。安全状態が不明な機器を正式にMR Unsafeと再分類するわけではないが、「たぶん大丈夫」と撮像可能とも仮定しない。原則として撮像を保留し、製品を同定して条件を照合する。なお未解決なら施設手順に従い、責任あるMR医師・MR安全担当者が文書化した危険評価と利益・危険の比較判断を行う。</p>
+<p>心臓ペースメーカー、人工内耳、脳動脈瘤クリップなどは、一律に「絶対禁忌」ではない。製品を正確に同定し、MR Conditionalの条件、施設の手順、必要な監視と機器設定を満たせるかで判断する。体外機器、貼付薬、衣類、入れ墨、体内異物も確認対象である。</p>
+<h3 id="section-44" class="">造影剤安全の試験対策</h3>
+<ul>
+<li>重篤な腎障害ではNSFの危険を考える。米国放射線医学会（ACR）分類では、グループIはNSFとの関連が比較的強く、グループIIは極めて低い危険と評価される製剤群、グループIIIはデータが限定的な分類枠であり、単純な線状型・環状型の構造分類と同義ではない。ACR 2026の分類表では、グループIII欄は「現時点で該当製剤なし（2024年4月時点）」である。ガドキセト酸ナトリウムは2024年にグループIIへ再分類された。グループII*のガドピクレノールは暫定分類で、施設判断によりグループIIまたはIII相当として扱えるとの注記がある。分類は改訂され得るため、国内採用状況、添付文書、現行表を確認する。</li>
+<li>国内の日本医学放射線学会・日本腎臓学会第3版（2024）では、長期透析、推算糸球体濾過量（eGFR）30 mL/min/1.73 m²未満の慢性腎不全、急性腎障害（AKI）では、可能な限りGdを避けて代替検査を検討する。一方、代替が困難なら検査を一律に断念せず、適正使用量を守り、反復時は可能な限り間隔を空け、利益と危険を比較して判断する。</li>
+<li>Gdは投与後に微量が体内へ残留し得る。臨床的必要性、反復回数、代替法を考え、必要最少量とする。</li>
+<li>妊娠中は通常のGd投与を避け、期待される利益が胎児への不確実な危険を明確に上回る場合だけ検討する。ACR等では、授乳中に通常量を投与した後の一律の授乳中断は不要とされるが、国内添付文書、施設方針、本人の選択を優先する。急性反応と血管外漏出も個別に評価する。</li>
+<li>Gd造影後にSTIRを避けるのは<strong>安全性の問題ではなく、T1が短縮した増強組織まで抑制され、評価しにくくなるという画質上の問題</strong>である。</li>
+</ul>
+<hr>
+<h1 id="section-45" class="chapter-title">10. MRIの代表的な撮像構成：何を選ぶか</h1>
+<p>以下は「なぜその撮像法を選ぶか」を学ぶための標準骨格であり、施設ごとの撮像手順や固定値を示す表ではない。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>部位・目的</th>
+<th>基本構成</th>
+<th>選ぶ理由・注意点</th>
+</tr></thead><tbody>
+<tr>
+<td>脳の基本撮像</td>
+<td>T1、T2、FLAIR、DWI＋ADC、T2*/SWI</td>
+<td>解剖、浮腫、CSF抑制、拡散、血液産物を相補的に評価</td>
+</tr>
+<tr>
+<td>急性脳卒中</td>
+<td>DWI/ADC、FLAIR、T2*/SWI、TOF-MRA、必要時に灌流画像</td>
+<td>急性虚血性変化、不可逆変化域の推定、発症時相の手がかり、出血、閉塞、低灌流を評価する。DWI病変全体を不可逆変化域と同一視せず、各分布図だけで決めない</td>
+</tr>
+<tr>
+<td>脳腫瘍</td>
+<td>基本撮像＋造影3D T1（必要時にFS・差分画像）、DWI、SWI、必要時にDSC/DCE/ASL/MRS</td>
+<td>血液脳関門（BBB）の破綻、細胞性、血液産物、灌流、代謝を評価する。頭蓋底・眼窩ではFSが有用。ステロイド投与や治療後変化に注意</td>
+</tr>
+<tr>
+<td>脊椎</td>
+<td>矢状断T1/T2、STIRまたはディクソン法、横断T2/T1</td>
+<td>骨髄、椎間板、脊髄、浮腫を評価する。ギブス・アーチファクト、CSFの流れ、金属アーチファクトに注意</td>
+</tr>
+<tr>
+<td>運動器</td>
+<td>T1、脂肪抑制PD/T2、STIR、必要時に3D撮像</td>
+<td>解剖・骨髄評価と液体感度を分ける。腱のマジックアングルは長いTEで再確認</td>
+</tr>
+<tr>
+<td>肝</td>
+<td>T1同位相・逆位相、ディクソン法、T2、DWI/ADC、動態造影3D T1脂肪抑制、必要時に肝細胞相</td>
+<td>脂肪、鉄、液体、拡散、血流、肝細胞機能を評価する。撮像時期と息止めが鍵</td>
+</tr>
+<tr>
+<td>胆膵</td>
+<td>上記＋2D/3D強いT2強調MRCP</td>
+<td>胆汁・膵液を高信号にする。MIPと元画像を併読</td>
+</tr>
+<tr>
+<td>骨盤腫瘍</td>
+<td>高分解能T2多断面、DWI/ADC、必要時に動態像・造影T1脂肪抑制</td>
+<td>局所解剖と拡散を組み合わせる。臓器に沿った斜位断面を用いる</td>
+</tr>
+<tr>
+<td>心臓</td>
+<td>動画bSSFP、T2浮腫画像、T1/T2マッピング、初回通過像、LGE/PSIR、必要時にPC</td>
+<td>壁運動、浮腫、組織性状、灌流、線維化、血流を評価する。心電図同期、体動、帯状信号欠損に注意</td>
+</tr>
+<tr>
+<td>血管</td>
+<td>3D TOF、2D TOF、PC、CE-MRA、血液信号抑制法など</td>
+<td>流入効果、速度、T1短縮、血管壁を目的別に選ぶ。MIPだけで診断しない</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-46" class="chapter-title">MRI章の最終確認</h1>
+<p>次の問いに一文で答えられれば、MRI原理の土台はできている。</p>
+<ol>
+<li>180°パルスがT2*減衰の一部を戻せるのに、T2減衰を戻せないのはなぜか。</li>
+<li>FOV、スライス厚、NEX、BWなどの他条件を一定として、位相方向のマトリックスを2倍にすると、分解能、SNR、撮像時間はどうなるか。</li>
+<li>他条件を一定として受信BWを広げたとき、SNRと化学シフト・アーチファクトはどうなるか。</li>
+<li>Gd造影後の病変評価にSTIRが不適なのはなぜか。</li>
+<li>DWI高信号でもADCが低くなければ、何を考えるか。</li>
+<li>TOFで遅い血流や面内血流が消えるのはなぜか。</li>
+<li>bSSFPで代表的な共鳴周波数ずれのアーチファクトは何か。</li>
+<li>通常の直交格子収集MRIで、体動ゴーストはどちらのエンコード方向へ出やすいか。</li>
+</ol>
+<p><strong>確認解答</strong>：1 静的なB0不均一による位相ずれは再収束できるが、真のT2減衰は不可逆だから。2 公称面内分解能↑、ボクセル体積・SNR↓、撮像時間↑。3 SNR↓、化学シフトの画素ずれ↓。4 T1が短縮した増強組織まで抑制され得るから。5 T2透過効果。6 スラブ内で繰り返しRFを受けて飽和するから。7 帯状信号欠損。8 位相方向。</p>
+<hr>
+<h1 id="section-47" class="part-title">第II部　CT</h1>
+<h1 id="section-48" class="chapter-title">11. CTは何を画像にしているか</h1>
+<h2 id="section-49" class="">11-1. X線が検出器へ届くまで</h2>
+<p>CTは、体を通り抜けたX線の「弱くなり方」を多くの方向から測る。骨などX線を強く弱める物質の後ろでは、検出器に届くX線が少ない。多方向の「X線の影」を組み合わせると、どの位置でどれだけX線が弱められたかを断面図にできる。この処理が「再構成」であり、画像の元は線減弱係数 <code>μ</code> である。</p>
+<pre><code>X線管
+  ↓  制動X線＋特性X線（多色X線）
+付加フィルタ／ボウタイフィルタ
+  ↓  低エネルギー成分を除き、体形に合わせて線質・強度を整える
+患者
+  ↓  光電吸収＋コンプトン散乱などで減弱
+検出器 → データ収集系（DAS）
+  ↓  入射強度 I を電気信号へ
+対数変換  p = −ln(I/I0)
+  ↓  各方向の線積分（投影データ）
+フィルタ補正逆投影（FBP）／逐次近似再構成（IR）／深層学習再構成（DLR）
+  ↓  μの分布 → CT値（HU）へ変換 → ウィンドウ表示</code></pre>
+<p>単色で細いX線ビームを理想化したベール・ランベルトの法則は</p>
+<p><code>I = I0 exp(−∫ μ dl)</code></p>
+<p>したがって</p>
+<p><code>p = −ln(I/I0) = ∫ μ dl</code></p>
+<p>となる。ここで <code>I0</code> は物体に入る前の強度、<code>I</code> は通過後の強度である。実際には多色X線、散乱線、検出器の応答、ビームハードニング（線質硬化）があるため、それぞれの補正が必要になる。</p>
+<h3 id="section-50" class="">主な相互作用</h3>
+<ul>
+<li><strong>光電効果</strong>：低エネルギー、高原子番号で相対的に増え、骨やヨードのコントラストに重要である。ヨードのK吸収端は<strong>33.2 keV</strong>であり、80 kVpではない。低kVpでヨード造影効果が上がるのは、X線スペクトルの実効エネルギーがK吸収端に近づき、ヨードの質量減弱係数が相対的に増えるためである。</li>
+<li><strong>コンプトン散乱</strong>：診断用X線のエネルギー域における軟部組織で重要で、主に電子密度に依存する。散乱線はコントラスト低下、アーチファクト、不要な被ばくに関与する。</li>
+</ul>
+<h2 id="section-51" class="">11-2. CT値（HU）</h2>
+<p><code>HU = 1000 × (μ − μ水) / μ水</code></p>
+<div class="table-wrap"><table><thead><tr>
+<th>物質・組織</th>
+<th>代表的なHUの方向</th>
+<th>注意</th>
+</tr></thead><tbody>
+<tr>
+<td>空気</td>
+<td>約−1000</td>
+<td>校正・部分容積で変動</td>
+</tr>
+<tr>
+<td>肺</td>
+<td>大きく負</td>
+<td>吸気、病変、再構成で変動</td>
+</tr>
+<tr>
+<td>脂肪</td>
+<td>およそ−100前後</td>
+<td>種類・部分容積効果で幅</td>
+</tr>
+<tr>
+<td>水</td>
+<td>0</td>
+<td>基準</td>
+</tr>
+<tr>
+<td>軟部組織</td>
+<td>数十HU</td>
+<td>造影、脂肪、鉄などで変動</td>
+</tr>
+<tr>
+<td>急性血腫</td>
+<td>通常は高吸収</td>
+<td>ヘマトクリット・時間・貧血で変動</td>
+</tr>
+<tr>
+<td>骨・石灰</td>
+<td>高い正値</td>
+<td>kVp、再構成カーネル、部分容積効果で変動</td>
+</tr>
+</tbody></table></div>
+<p>CT値は絶対不変ではない。kVp、ビームハードニング、装置の校正、再構成法、造影の有無、関心領域（ROI）の大きさ、患者の体格に依存する。小病変では部分容積効果を避け、同じ造影時相・撮影条件で比較する。</p>
+<h2 id="section-52" class="">11-3. ウィンドウは「表示」であって再構成ではない</h2>
+<p>ウィンドウレベル（WL）は表示するCT値の中心、ウィンドウ幅（WW）は表示するCT値の幅である。概念的な表示範囲は</p>
+<p><code>表示下限 = WL − WW/2</code>、<code>表示上限 = WL + WW/2</code></p>
+<ul>
+<li>狭いWW：小さなHU差を大きな濃淡差として表示するが、雑音も目立つ。</li>
+<li>広いWW：広いHU範囲を表示でき、雑音は目立ちにくくなるが、低コントラストの差も見えにくい。</li>
+<li><strong>WWを広げても、画像データに含まれる物理的な雑音は減らない</strong>。</li>
+<li>画面上の拡大は、表示画像の拡大と画素補間である。元データの空間分解能を超えて、新しい細部を作り出すことはできない。</li>
+</ul>
+<hr>
+<h1 id="section-53" class="chapter-title">12. 装置構成・幾何学・撮影方式</h1>
+<h2 id="section-54" class="">12-1. 主要部品</h2>
+<ul>
+<li><strong>X線管</strong>：管電圧（kVp）がX線のエネルギースペクトルを、管電流（mA）と照射時間がフォトン数を主に決める。焦点の大きさ、熱容量、回転速度が制約になる。</li>
+<li><strong>コリメータ</strong>：X線の照射範囲を制限する。患者の前にあるコリメータと、検出器側で散乱線やチャンネル間の信号混入を抑える隔壁を区別する。</li>
+<li><strong>ボウタイフィルタ</strong>：身体周辺の薄い部分へのX線を減らし、検出器が扱う信号幅、雑音、線量を整える。患者が回転中心（アイソセンタ）からずれると、自動露出制御（AEC）、ボウタイフィルタの適合、画質、線量が同時に悪化し得る。</li>
+<li><strong>検出器</strong>：通常のエネルギー積分型検出器は、シンチレータでX線を光に変え、フォトダイオードで電気信号に変えて、入射エネルギーを積算する。</li>
+<li><strong>データ収集系（DAS）</strong>：検出器信号を増幅し、標本化してデジタルデータに変換する。</li>
+<li><strong>スリップリング</strong>：ガントリの連続回転を可能にし、ヘリカルCTの基盤となる。</li>
+</ul>
+<h2 id="section-55" class="">12-2. 逐次撮影、ヘリカル撮影、多列検出器CT</h2>
+<p>逐次撮影は、食パンを1枚ずつ切るように、寝台を止めた状態で断面ごとに撮る。ヘリカル撮影は、X線管が回り続ける間に寝台を動かし、身体をらせん状になぞる。多列検出器CTでは一度に多くのz方向データを取得できるため、短時間で薄い断面を広範囲に得られる。</p>
+<ul>
+<li><strong>逐次撮影</strong>：1回転ごとに寝台を止める、または次の位置へ移動する。ヘリカル補間に必要な追加照射はないが、実際のX線ビーム端の半影による照射幅の広がりは起こり得る。限定範囲や心電図同期心臓CTで利点がある。</li>
+<li><strong>ヘリカル撮影</strong>：X線管が連続回転しながら寝台が移動し、投影データの軌跡はらせん状になる。1回の呼吸停止中に立体データを集められ、任意位置の再構成やCT血管撮影（CTA）に有利である。</li>
+<li><strong>多列検出器CT（MDCT）</strong>：z方向に複数の検出器列を持ち、1回転で広い範囲を取得する。薄い等方性ボクセルのデータ、高速な範囲撮影、多断面再構成（MPR）や三次元（3D）表示の基盤になる。</li>
+<li><strong>広範囲検出器CT</strong>：臓器が検出器のz方向撮影幅に収まれば、1回転で臓器全体を撮影でき、心臓や灌流撮影に有利である。コーン角による影響と大量のデータに配慮する。</li>
+<li><strong>2管球CT</strong>：2組のX線管と検出器を持つ。高い時間分解能、2種類のエネルギーを用いる撮影、高ピッチ撮影などに利用する。</li>
+</ul>
+<p>総検出幅は概念的に <code>N × T</code>（N：有効チャンネル数、T：患者の回転中心に投影した公称チャンネル幅）である。検出器上の物理幅とは拡大率の分だけ異なり、実際のX線ビームには半影もある。「検出器列数」「DASチャンネル数」「同時再構成スライス数」は、飛躍焦点や再構成法の影響があるため、常に同じとは限らない。</p>
+<h3 id="section-56" class="">その他の撮影方式</h3>
+<ul>
+<li><strong>位置決め画像</strong>：固定したX線管で投影像を作り、撮影範囲、AEC、中心合わせを決める。腕の位置、投影方向、回転中心からのずれは、管電流変調に影響する。</li>
+<li><strong>シネ／動態撮影</strong>：寝台を固定するか限定範囲で往復し、繰り返し撮影する。試験注入、灌流、動態を評価できるが、時間分解能と局所の累積線量を管理する。</li>
+<li><strong>部分回転撮影</strong>：再構成に必要な約180°＋ファン角のデータを使い、時間分解能を上げる。心臓CTの基盤である。</li>
+<li><strong>CT透視</strong>：同一断面を反復撮影し、生検や治療手技を誘導する。局所線量に注意する。</li>
+</ul>
+<h2 id="section-57" class="">12-3. ヘリカルピッチ</h2>
+<p>ピッチは「X線管が1回転する間に、寝台がX線ビーム幅の何倍進むか」を表す。ピッチ1なら総ビーム幅と同じ距離、ピッチ2なら約2倍の距離を進む。大きくすると速く広く撮れる一方、z方向の画質、雑音、線量は補間法や装置の出力制御によって変わる。</p>
+<p>多列検出器ヘリカルCTのピッチは</p>
+<p><code>ピッチ = 1回転あたりの寝台移動 / 総コリメーション (N × T)</code></p>
+<p>ヘリカルCTでは、目的の断面を直接通るすべての投影データがそろうとは限らないため、らせん軌道上の前後のデータを補間して画像を作る。古典的な180°補間は比較的薄いスライス感度プロファイル（SSP）が得られるが雑音が増えやすく、360°補間はデータ平均が増えて雑音は下がるがSSPが厚くなりやすい。現代の装置はzフィルタやコーンビーム再構成などを使うため、ピッチと再構成法がSSPと雑音を一緒に変える。</p>
+<ul>
+<li><strong>オーバービーミング</strong>：公称コリメーションより実際のX線ビームが半影の分だけ広いこと。総コリメーションが狭いほど、照射したX線を画像に利用する幾何学的効率が悪化しやすい。</li>
+<li><strong>オーバーレンジング</strong>：ヘリカル補間のため、設定した撮影範囲の前後にも照射すること。短い撮影ほど相対的な寄与が大きく、動的zコリメーションは主にこれを減らす。</li>
+</ul>
+<h3 id="section-58" class="">ピッチ問題の正しい解き方</h3>
+<ol>
+<li><strong>何を固定しているか</strong>を見る。</li>
+<li>mAと回転時間を固定した単純モデルでは、ピッチ↑で同一点を照射する回数が減り、<code>容積CT線量指数（CTDIvol） = 加重CT線量指数（CTDIw） / ピッチ</code>。</li>
+<li>しかし実効mAs一定、自動露出制御（AEC）、X線管出力の補償ではmAが変わり、線量は単純に下がらない。実効mAsは一部メーカーで用いる概念で、概ね <code>(1回転あたりのmAs) / ピッチ</code>。真の管電流時間積そのものではない。</li>
+<li>高ピッチはz方向の標本化を粗くし得る。現代の補間や2管球高ピッチ撮影など例外があるため、「ピッチ↑ならz分解能が必ず上がる」は誤り。</li>
+</ol>
+<h2 id="section-59" class="">12-4. 撮影視野と表示・再構成視野</h2>
+<ul>
+<li><strong>撮影視野（SFOV）</strong>：投影データを取得・再構成できる物理的な範囲。被写体が外れると、データの欠損による切れ・濃度むら（トランケーション）が生じる。</li>
+<li><strong>表示・再構成視野（DFOV）</strong>：画像として表示・再構成する範囲。行列数が一定なら <code>画素寸法 = DFOV / 行列数</code>。</li>
+<li>DFOVを小さくすると画素による標本化は細かくなるが、検出器、焦点、幾何学、再構成カーネルで決まる装置の真の分解能を超えることはできない。</li>
+</ul>
+<hr>
+<h1 id="section-60" class="chapter-title">13. 投影データから断層像へ：画像再構成</h1>
+<p>多方向から得た投影データは、さまざまな角度から見た「X線の影」である。これをそのまま重ねるだけでは画像がぼけるため、ぼけを補うフィルタを使う方法や、予測画像と実測データを何度も比べて修正する方法で断層像を作る。</p>
+<h2 id="section-61" class="">13-1. 単純な逆投影だけではぼける</h2>
+<p>各方向の投影データをそのまま逆投影すると、値が線上へ広がってぼける。フィルタ補正逆投影（FBP）は、投影データに高周波を強めるフィルタをかけてから逆投影し、輪郭を回復する。高周波強調フィルタ／カーネルは空間分解能を上げる一方、雑音も増幅する。</p>
+<h2 id="section-62" class="">13-2. 現代の再構成法</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>考え方</th>
+<th>長所</th>
+<th>注意</th>
+</tr></thead><tbody>
+<tr>
+<td>FBP</td>
+<td>フィルタをかけた投影データを解析的に逆投影</td>
+<td>高速、画像の質感を予測しやすい</td>
+<td>低線量で雑音・線状アーチファクトが増える</td>
+</tr>
+<tr>
+<td>逐次近似再構成（IR）</td>
+<td>予測した投影データと観測データの差を反復して小さくする</td>
+<td>雑音・アーチファクト低減、線量最適化</td>
+<td>強度設定で画像の質感・分解能が変わり、メーカー差がある</td>
+</tr>
+<tr>
+<td>モデルベース逐次近似再構成</td>
+<td>装置の光学特性・雑音統計を詳細にモデル化</td>
+<td>高いアーチファクト・雑音低減</td>
+<td>計算量、非線形な見え方</td>
+</tr>
+<tr>
+<td>深層学習再構成（DLR）</td>
+<td>学習済みモデルで雑音、画像の質感、細部を再構成</td>
+<td>低雑音と自然な質感を目指せる</td>
+<td>学習範囲、メーカー、強度設定、診断目的に依存する。病変を「創作しない」と無条件に仮定しない</td>
+</tr>
+</tbody></table></div>
+<p>再構成は線形とは限らない。線量、患者の体格、コントラスト、病変を見つける目的ごとに、単なる標準偏差だけでなく低コントラスト検出能と画像の質感を評価する。</p>
+<h2 id="section-63" class="">13-3. データ収集、再構成、表示を混ぜない</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>段階</th>
+<th>例</th>
+<th>後から変更できるか</th>
+</tr></thead><tbody>
+<tr>
+<td>データ収集</td>
+<td>kVp、mA、回転時間、コリメーション、ピッチ、撮影長</td>
+<td>原則として再撮影が必要</td>
+</tr>
+<tr>
+<td>再構成</td>
+<td>スライス厚、再構成間隔、DFOV、カーネル、IR／DLRの強度</td>
+<td>生データがあれば再構成できることがある</td>
+</tr>
+<tr>
+<td>表示・後処理</td>
+<td>WL／WW、拡大、多断面再構成（MPR）、最大値投影（MIP）、ボリュームレンダリング（VR）、スペクトラルデータから作る仮想単色X線画像（VMI）・物質マップ</td>
+<td>MPRなどには連続した体積元データ、VMIなどには保存されたスペクトラルデータが必要。任意の画像だけからは作れない</td>
+</tr>
+</tbody></table></div>
+<p>試験では「ウィンドウ幅を広げて雑音低減」「表示を拡大して真の分解能向上」のように、段階を混ぜた選択肢が狙われる。</p>
+<hr>
+<h1 id="section-64" class="chapter-title">14. CT画質の4軸</h1>
+<p>撮影・再構成条件の調整だけで、「細かいもの」「淡い濃度差」「動くもの」をすべて代償なく良くすることはできない。例えば、薄いスライスや高周波強調カーネルは細部を見やすくするが雑音を増やし、X線光子を増やせば雑音は減るが線量が増える。まず何を診断したいかを決め、空間分解能、低コントラスト分解能、時間分解能、雑音の釣り合いを取る。</p>
+<h2 id="section-65" class="">14-1. 面内空間分解能</h2>
+<p>焦点の大きさ、検出器開口、撮影の幾何学、投影方向数、体動、DFOV／行列数、再構成カーネルで決まる。変調伝達関数（MTF）は、空間周波数ごとのコントラスト伝達を表し、MTF50やMTF10などで評価する。</p>
+<h2 id="section-66" class="">14-2. z軸分解能</h2>
+<p>検出器コリメーション、ヘリカルピッチと補間、再構成スライス厚・カーネルに依存する。スライス感度プロファイル（SSP）の半値幅（FWHM）などで評価する。</p>
+<ul>
+<li>薄いスライス：部分容積効果↓、z分解能・MPR／3D表示↑、雑音↑、データ量↑。</li>
+<li>厚いスライス：雑音↓。病変が十分大きければコントラスト対雑音比（CNR）と低コントラスト検出能が上がり得るが、小病変では部分容積効果によりコントラストと検出能が下がり得る。z分解能↓、部分容積効果↑。</li>
+<li>再構成間隔を狭くして重なりを増やしても、新しい独立分解能を作るわけではないが、MPR／3D表示の段差と小病変の位置依存を減らす。線量は増えない。</li>
+</ul>
+<h2 id="section-67" class="">14-3. 低コントラスト分解能</h2>
+<p>雑音、CNR、病変の大きさ、スライス厚、線量、平滑カーネル、IR／DLRに強く依存する。低コントラスト病変には、単純な高MTFより十分なX線光子数と適切な雑音の質感が重要である。高周波強調カーネルは輪郭を強調するが雑音を増やし、低コントラスト検出を悪化させ得る。</p>
+<h2 id="section-68" class="">14-4. 時間分解能</h2>
+<p>1画像の時間分解能は、回転時間、部分回転撮影の幾何学、X線管の数、複数心拍データを使う再構成などで決まる。1管球・1心拍分の再構成では、回転中心における時間分解能は一般に約1/2回転、2管球CTでは装置の幾何学により約1/4回転である。完全なファンビームデータに必要な取得角度は180°＋ファン角で、撮影視野内の位置、補間・再構成、体動補正により実効時間分解能は変わる。z方向の撮影幅は、臓器全体を同じ時相で覆えるか、検査全体を撮り終えるまでの時間に影響するが、1画像の時間分解能そのものとは分けて考える。回転時間を短くすると体動は減るが、mA固定ならmAsが減って雑音が増える。mAsを維持するには、より大きなX線管出力が必要となる。</p>
+<h2 id="section-69" class="">14-5. 撮影・再構成条件を変えたときの一覧</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>変更</th>
+<th>画質</th>
+<th>線量</th>
+<th>時間・その他</th>
+</tr></thead><tbody>
+<tr>
+<td>mAs↑</td>
+<td>雑音は <code>∝1/√mAs</code> で低下、信号対雑音比（SNR）↑。FBP・固定再構成条件では空間分解能は原則不変だが、非線形なIR／DLRでは条件依存</td>
+<td><code>∝mAs</code> で↑</td>
+<td>X線管の発熱↑</td>
+</tr>
+<tr>
+<td>kVp↑</td>
+<td>X線の透過力↑、フォトン不足↓、ヨードコントラスト↓</td>
+<td>mAs固定なら概ね↑。AEC使用時などは条件依存</td>
+<td>ビームハードニング↓、大体格に有利</td>
+</tr>
+<tr>
+<td>kVp↓</td>
+<td>ヨードコントラスト↑</td>
+<td>適切なmA最適化で低減可能</td>
+<td>大体格で雑音・フォトン不足、X線管出力限界</td>
+</tr>
+<tr>
+<td>回転時間↓</td>
+<td>体動によるぼけ↓</td>
+<td>mA固定ならmAs／線量↓</td>
+<td>フォトン不足、心臓CTに有利</td>
+</tr>
+<tr>
+<td>スライス厚↓</td>
+<td>z分解能↑、雑音↑</td>
+<td>データ収集条件が同じなら原則不変</td>
+<td>データ量↑、部分容積効果↓</td>
+</tr>
+<tr>
+<td>高周波強調カーネル</td>
+<td>輪郭・MTF↑、雑音↑</td>
+<td>不変</td>
+<td>低コントラスト検出能↓</td>
+</tr>
+<tr>
+<td>平滑カーネル</td>
+<td>雑音↓。十分大きい低コントラスト物体の検出能↑が期待されるが、小病変ではぼけに注意</td>
+<td>不変</td>
+<td>輪郭・高コントラスト分解能↓</td>
+</tr>
+<tr>
+<td>DFOV↓</td>
+<td>画素による標本化↑</td>
+<td>不変</td>
+<td>装置のMTF以上にはならない</td>
+</tr>
+<tr>
+<td>再構成間隔↓</td>
+<td>MPRの連続性↑</td>
+<td>不変</td>
+<td>画像枚数↑</td>
+</tr>
+<tr>
+<td>撮影長↑</td>
+<td>画質は改善しない</td>
+<td>線量長積（DLP）↑</td>
+<td>範囲の正当化が必要</td>
+</tr>
+<tr>
+<td>多相化</td>
+<td>時相情報↑</td>
+<td>総線量↑</td>
+<td>必要相だけ選ぶ</td>
+</tr>
+<tr>
+<td>ピッチ↑</td>
+<td>z方向の画質は条件依存</td>
+<td>1回転あたりのmAs固定ならCTDIvol↓、AEC使用時は単純でない</td>
+<td>撮影速度↑</td>
+</tr>
+</tbody></table></div>
+<h3 id="section-70" class="">mAsの平方根則</h3>
+<p>線量を1/2にすると、他条件一定なら雑音は <code>√2 ≈ 1.41</code> 倍。雑音を1/2にするにはmAsを4倍に要する。<strong>雑音はmAsに反比例ではない</strong>。</p>
+<h2 id="section-71" class="">14-6. 自動露出制御（AEC）と管電流変調</h2>
+<p>AECは「常に線量を下げる機能」ではなく、設定した目標画質を患者のX線減弱に合わせて達成するため、mAを変える機能である。IR／DLRを導入した後も、AECの目標値を診断目的ごとに再検証する。</p>
+<ul>
+<li><strong>長軸方向変調</strong>：位置決め画像からz位置ごとの減弱を予測してmAを変える。</li>
+<li><strong>角度方向変調</strong>：1回転中の前後・左右方向でmAを変える。</li>
+<li><strong>複合変調</strong>：両者を組み合わせる。</li>
+<li>目標値の表し方は、画質基準mAs、雑音指数、基準画像などメーカーで異なる。</li>
+<li>患者の中心ずれ、腕が体幹横にある状態、不適切な位置決め画像の方向・呼吸・金属は、mAの過不足と画質不均一を生む。</li>
+</ul>
+<hr>
+<h1 id="section-72" class="chapter-title">15. CTアーチファクト完全表</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>アーチファクト</th>
+<th>見え方・原因</th>
+<th>悪化条件</th>
+<th>主な対策</th>
+</tr></thead><tbody>
+<tr>
+<td>ビームハードニング（線質硬化）</td>
+<td>カッピング、頭蓋底など骨間の暗い帯・線状影。低エネルギー光子が選択的に吸収される</td>
+<td>厚い骨、大体格、低kVp</td>
+<td>付加・ボウタイフィルタ、適切なkVp、補正、二重エネルギーCT（DECT）の高keV VMI</td>
+</tr>
+<tr>
+<td>部分容積効果</td>
+<td>1ボクセル内の異なる組織が平均化され、偽のHUや境界のぼけが生じる</td>
+<td>厚いスライス、大きい画素</td>
+<td>薄層収集、適切な断面・MPR</td>
+</tr>
+<tr>
+<td>フォトン不足</td>
+<td>肩、骨盤、金属方向の強い線状影</td>
+<td>透過光子不足、低線量</td>
+<td>適切なkVp／mAとAEC、腕挙上、IR／DLR、中心合わせ</td>
+</tr>
+<tr>
+<td>金属アーチファクト</td>
+<td>明暗の線状影、形状の歪み。フォトン不足、ビームハードニング、散乱などが複合する</td>
+<td>大きい・高密度の金属、中心ずれ</td>
+<td>体位・中心、適切なkVp／mAs、薄い元画像、金属アーチファクト低減処理（MAR）、高keV VMI、厚めの観察用再構成</td>
+</tr>
+<tr>
+<td>体動アーチファクト</td>
+<td>ぼけ、二重輪郭、線状影</td>
+<td>呼吸、心拍、不随意運動</td>
+<td>説明・固定、短時間撮影、同期撮影、体動補正</td>
+</tr>
+<tr>
+<td>リングアーチファクト</td>
+<td>同心円</td>
+<td>検出器素子の校正不良・故障</td>
+<td>空気校正、品質管理（QC）、保守点検</td>
+</tr>
+<tr>
+<td>ヘリカルのウィンドミル／スプレイ</td>
+<td>高コントラスト物質の周囲に回転する羽根状の線状影</td>
+<td>粗いz方向標本化、高ピッチ、厚いコリメーション</td>
+<td>ピッチ↓、薄い検出器コリメーション、適切なスライス厚・再構成</td>
+</tr>
+<tr>
+<td>ゼブラアーチファクト</td>
+<td>MPR／3D表示の周期的な縞</td>
+<td>ヘリカル補間、z方向標本化の周期性</td>
+<td>ピッチ・補間・スライス厚・再構成間隔の調整</td>
+</tr>
+<tr>
+<td>コーンビームアーチファクト</td>
+<td>広範囲検出器の辺縁の濃度むら・線状影</td>
+<td>大きなコーン角、近似的な再構成</td>
+<td>コーンビーム補正、適切な撮影範囲・再構成</td>
+</tr>
+<tr>
+<td>エイリアシング／標本化不足</td>
+<td>細い線・線状影</td>
+<td>投影方向数の不足、高周波成分</td>
+<td>標本化条件、平滑カーネル、適切なFOV</td>
+</tr>
+<tr>
+<td>トランケーション／視野外</td>
+<td>辺縁の切れ・濃度むら</td>
+<td>体幹・腕がSFOV外</td>
+<td>正しい中心・腕位置、拡張FOV（診断上の限界を認識する）</td>
+</tr>
+<tr>
+<td>階段状アーチファクト</td>
+<td>MPR／3D表示の段差</td>
+<td>厚いスライス、広い再構成間隔、呼吸ずれ</td>
+<td>薄い等方性データ、重なり再構成、呼吸をそろえる</td>
+</tr>
+</tbody></table></div>
+<h3 id="section-73" class="">頭蓋底と金属の頻出解答</h3>
+<ul>
+<li><strong>後頭蓋窩</strong>：骨によるビームハードニングとフォトン不足を考える。</li>
+<li><strong>金属</strong>：単にスライスを厚くするだけでは不十分。<strong>薄層収集＋MAR＋高keV VMI＋適切な体位・中心・X線出力</strong>を組み合わせ、厚めの観察用画像で雑音を抑える。</li>
+<li>高keV VMIはビームハードニング・金属アーチファクトを減らしやすいが、ヨードコントラストは低下する。低keV VMIはヨードコントラストを上げるが、雑音が増えやすい。</li>
+</ul>
+<hr>
+<h1 id="section-74" class="chapter-title">16. 造影CT：量・速さ・時相を分ける</h1>
+<h2 id="section-75" class="">16-1. 3つの量</h2>
+<p><code>総ヨード量 (gI) = ヨード濃度 (gI/mL) × 注入量 (mL)</code></p>
+<p><code>ヨード投与率 (IDR; gI/s) = ヨード濃度 × 注入速度 (mL/s)</code></p>
+<p><code>注入時間 = 注入量 / 注入速度</code></p>
+<p>濃度の単位をそろえる。例えば <code>300 mgI/mL = 0.300 gI/mL</code>。したがって総ヨード量はgI、IDRはgI/s、<code>mL ÷ (mL/s)</code> で注入時間は秒となる。</p>
+<ul>
+<li>実質臓器の増強量は、体重当たり総ヨード量の影響が大きい。</li>
+<li>CTAの早期動脈ピークでは、IDR、造影剤の時間的なまとまり（ボーラス形状）、心拍出量、撮影時相が重要である。</li>
+<li>装置が速くなったからといって、造影剤を無条件に減らせるわけではない。撮影時間とボーラス幅を合わせる。</li>
+<li>生理食塩水による後押しは、静脈内に残る造影剤を押し出して同じヨード量を有効に使い、上大静脈（SVC）周囲のアーチファクトを減らし得る。</li>
+</ul>
+<h2 id="section-76" class="">16-2. 撮影時相の決め方</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>考え方</th>
+<th>長所</th>
+<th>弱点</th>
+</tr></thead><tbody>
+<tr>
+<td>固定遅延</td>
+<td>注入開始から一定時間後に撮影</td>
+<td>簡単</td>
+<td>心拍出量・注入条件の個人差</td>
+</tr>
+<tr>
+<td>試験注入</td>
+<td>少量を注入し、時間濃度曲線を測る</td>
+<td>患者ごとの調整</td>
+<td>追加の造影剤と手順が必要</td>
+</tr>
+<tr>
+<td>ボーラストラッキング</td>
+<td>目標血管の関心領域（ROI）が設定CT値に達してから撮影開始</td>
+<td>実用的な個別化</td>
+<td>監視間隔、開始後の遅延、ROI、呼吸、低心拍出の影響</td>
+</tr>
+</tbody></table></div>
+<p>典型的には、単純CT（非造影）、動脈相、門脈相、平衡相／遅延相を目的に応じて選ぶ。固定秒数の丸暗記より、<strong>どの血管・実質・排泄・線維性間質を見たいか</strong>で説明する。</p>
+<ul>
+<li><strong>単純CT</strong>：結石、脂肪、石灰化、出血、造影前の基準HU。</li>
+<li><strong>早期動脈相</strong>：動脈、多血性病変、活動性出血。</li>
+<li><strong>後期動脈相／膵実質相</strong>：臓器実質と動脈のバランス。</li>
+<li><strong>門脈相</strong>：腹部実質臓器、門脈系、多くの腫瘍検索。</li>
+<li><strong>遅延相／平衡相</strong>：線維性間質、造影剤の洗い出し・残留、尿路排泄など。</li>
+</ul>
+<h2 id="section-77" class="">16-3. 造影剤安全</h2>
+<p>ヨード造影剤では、急性のアレルギー様反応・生理的反応、血管外漏出、甲状腺・腎機能、妊娠、併用薬を考える。腎障害は、造影剤使用後に時間的に関連して生じた造影剤関連急性腎障害（CA-AKI）と、造影剤が原因と考えられる造影剤誘発急性腎障害（CI-AKI）を区別する。管理基準やメトホルミン休薬の扱いは指針、腎機能、急性腎障害の有無で異なるため、現場では最新の米国放射線学会（ACR）、欧州泌尿生殖器放射線学会（ESUR）、国内指針と施設手順を使う。</p>
+<p>試験での原則：</p>
+<ul>
+<li>必要性と代替検査を検討し、診断に十分な造影効果を担保する適正量とし、不必要な過量を避ける。</li>
+<li>過去の反応の内容と重症度を確認し、前投薬をしても反応の再発はゼロにならない。</li>
+<li>血管外漏出では注入停止、臨床評価、患肢挙上などを行い、症状に応じて外科への相談を考える。漏出量だけで重症度を決めない。</li>
+<li>「造影剤投与後の腎機能悪化はすべて造影剤が原因」と断定しない。</li>
+</ul>
+<hr>
+<h1 id="section-78" class="chapter-title">17. 後処理：3D画像だけを見ない</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>何をするか</th>
+<th>得意</th>
+<th>注意点</th>
+</tr></thead><tbody>
+<tr>
+<td>多断面再構成（MPR）</td>
+<td>体積データを任意断面で切り直す</td>
+<td>解剖、長軸、外傷</td>
+<td>厚い元画像では階段状アーチファクト・部分容積効果</td>
+</tr>
+<tr>
+<td>曲面多断面再構成（CPR）</td>
+<td>曲がる構造に沿って展開する</td>
+<td>冠動脈、尿管、膵管</td>
+<td>経路設定に依存し、周囲との位置関係が歪む</td>
+</tr>
+<tr>
+<td>最大値投影（MIP）</td>
+<td>一定の厚みの中で最大のボクセル値を投影する</td>
+<td>造影血管、肺結節</td>
+<td>投影厚、構造の重なり、石灰化、骨で病変を隠す。深さ情報が乏しい</td>
+</tr>
+<tr>
+<td>最小値投影（MinIP）</td>
+<td>一定の厚みの中で最小のボクセル値を投影する</td>
+<td>気道、低吸収構造</td>
+<td>部分容積効果、構造の重なり</td>
+</tr>
+<tr>
+<td>ボリュームレンダリング（VR）</td>
+<td>不透明度と色を割り当てて体積表示する</td>
+<td>手術説明、全体の位置関係</td>
+<td>閾値・不透明度で形が変わる。原画像の代替ではない</td>
+</tr>
+<tr>
+<td>領域抽出</td>
+<td>臓器・病変を抽出する</td>
+<td>体積測定、術前計画</td>
+<td>はみ出し・欠損、操作者・モデルへの依存</td>
+</tr>
+<tr>
+<td>仮想単純画像（VNC）</td>
+<td>スペクトラルデータからヨード成分を除いて単純CT相当像を推定する</td>
+<td>撮影相を減らせる可能性</td>
+<td>実測した単純CTを常に代替できず、カルシウム・脂肪・小病変で差が生じ得る</td>
+</tr>
+<tr>
+<td>ヨードマップ</td>
+<td>物質分離によりボクセル内のヨード濃度・分布を推定する</td>
+<td>造影効果・ヨード分布の可視化／定量、灌流血液量（PBV：ヨード分布に基づく代用指標）の評価</td>
+<td>単一時相から脳血流量（CBF）を直接測るものではない。体動、位置ずれ、測定可能な濃度範囲に注意</td>
+</tr>
+</tbody></table></div>
+<p>原則は、<strong>薄い等方性の元データ＋診断に適した厚さの横断像／MPR</strong>である。MIP、VR、人工知能（AI）による抽出は理解を助ける表示であり、必ず元画像を確認する。</p>
+<hr>
+<h1 id="section-79" class="chapter-title">18. CT線量と最適化</h1>
+<p>他の条件が同じなら、X線を多く使うほど画像の粒状感は減るが、患者の線量は増える。線量指標は車の計器に似ており、装置出力や検査全体の規模を比べる目安であって、患者個人の臓器線量そのものではない。容積CT線量指数（CTDIvol）は標準ファントムでの装置出力、線量長積（DLP）はそれに撮影長を加味した値、体格補正線量（SSDE）はさらに患者の大きさを考慮した推定値、と段階的に整理する。</p>
+<h2 id="section-80" class="">18-1. 指標を区別する</h2>
+<p>加重CT線量指数（CTDIw）は</p>
+<p><code>CTDIw = (1/3) CTDI100,c + (2/3) CTDI100,p</code></p>
+<p><code>CTDI100,c</code> は100 mmのペンシル型電離箱で測る標準ファントム中心値、<code>CTDI100,p</code> は周辺測定値の平均である。通常、頭部用16 cmと体幹用32 cmのファントムを区別する。</p>
+<p>ヘリカル撮影の単純な関係は</p>
+<p><code>CTDIvol = CTDIw / ピッチ</code></p>
+<p>逐次撮影では概念的に</p>
+<p><code>CTDIvol = (N × T / I) × CTDIw</code></p>
+<p>ここで <code>I</code> は隣接する逐次撮影間の寝台移動量である。隙間・重複で値が変わる。</p>
+<p><code>DLP = CTDIvol × 撮影長</code></p>
+<div class="table-wrap"><table><thead><tr>
+<th>指標</th>
+<th>表すもの</th>
+<th>表さないもの</th>
+</tr></thead><tbody>
+<tr>
+<td>容積CT線量指数（CTDIvol、mGy）</td>
+<td>標準ファントム条件での装置出力指標</td>
+<td>その患者の臓器吸収線量そのもの</td>
+</tr>
+<tr>
+<td>線量長積（DLP、mGy·cm）</td>
+<td>装置出力×撮影長で表す検査全体の規模</td>
+<td>個人のリスクそのもの</td>
+</tr>
+<tr>
+<td>体格補正線量（SSDE、mGy）</td>
+<td><code>SSDE ≈ f(Dw, CTDIファントム径) × CTDIvol</code> による、患者体格を考慮した撮影範囲中央部の平均吸収線量の推定</td>
+<td>変換係数fは水等価径（Dw）と、表示CTDIvolが16 cm／32 cmのどちらのファントム基準かに対応させる。撮影範囲全体の平均、臓器別線量、局所の点線量、将来リスクの確定値ではない</td>
+</tr>
+<tr>
+<td>実効線量（mSv）</td>
+<td>組織加重を用いた集団レベルの比較・最適化の概算</td>
+<td>個人の正確なリスク予測</td>
+</tr>
+<tr>
+<td>診断参考レベル（DRL）</td>
+<td>同種検査の代表的な線量と比較する最適化の目安</td>
+<td>線量限度や、超えたら即危険という閾値</td>
+</tr>
+</tbody></table></div>
+<p><code>E ≈ k × DLP</code> は実効線量の概算に使われ、kの単位は <code>mSv/(mGy·cm)</code> である。kは部位、年齢、性別、ファントム・組織加重係数などに依存し、個人のリスクや臓器線量の断定には使わない。</p>
+<h2 id="section-81" class="">18-2. 正当化と最適化</h2>
+<ul>
+<li><strong>正当化</strong>：その検査で得る利益がリスクを上回るかを考える。重複検査、代替検査、妊娠、小児を考慮する。</li>
+<li><strong>最適化／合理的に達成可能な限り低くする原則（ALARA）</strong>：診断目的を満たす範囲で、合理的に達成可能な限り低い線量とする。最小線量そのものが目標ではなく、低すぎて診断不能でも不適切である。</li>
+<li><strong>DRLを用いた監査</strong>：撮影手順、患者の体格、CTDIvol、DLP、放射線線量構造化レポート（RDSR）を追跡し、外れ値と画像品質を検討する。</li>
+</ul>
+<h2 id="section-82" class="">18-3. 線量を下げる実務</h2>
+<ol>
+<li>撮影範囲と相数を絞る。最も確実に総線量へ効く。</li>
+<li>患者の体格・診断目的に合わせてkVpとmAを決める。小児は成人用の撮影手順を単純に縮小せず、体格に応じて設定する。</li>
+<li>長軸方向・角度方向のAECを適切に使う。位置決め画像の方向、腕の位置、中心ずれはmA変調を誤らせる。</li>
+<li>IR／DLRを使い、単に雑音を消すのではなく病変検出能を検証する。</li>
+<li>心臓CTでは、前向き心電図同期、心電図に応じた管電流変調、高ピッチ撮影、広範囲検出器などから適応に合う方法を選ぶ。</li>
+<li>ヘリカル撮影のオーバーレンジングには、動的zコリメーションなどを使う。短い撮影範囲ほど相対的な寄与が問題になる。</li>
+<li>前面ビスマス遮蔽はAEC、画質、スペクトラル撮影へ干渉し得るため、現代は臓器に応じた管電流変調や撮影手順全体の最適化を優先する。</li>
+</ol>
+<hr>
+<h1 id="section-83" class="chapter-title">19. 発展的CT技術</h1>
+<h2 id="section-84" class="">19-1. 心臓CT</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>方法</th>
+<th>特徴</th>
+<th>線量・用途</th>
+</tr></thead><tbody>
+<tr>
+<td>前向き心電図同期逐次撮影</td>
+<td>選択した心位相で逐次撮影</td>
+<td>通常は低線量、冠動脈形態の評価。心拍変動に弱く、機能情報が限定される</td>
+</tr>
+<tr>
+<td>後向き心電図同期ヘリカル撮影</td>
+<td>全心周期をヘリカル収集し、各心位相を再構成</td>
+<td>心機能・最適位相の評価、通常は高線量。心電図に応じた管電流変調で低減できる</td>
+</tr>
+<tr>
+<td>2管球高ピッチ撮影</td>
+<td>1心拍で高速に広範囲を撮影</td>
+<td>適切な低心拍・規則的な心拍で、体動アーチファクトと線量を低減できる</td>
+</tr>
+<tr>
+<td>広範囲検出器による1心拍撮影</td>
+<td>心臓全体を1回転で撮影</td>
+<td>階段状アーチファクトを減らす。検出器幅・回転条件に依存する</td>
+</tr>
+</tbody></table></div>
+<p>冠動脈CTAでは、時間分解能、空間分解能、体動、石灰化による過大表示（ブルーミング）、ヨード造影の時相が同時に問題になる。低心拍ほど有利な傾向はあるが、固定の心拍数閾値を装置の違いを無視して暗記しない。複数心拍再構成は複数心拍のデータを組み合わせて時間分解能を上げる一方、心拍変動により位置ずれが生じ得る。</p>
+<h2 id="section-85" class="">19-2. 二重エネルギー／スペクトラルCT</h2>
+<p>2種類以上のエネルギー情報を得る方法には、2管球方式、高速管電圧切替、2層検出器、分割フィルタなどがある。</p>
+<ul>
+<li><strong>物質分離</strong>：物質ごとに異なるエネルギー依存性を利用し、ヨード、カルシウム、尿酸などを分離する。</li>
+<li><strong>低keV仮想単色X線画像（VMI）</strong>：ヨードコントラスト↑。ただし雑音・アーチファクト↑のことがある。</li>
+<li><strong>高keV VMI</strong>：ビームハードニング・金属アーチファクト↓。ただしヨードコントラスト↓。</li>
+<li><strong>ヨードマップ</strong>：物質分離によりヨード濃度・分布を推定する。単一時相のマップはCBFそのものではない。</li>
+<li><strong>VNC</strong>：撮影相を減らせる可能性があるが、実測した単純CTを常に置き換えられるわけではない。</li>
+<li><strong>実効原子番号・電子密度マップ</strong>：物質性状の評価や治療計画に利用する。</li>
+</ul>
+<p>過去問の典型は「ヨードを目立たせるなら低keV」「金属・ビームハードニングを減らすなら高keV＋MAR」である。ただし低keV画像の雑音は、再構成法、線量、患者の体格で変わる。</p>
+<h2 id="section-86" class="">19-3. フォトンカウンティングCT</h2>
+<p>従来のエネルギー積分型検出器が、シンチレータを介して入射X線のエネルギーを積算するのに対し、フォトンカウンティング検出器は半導体でX線を電気信号へ直接変換し、入射光子を個別に数えてエネルギー閾値ごとに分類する。低エネルギー閾値を設定して電子雑音を除きやすく、検出器隔壁を減らして画素を小さくしやすい。期待される利点は、高い空間分解能、エネルギー情報、線量・コントラスト効率の改善である。すでに臨床導入されているが、高い計数率でのパルス重なり、電荷共有、校正、大量のデータ、費用などに課題があり、すべての検査で従来CTを自動的に上回るとは限らない。</p>
+<h2 id="section-87" class="">19-4. CT灌流画像</h2>
+<p>造影剤の時間濃度曲線から血流動態を推定する。中心容積原理は</p>
+<p>時間単位をそろえれば <code>CBF = CBV / MTT</code>、すなわち <code>CBV = CBF × MTT</code>。臨床表示でCBFをmL/100 g/min、CBVをmL/100 g、MTTを秒とする場合は</p>
+<p><code>CBF [mL/100 g/min] = 60 × CBV [mL/100 g] / MTT [s]</code></p>
+<p>動脈入力関数、静脈出力関数、逆畳み込み計算、造影剤到達の遅延・分散、体動、撮影範囲が結果へ影響する。繰り返し撮影のため線量と造影剤量を最適化し、メーカー間で数値を単純比較しない。</p>
+<h2 id="section-88" class="">19-5. CT透視と複合画像装置</h2>
+<ul>
+<li><strong>CT透視</strong>：画像誘導下手技をほぼリアルタイムで支援する。同一断面の反復照射による患者の局所皮膚線量・組織反応と、術者の手指・水晶体被ばくに注意する。低mA、間欠照射、最終画像保持、照射時間の短縮、距離、ガントリ側の遮蔽、針保持具、線量監視を用い、手をX線ビーム内へ入れない。</li>
+<li><strong>陽電子放出断層撮影（PET）／CT・単一光子放射断層撮影（SPECT）／CT</strong>：CTのHUを、PETでは511 keV、SPECTでは各核種の放出光子エネルギーに対応する線減弱係数マップへ変換し、解剖学的位置合わせと減弱補正に使う。CTが511 keVでの減弱を直接測定するわけではない。散乱補正は放出データやモデルに基づく別処理だが、減弱情報を利用する実装もある。位置合わせ用低線量CTと診断用造影CTを区別する。呼吸・体位ずれ、金属、高濃度造影剤により補正アーチファクトが生じるため、PETでは減弱補正画像だけでなく非補正画像も照合する。</li>
+</ul>
+<hr>
+<h1 id="section-89" class="chapter-title">20. 品質保証・品質管理と代表的な撮影手順</h1>
+<h2 id="section-90" class="">20-1. 品質保証（QA）と品質管理（QC）</h2>
+<p><strong>品質保証（QA）</strong>は、人員、撮影手順、線量、保守、記録を含む品質保証体系である。<strong>品質管理（QC）</strong>は、装置性能を測定・維持する具体的な試験である。</p>
+<div class="table-wrap"><table><thead><tr>
+<th>時点・頻度</th>
+<th>主な確認</th>
+<th>目的</th>
+</tr></thead><tbody>
+<tr>
+<td>受入試験・使用開始時試験</td>
+<td>HU、均一性、雑音、MTF、高・低コントラスト、スライス厚／SSP、線量、寝台・レーザー、アーチファクト</td>
+<td>導入時に仕様を確認し、基準値を作る</td>
+</tr>
+<tr>
+<td>日常・定期の水ファントム確認</td>
+<td>水のHU、均一性、雑音、リングなどのアーチファクト</td>
+<td>校正値のずれ・検出器異常を早期発見する</td>
+</tr>
+<tr>
+<td>定期的な物理評価</td>
+<td>MTF、低コントラスト、スライス厚／SSP、CTDI表示、AEC、寝台移動、位置合わせ</td>
+<td>基準値、許容値、経時変化を比較する</td>
+</tr>
+<tr>
+<td>スペクトラルCTの追加評価</td>
+<td>ヨード・物質定量、VMI、VNC、エネルギー・物質分離の精度と再現性</td>
+<td>DECTやフォトンカウンティングCT（PCCT）固有の出力を、基準値と経時変化で確認する</td>
+</tr>
+<tr>
+<td>臨床撮影手順の監査</td>
+<td>患者の体格、CTDIvol／DLP／SSDE、画質、再撮影、DRL</td>
+<td>診断目的に対する正当化と最適化を確認する</td>
+</tr>
+</tbody></table></div>
+<p>異常値を単発で見るだけでなく、同じファントム・条件で傾向を追い、許容範囲外なら診療への影響を評価して校正・保守へつなぐ。線量表示の一致、RDSRの保存、造影剤自動注入器、救急対応機器、感染対策も品質保証体系に含める。</p>
+<h2 id="section-91" class="">20-2. 代表的な撮影手順：目的から逆算する</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>目的</th>
+<th>データ収集・再構成の骨格</th>
+<th>見落としやすい点</th>
+</tr></thead><tbody>
+<tr>
+<td>頭部単純CT</td>
+<td>頭蓋底を透過する光子数を確保し、脳用・骨用カーネルを使い分ける。薄層の元データから診断に適した厚さを再構成する</td>
+<td>ビームハードニング、後頭蓋窩、急性血腫と石灰化の区別</td>
+</tr>
+<tr>
+<td>通常胸部CT</td>
+<td>十分な吸気、薄いスライス、肺野用・軟部組織用画像</td>
+<td>腕・中心、呼吸ずれ、小結節では薄い元画像を確認する</td>
+</tr>
+<tr>
+<td>高分解能CT（HRCT）</td>
+<td>薄層収集、高周波強調カーネル、必要時に呼気・腹臥位撮影</td>
+<td>「HRCT＝高線量」ではない。診断目的に合う線量とし、空気の閉じ込めは呼気相で見る</td>
+</tr>
+<tr>
+<td>腹部造影CT</td>
+<td>体重・目的に応じたヨード量、ボーラストラッキングまたは固定遅延、門脈相を中心に必要相を選ぶ</td>
+<td>無目的な多相化を避け、腕・中心・撮影長を確認する</td>
+</tr>
+<tr>
+<td>肝ダイナミックCT</td>
+<td>単純、動脈相、門脈相、遅延相から必要な相を選ぶ</td>
+<td>ボーラス時相、注入時間、多血性・乏血性病変</td>
+</tr>
+<tr>
+<td>CTA</td>
+<td>高いIDR、生理食塩水による後押し、ボーラストラッキング、薄い等方性データ、MPR／MIP／VR</td>
+<td>撮影が造影剤ボーラスを追い越す、静脈混入、金属・石灰化</td>
+</tr>
+<tr>
+<td>尿路・結石CT</td>
+<td>低線量単純CT、必要時に排泄相</td>
+<td>結石評価と腫瘍評価の目的を分け、過剰な撮影相を避ける</td>
+</tr>
+<tr>
+<td>外傷CT</td>
+<td>高速・広範囲撮影、目的に応じ動脈相／門脈相、薄い元データ</td>
+<td>正当化、腕の位置、活動性出血、追加相を絞る</td>
+</tr>
+<tr>
+<td>心臓CTA</td>
+<td>心電図（ECG）同期、心拍数・心拍リズムに合う撮影方式、薄層・心臓用カーネル</td>
+<td>体動、ブルーミング、造影時相、線量</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-92" class="chapter-title">CT章の最終確認</h1>
+<ol>
+<li>kVpを下げるとヨードコントラストが上がる理由を、K吸収端とX線スペクトルで説明できるか。</li>
+<li>mAsを4倍にしたとき、量子雑音は何倍になるか。</li>
+<li>ピッチを上げると線量が必ず下がる、と断言できない理由は何か。</li>
+<li>CTDIvolと患者吸収線量はなぜ同じではないか。</li>
+<li>スライスを薄くしたとき、z分解能・雑音・部分容積効果はどう動くか。</li>
+<li>高周波強調カーネルは低コントラスト検出能へどんな影響を与え得るか。</li>
+<li>頭蓋底のビームハードニングと金属アーチファクトの対策は何か。</li>
+<li>低keV VMIと高keV VMIの使い分けは何か。</li>
+</ol>
+<p><strong>確認解答</strong>：1 低kVpでは実効エネルギーがヨードのK吸収端へ近づき、ヨードの相対的なX線減弱が上がる。2 雑音は1/2。3 AECや実効mAs一定の制御により、mAが補償され得る。4 標準ファントムで測る装置出力指標だから。5 z分解能↑、雑音↑、部分容積効果↓。6 雑音増加により低コントラスト検出能を下げ得る。7 適切なX線出力・中心合わせ、薄層収集、MAR、高keV VMIなど。8 低keVはヨード強調、高keVは金属・ビームハードニング低減に使う。</p>
+<hr>
+<h1 id="section-93" class="part-title">第III部　統合して使う</h1>
+<h1 id="section-94" class="chapter-title">21. MRIとCTの選び分け</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>観点</th>
+<th>MRI</th>
+<th>CT</th>
+</tr></thead><tbody>
+<tr>
+<td>物理量</td>
+<td>水素原子核（プロトン）の密度・緩和・拡散・流れ・磁化率など</td>
+<td>X線の線減弱係数とそのエネルギー依存性</td>
+</tr>
+<tr>
+<td>放射線</td>
+<td>電離放射線なし</td>
+<td>電離放射線あり</td>
+</tr>
+<tr>
+<td>強み</td>
+<td>軟部組織のコントラスト、多種類の情報、任意断面、拡散・血流・組織性状</td>
+<td>高速、骨・石灰・肺、急性出血、広範囲、定量的HU、医療機器の位置確認</td>
+</tr>
+<tr>
+<td>弱み</td>
+<td>長時間、体動、体内機器・金属、閉所、磁化率、実施できる施設・時間の制約</td>
+<td>放射線、ヨード造影、軟部組織コントラストの限界、ビームハードニング・金属アーチファクト</td>
+</tr>
+<tr>
+<td>緊急性</td>
+<td>状態安定・目的が明確なら強い</td>
+<td>不安定患者、外傷、急性出血、肺で第一選択になりやすい</td>
+</tr>
+<tr>
+<td>造影</td>
+<td>ガドリニウム（Gd）系など。主にT1/T2を短縮する</td>
+<td>ヨード造影剤。X線減弱を上げる</td>
+</tr>
+</tbody></table></div>
+<p>「胸腹部はCT、それ以外はMRI」のような一律ルールは使わない。病態、緊急性、患者状態、禁忌、必要な時間・空間分解能、利用可能性で決める。</p>
+<h2 id="section-95" class="">21-1. 代表的な臨床選択</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>問い</th>
+<th>第一に考えやすい検査法</th>
+<th>理由・例外</th>
+</tr></thead><tbody>
+<tr>
+<td>急性頭部外傷・くも膜下出血</td>
+<td>単純CT</td>
+<td>短時間で急性血腫と骨折を確認できる。微小病変やびまん性軸索損傷（DAI）はMRIが補う</td>
+</tr>
+<tr>
+<td>超急性脳梗塞</td>
+<td>CT/CTA/CTPまたはMRI/MRA</td>
+<td>治療までの院内体制と実施可能性で選ぶ。DWIは急性虚血性変化に高感度だが、高信号域全体がすでに不可逆とは限らない。CTは短時間で行える</td>
+</tr>
+<tr>
+<td>後頭蓋窩病変</td>
+<td>MRI</td>
+<td>CTは骨によるビームハードニングの影響を受けやすい。急性出血や骨病変ではCTも重要</td>
+</tr>
+<tr>
+<td>肺実質・結節</td>
+<td>CT</td>
+<td>空間分解能が高く、空気と組織の差を見やすい</td>
+</tr>
+<tr>
+<td>脊髄・靱帯・骨髄</td>
+<td>MRI</td>
+<td>軟部組織・骨髄・脊髄を見やすい。骨折線・石灰はCTが補う</td>
+</tr>
+<tr>
+<td>尿路結石</td>
+<td>単純CT</td>
+<td>検出感度が高く、HU・位置・閉塞を評価できる。妊娠などでは超音波（US）やMRIを考慮</td>
+</tr>
+<tr>
+<td>肝病変の性状</td>
+<td>多相CTまたはMRI</td>
+<td>MRIはDWI、肝細胞相、脂肪・鉄の評価に強い。CTは短時間で全身の病期診断ができる</td>
+</tr>
+<tr>
+<td>膵胆管</td>
+<td>MRI/MRCP＋造影CT</td>
+<td>MRCPは液体で満たされた膵管・胆管を見やすく、CTは石灰・血管・病期診断に向く</td>
+</tr>
+<tr>
+<td>冠動脈</td>
+<td>ECG同期CTA</td>
+<td>空間・時間分解能が高い。心機能・心筋瘢痕は心臓MRIが適する</td>
+</tr>
+<tr>
+<td>心筋炎・心筋瘢痕</td>
+<td>心臓MRI</td>
+<td>浮腫、定量マップ、遅延造影（LGE）を評価できる。冠動脈・石灰はCTが適する</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-96" class="chapter-title">22. 未知の画像・撮像法を読む手順</h1>
+<h2 id="section-97" class="">22-1. MRI</h2>
+<ol>
+<li><strong>解剖と断面</strong>：2Dか3Dか、スライスの厚み、歪み、MIPか元画像かを確認する。</li>
+<li><strong>水を見る</strong>：CSF・胆汁・尿が明るければT2強調または強いT2強調を考える。CSFだけが抑制されていればFLAIRなどを考える。</li>
+<li><strong>脂肪を見る</strong>：脂肪が明るいか、均一に抑制されているかを確認し、STIR、周波数選択法、ディクソン法を考える。</li>
+<li><strong>T1と造影</strong>：脂肪、白質・灰白質、造影前後を比較する。造影後だけを見て「もともとT1高信号」と誤認しない。</li>
+<li><strong>DWIはADCと対</strong>：DWI高信号＋ADC低値か。b=0画像とT2強調像も確認する。</li>
+<li><strong>磁化率</strong>：信号欠損が大きく見えるブルーミング、静脈、鉄が目立つならT2*/SWIを考える。位相画像と強度画像を区別する。</li>
+<li><strong>投影画像は元画像へ戻る</strong>：MRA/MRCPのMIPだけで狭窄・結石を断定しない。</li>
+<li><strong>アーチファクトの方向</strong>：位相エンコード方向、読み出し方向、スライス方向のどこに出ているかを確認し、撮像条件と合うかを考える。</li>
+</ol>
+<h2 id="section-98" class="">22-2. CT</h2>
+<ol>
+<li><strong>単純か造影か</strong>：血管、腎・尿路、実質の増強、基準となる単純像を確認する。</li>
+<li><strong>造影時相</strong>：動脈相、門脈相、遅延相のどれかを、目的の血管と臓器の増強から判断する。</li>
+<li><strong>表示条件</strong>：脳・軟部・肺・骨のウィンドウを切り替える。1つの表示条件で見えなくても「存在しない」とは限らない。</li>
+<li><strong>スライス厚・再構成関数</strong>：薄層で鋭い再構成か、厚いスライスで平滑な再構成かを確認し、肺・骨用と軟部用を区別する。</li>
+<li><strong>アーチファクト</strong>：頭蓋底、肩、金属、体動、リング状の乱れを確認し、撮影時に生じたのか再構成で生じたのかを分ける。</li>
+<li><strong>スペクトラル画像</strong>：VMIのkeV、ヨードマップ、VNC、MARの有無を確認する。VNCを実測した単純CTと混同しない。</li>
+<li><strong>3Dは元画像へ戻る</strong>：MIPのスラブ厚や重なり、VR・領域抽出の閾値や透明度による見え方を確認する。</li>
+<li><strong>検査全体の線量</strong>：余分な造影時相・撮影範囲がないかを確認する。1つの撮影系列のCTDIvolだけで総検査線量を判断しない。</li>
+</ol>
+<hr>
+<h1 id="section-99" class="chapter-title">23. 過去問のひっかけ集</h1>
+<h2 id="section-100" class="">MRI</h2>
+<ul>
+<li>「180°パルスでT2減衰が回復する」→ <strong>誤り</strong>。静的なB0不均一による可逆的な位相ずれを再収束させる。</li>
+<li>「GREはT2を反映する」→ GREの横緩和は <strong>T2</strong><em> に従う。ただし画像の強調はTR・TE・フリップ角によりT1、プロトン密度（PD）、T2</em>のいずれにもなり得る。</li>
+<li>「FSEのTEは最初のエコー時間」→ <strong>誤り</strong>。k空間の中央を収集するエコーの時刻が実効TEである。</li>
+<li>「k空間の中央は空間分解能を決める」→ 中央は主に信号強度とコントラスト、周辺は輪郭と細部に関係する。</li>
+<li>「k空間は常に中央から埋める」→ <strong>誤り</strong>。データの充填順序による。</li>
+<li>「マトリックスを増やすとSNRも上がる」→ FOV一定ならボクセルが小さくなり、SNRは低下する。</li>
+<li>「BWを広げるとSNRが上がる」→ 通常は低下する。一方、化学シフトとEPIの歪みは減る。</li>
+<li>「STIRはGd造影後の脂肪抑制T1強調像に適する」→ <strong>誤り</strong>。T1が短縮した増強組織まで抑え得る。</li>
+<li>「DWI高信号なら拡散制限」→ <strong>ADC低値を確認</strong>。T2透過効果（T2シャインスルー）による見かけの高信号がある。</li>
+<li>「ADCは水分子の移動距離そのもの」→ <strong>誤り</strong>。ADCはb値などの測定条件から求める「見かけの拡散係数」である。</li>
+<li>「FAが高ければ線維束が実在する」→ <strong>誤り</strong>。トラクトグラフィは計算による推定で、線維が交差する部分に弱い。</li>
+<li>「TOFでは血流は常に高信号」→ <strong>誤り</strong>。遅い流れ、撮像面内の流れ、飽和、乱流では信号が低下する。</li>
+<li>「PCでVENCは高いほどよい」→ <strong>誤り</strong>。高すぎると遅い流れへの感度が落ち、低すぎると折り返す。</li>
+<li>「MREは弾性を直接測る」→ 外部振動で生じたせん断波の変位をMRIで測り、計算から硬さを推定する。</li>
+<li>「体動ゴーストはすべて位相方向」→ 通常の直交座標型撮像では位相方向が主だが、放射状に収集する撮像などでは見え方が異なる。</li>
+</ul>
+<h2 id="section-101" class="">CT</h2>
+<ul>
+<li>「ヨードK吸収端は約80 kVp」→ <strong>誤り</strong>。K吸収端は33.2 keVである。kVpは管電圧で、X線スペクトルの最大エネルギーを決める。</li>
+<li>「mAsを2倍にすると雑音は1/2」→ <strong>誤り</strong>。<code>1/√2</code>。</li>
+<li>「WWを広げれば雑音が減る」→ <strong>物理的な雑音は不変</strong>。表示上、目立ちにくくなるだけである。</li>
+<li>「拡大表示で装置の空間分解能が上がる」→ <strong>誤り</strong>。表示を細かく見せるだけで、取得済みの分解能は変わらない。</li>
+<li>「ピッチを上げればz分解能が必ず上がる」→ <strong>誤り</strong>。z方向のデータ間隔が粗くなり得る。</li>
+<li>「ピッチを上げれば線量が必ず下がる」→ 1回転あたりのmAsを固定した単純な条件での傾向である。AECや実効mAsの設定では単純に決まらない。</li>
+<li>「CTDIvolは患者が受けた平均線量」→ <strong>誤り</strong>。標準ファントムで測る装置の出力指標である。</li>
+<li>「DLPが同じなら個人のリスクも同じ」→ <strong>誤り</strong>。年齢、撮影部位、体格、臓器の放射線感受性が異なる。</li>
+<li>「鋭い再構成関数はすべての病変検出に優れる」→ <strong>誤り</strong>。雑音が増え、低コントラスト病変を見つけにくくし得る。</li>
+<li>「高keV VMIはヨードを目立たせる」→ 通常は逆である。低keVはヨードのコントラストを上げ、高keVは金属・ビームハードニングを減らす。</li>
+<li>「VNCは常に真の単純CTを代替できる」→ <strong>誤り</strong>。</li>
+<li>「MIPは狭窄評価の最終画像」→ <strong>誤り</strong>。スラブ厚、石灰化・骨、重なり、部分容積効果の影響があるため、元画像やMPRも確認する。</li>
+</ul>
+<hr>
+<h1 id="section-102" class="chapter-title">24. 数式・関係式 集約表</h1>
+<h2 id="section-103" class="">MRI</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>項目</th>
+<th>式</th>
+<th>読み方</th>
+</tr></thead><tbody>
+<tr>
+<td>ラーモア周波数</td>
+<td><code>f0=(γrad/2π)B0</code></td>
+<td>B0が強いほど周波数が高い。γradは角周波数で表した磁気回転比（単位rad/s/T）</td>
+</tr>
+<tr>
+<td>フリップ角</td>
+<td><code>α=γrad∫B1(t)dt</code></td>
+<td>RFパルスの強さと持続時間で決まる</td>
+</tr>
+<tr>
+<td>T1回復</td>
+<td><code>Mz=M0[1−exp(−t/T1)]</code></td>
+<td>90°パルス後の縦磁化回復を表す簡略式</td>
+</tr>
+<tr>
+<td>T2減衰</td>
+<td><code>Mxy=Mxy0 exp(−t/T2)</code></td>
+<td>tがT2と等しいとき横磁化は約37%になる</td>
+</tr>
+<tr>
+<td>T2*</td>
+<td><code>1/T2*=1/T2+1/T2′</code></td>
+<td>静的磁場不均一の影響が加わるため、T2*はT2以下になる</td>
+</tr>
+<tr>
+<td>SE信号</td>
+<td><code>S∝ρ[1−e^(−TR/T1)]e^(−TE/T2)</code></td>
+<td>TRとTEを変えたとき、信号がどちらへ動くかを見る近似式</td>
+</tr>
+<tr>
+<td>IRの信号消失</td>
+<td><code>TI≈T1 ln2</code></td>
+<td>理想的な180°反転後に信号がゼロとなるTI</td>
+</tr>
+<tr>
+<td>スライス厚</td>
+<td><code>Δz=BW_RF/[(γrad/2π)Gslice]</code></td>
+<td>傾斜磁場Gを強くするかRF帯域幅を狭くすると薄くなる</td>
+</tr>
+<tr>
+<td>画素</td>
+<td><code>FOV/マトリックス</code></td>
+<td>FOV一定ならマトリックスを増やすほど画素が小さくなる</td>
+</tr>
+<tr>
+<td>2D FSE撮像時間</td>
+<td><code>TA≈TR×Ny×NEX/(ETL×R)×PF</code></td>
+<td>PFは部分フーリエの実収集率。心電図同期などを使うと別に延長し得る</td>
+</tr>
+<tr>
+<td>エルンスト角</td>
+<td><code>cosαE=e^(−TR/T1)</code></td>
+<td>理想条件でSPGR信号が最大となるフリップ角</td>
+</tr>
+<tr>
+<td>化学シフト</td>
+<td><code>画素のずれ=Δf/（1画素当たりのBW）</code></td>
+<td>BWを広げると画素のずれが小さくなる</td>
+</tr>
+<tr>
+<td>水・脂肪の周波数差</td>
+<td><code>Δf≈3.5 ppm×f0</code></td>
+<td>B0が強いほど周波数差（Hz）が大きい</td>
+</tr>
+<tr>
+<td>DWI</td>
+<td><code>b=γrad²G²δ²(Δ−δ/3)</code></td>
+<td>δは傾斜磁場をかける時間、Δは開始時刻の間隔。b値は通常s/mm²</td>
+</tr>
+<tr>
+<td>ADC</td>
+<td><code>S=S0e^(−b×ADC)</code></td>
+<td>ADCは通常mm²/s。2つのb値では <code>ln[S(b1)/S(b2)]/(b2−b1)</code>、b1=0なら信号の対数比をbで割る</td>
+</tr>
+<tr>
+<td>PC-MRI</td>
+<td><code>Δφ=γrad×M1×v</code></td>
+<td>位相差が速度に比例</td>
+</tr>
+<tr>
+<td>並列撮像のSNR</td>
+<td><code>SNR_R≈SNR_0/(g√R)</code></td>
+<td>加速率Rを上げるほどSNRが低下する</td>
+</tr>
+<tr>
+<td>SNR概算</td>
+<td><code>SNR∝ボクセル体積×√NEX/√BW</code></td>
+<td>コイルなど他条件を固定したときの増減を見る</td>
+</tr>
+</tbody></table></div>
+<h2 id="section-104" class="">CT</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>項目</th>
+<th>式</th>
+<th>読み方</th>
+</tr></thead><tbody>
+<tr>
+<td>X線減弱</td>
+<td><code>I=I0e^(−∫μdl)</code></td>
+<td>対数変換して線積分へ直す</td>
+</tr>
+<tr>
+<td>投影データ</td>
+<td><code>p=−ln(I/I0)=∫μdl</code></td>
+<td>多方向のpから線減弱係数μを再構成する</td>
+</tr>
+<tr>
+<td>CT値</td>
+<td><code>HU=1000(μ−μ水)/μ水</code></td>
+<td>水0、空気約−1000</td>
+</tr>
+<tr>
+<td>ピッチ</td>
+<td><code>1回転当たりの寝台移動距離/総コリメーション</code></td>
+<td>他の条件が固定されているか確認する</td>
+</tr>
+<tr>
+<td>画素</td>
+<td><code>DFOV/マトリックス</code></td>
+<td>再構成画像を区切る細かさ</td>
+</tr>
+<tr>
+<td>ボクセル体積</td>
+<td><code>Δx×Δy×スライス厚</code></td>
+<td>部分容積効果と雑音に関係する</td>
+</tr>
+<tr>
+<td>量子雑音</td>
+<td><code>σ∝1/√mAs</code></td>
+<td>mAsを4倍にすると雑音は1/2</td>
+</tr>
+<tr>
+<td>線量</td>
+<td><code>線量∝mAs</code></td>
+<td>他の条件が同じ場合</td>
+</tr>
+<tr>
+<td>CTDIw</td>
+<td><code>(1/3)CTDI100,c+(2/3)CTDI100,p</code></td>
+<td>100 mm電離箱で測る標準ファントム内の重み付き指標</td>
+</tr>
+<tr>
+<td>CTDIvol</td>
+<td><code>CTDIw/ピッチ</code></td>
+<td>ヘリカルCTで用いる単純式</td>
+</tr>
+<tr>
+<td>DLP</td>
+<td><code>CTDIvol×撮影長</code></td>
+<td>撮影範囲や相数が増えると大きくなる</td>
+</tr>
+<tr>
+<td>SSDE</td>
+<td><code>f(Dw, CTDIファントム径)×CTDIvol</code></td>
+<td>患者の水等価径Dwと16/32 cmファントムの違いを補正する</td>
+</tr>
+<tr>
+<td>実効線量の概算</td>
+<td><code>E≈k×DLP</code></td>
+<td>個人のリスクを確定する値には使わない</td>
+</tr>
+<tr>
+<td>ヨード量</td>
+<td><code>濃度×注入量</code></td>
+<td>単位はgI</td>
+</tr>
+<tr>
+<td>IDR</td>
+<td><code>濃度×注入速度</code></td>
+<td>1秒あたりのヨード投与量。単位はgI/s</td>
+</tr>
+<tr>
+<td>中心容積原理</td>
+<td><code>CBF=CBV/MTT</code></td>
+<td>単位をそろえる。MTTが秒、CBFが毎分なら <code>CBF=60×CBV/MTT</code></td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-105" class="chapter-title">25. 用語ミニ辞典</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>用語</th>
+<th>一言定義</th>
+</tr></thead><tbody>
+<tr>
+<td>B0</td>
+<td>MRIの主静磁場</td>
+</tr>
+<tr>
+<td>B1</td>
+<td>水素原子核を励起するRF磁場</td>
+</tr>
+<tr>
+<td>TR</td>
+<td>励起を繰り返す間隔。T1強調と撮像時間に関係</td>
+</tr>
+<tr>
+<td>TE</td>
+<td>励起からエコー中心までの時間。T2/T2*強調とSNRに関係</td>
+</tr>
+<tr>
+<td>TI</td>
+<td>反転パルスから励起・読み出しまでの時間。信号を消す組織を選ぶ</td>
+</tr>
+<tr>
+<td>ETL（ターボ係数）</td>
+<td>1回の励起で得るエコー数、またはk空間の線数</td>
+</tr>
+<tr>
+<td>NEX/NSA</td>
+<td>信号の加算回数。SNRは平方根に比例し、撮像時間は回数に比例</td>
+</tr>
+<tr>
+<td>k空間</td>
+<td>位置と濃淡を再構成する前の生データ領域</td>
+</tr>
+<tr>
+<td>シミング</td>
+<td>B0の均一性を調整すること</td>
+</tr>
+<tr>
+<td>SAR</td>
+<td>RFによる体内のエネルギー吸収の指標。全身・局所の加熱に関係</td>
+</tr>
+<tr>
+<td>VENC</td>
+<td>PC-MRIで位相の折り返しなく表せる速度範囲</td>
+</tr>
+<tr>
+<td>HU</td>
+<td>水を0、空気を約−1000とするCT値</td>
+</tr>
+<tr>
+<td>kVp</td>
+<td>X線管電圧。X線の最大エネルギーとスペクトルを左右</td>
+</tr>
+<tr>
+<td>mAs</td>
+<td>管電流×時間。X線光子数・線量・雑音を左右</td>
+</tr>
+<tr>
+<td>ピッチ</td>
+<td>1回転あたりの寝台移動距離を総コリメーションで割った値</td>
+</tr>
+<tr>
+<td>再構成関数（カーネル）</td>
+<td>CT再構成の周波数特性。鋭い・平滑など</td>
+</tr>
+<tr>
+<td>MTF</td>
+<td>空間周波数ごとにコントラストをどこまで伝えられるかを示す指標</td>
+</tr>
+<tr>
+<td>SSP</td>
+<td>z方向のスライス感度分布</td>
+</tr>
+<tr>
+<td>AEC/TCM</td>
+<td>患者のX線減弱に応じて管電流を自動調整する機能</td>
+</tr>
+<tr>
+<td>CTDIvol</td>
+<td>標準ファントムに基づくCT装置の出力指標</td>
+</tr>
+<tr>
+<td>DLP</td>
+<td>CTDIvol×撮影長。検査全体の線量の目安</td>
+</tr>
+<tr>
+<td>SSDE</td>
+<td>水等価径DwとCTDIファントム径に応じてCTDIvolを補正した体格別線量推定値。臓器線量そのものではない</td>
+</tr>
+<tr>
+<td>DRL</td>
+<td>同種検査の線量最適化に使う診断参考レベル。患者ごとの線量上限ではない</td>
+</tr>
+<tr>
+<td>VMI</td>
+<td>スペクトラルCTから作る仮想単色エネルギー画像</td>
+</tr>
+<tr>
+<td>MAR</td>
+<td>金属アーチファクト低減法。撮影・再構成・スペクトラル法を含む総称</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-106" class="chapter-title">26. オリジナル確認問題 44問</h1>
+<p>まず解答を隠して解き、根拠を一文で説明する。</p>
+<h2 id="section-107" class="">MRI 1〜18</h2>
+<p><strong>Q1.</strong> 180°再収束パルスが主に補正するものはどれか。 A. 真のT2緩和　B. 静的磁場不均一による位相分散　C. T1回復　D. 拡散</p>
+<p><strong>Q2.</strong> 通常のSEでT1強調を強くしやすい組合せはどれか。 A. 短TR・短TE　B. 短TR・長TE　C. 長TR・短TE　D. 長TR・長TE</p>
+<p><strong>Q3.</strong> FSEで実効TEを決めるものはどれか。 A. 最初のエコー　B. 最後のエコー　C. k空間の中央を埋めるエコー　D. TRの半分</p>
+<p><strong>Q4.</strong> k空間の周辺を減らしたとき最も直接的に起こる変化はどれか。 A. 輪郭がぼける　B. FOVが必ず半分になる　C. T1が短縮する　D. 化学シフトが消える</p>
+<p><strong>Q5.</strong> 受信帯域幅（BW）を広げたときの組合せで正しいものはどれか。 A. SNR↑・化学シフト↑　B. SNR↑・化学シフト↓　C. SNR↓・化学シフト↑　D. SNR↓・化学シフト↓</p>
+<p><strong>Q6.</strong> Gd造影後の病変増強評価にSTIRを原則用いない理由はどれか。 A. Gdが脂肪にしか入らない　B. T1が短縮した増強組織も抑制し得る　C. T2*だけを測る　D. 放射線被ばくが増える</p>
+<p><strong>Q7.</strong> 高b DWI高信号、ADC高値でまず考えるのはどれか。 A. 真の拡散制限　B. T2透過効果（T2シャインスルー）　C. 必ず出血　D. 必ず石灰化</p>
+<p><strong>Q8.</strong> 他の条件を固定し、矩形の拡散傾斜磁場（MPG）の強さGだけを2倍にした。b値は概ね何倍か。 A. 1/2　B. 2　C. 4　D. 8</p>
+<p><strong>Q9.</strong> 3D TOFで撮像面内をゆっくり流れる血液が低信号になりやすい主因はどれか。 A. 流入したスピンも反復RFで飽和する　B. ヨードK吸収端　C. CTのビームハードニング　D. T1がゼロになる</p>
+<p><strong>Q10.</strong> PC-MRIでVENCを実速度より低く設定した場合に起こりやすいものはどれか。 A. 位相の折り返し　B. 水・脂肪の信号相殺　C. ギブス（打ち切り）アーチファクト　D. リングアーチファクト</p>
+<p><strong>Q11.</strong> bSSFPに特徴的なオフレゾナンス・アーチファクトはどれか。 A. リング　B. バンディング　C. 階段状　D. カッピング</p>
+<p><strong>Q12.</strong> 腱がB0に約55°で短TE高信号となった。最も考えるのはどれか。 A. マジックアングル　B. ビームハードニング　C. T2透過効果　D. 吸着事故</p>
+<p><strong>Q13.</strong> 化学シフト・アーチファクト（1型）が主に現れる方向はどれか。 A. スライス選択方向　B. 位相エンコード方向　C. 周波数・読み出し方向　D. 常にz軸</p>
+<p><strong>Q14.</strong> コイル配置に由来するg因子の追加損失がない（g=1）と仮定し、並列撮像の加速率をR=4にしたとき、SNRは未加速時の概ね何倍か。 A. 1/4　B. 1/2　C. 2　D. 4</p>
+<p><strong>Q15.</strong> MR安全性を確認できない体内機器の扱いとして最も適切なのはどれか。 A. 1.5Tなら撮像　B. 低SARなら撮像　C. 撮像可能と決めつけず原則保留し、機器の同定・条件照合と責任者によるリスク評価を行う　D. 患者が無症状なら撮像</p>
+<p><strong>Q16.</strong> MREが直接測るものに最も近いのはどれか。 A. X線減弱　B. 外部振動で生じるせん断波の変位　C. ヨード濃度　D. 水素原子核の数だけ</p>
+<p><strong>Q17.</strong> DTIのFAが0に近いときの意味はどれか。 A. 拡散が等方的　B. 拡散が一方向のみ　C. 流速がVENCを超える　D. T1がゼロ</p>
+<p><strong>Q18.</strong> IVIMの低b値での信号減衰に比較的大きく寄与するものはどれか。 A. 毛細血管内の微小灌流　B. 石灰のK吸収端　C. RF遮蔽　D. CTの散乱線</p>
+<h2 id="section-108" class="">CT 19〜36</h2>
+<p><strong>Q19.</strong> ヨードのK吸収端として正しいものはどれか。 A. 約3.5 eV　B. 約33.2 keV　C. 約80 keV固定　D. 約511 keV</p>
+<p><strong>Q20.</strong> mAsを100から25へ下げ、他条件を固定した。量子雑音は概ね何倍か。 A. 1/4　B. 1/2　C. 2　D. 4</p>
+<p><strong>Q21.</strong> ヘリカルCTで1回転あたりのmAsなどを固定し、ピッチを2倍にした単純な条件では、CTDIvolは概ねどうなるか。 A. 2倍　B. 1/2　C. 不変　D. 4倍</p>
+<p><strong>Q22.</strong> z軸分解能を主に規定する組合せはどれか。 A. WLとWWのみ　B. 検出器コリメーション・ピッチ・補間・スライス厚　C. 表示拡大のみ　D. ヨード濃度のみ</p>
+<p><strong>Q23.</strong> WWを広げたとき正しい説明はどれか。 A. 画像データの標準偏差が低下する　B. 物理的な雑音は不変だが目立ちにくくなる　C. 線量が下がる　D. MTFが上がる</p>
+<p><strong>Q24.</strong> 高周波強調再構成関数で起こりやすい組合せはどれか。 A. 輪郭強調・雑音増加　B. 輪郭低下・雑音増加　C. 輪郭強調・雑音消失　D. 線量増加のみ</p>
+<p><strong>Q25.</strong> 後頭蓋窩の骨の間に暗い帯や線状影がある。主因はどれか。 A. ビームハードニング　B. マジックアングル　C. T2暗黒化（T2ブラックアウト）　D. ジッパーアーチファクト</p>
+<p><strong>Q26.</strong> 金属アーチファクト低減に最も妥当な組合せはどれか。 A. 低keV VMIのみ　B. 高keV VMI＋MAR＋適切な位置合わせ・X線出力　C. WWを狭くするだけ　D. 表示拡大のみ</p>
+<p><strong>Q27.</strong> ヨードを目立たせる目的で一般に選びやすいVMIはどれか。 A. 低keV　B. 高keV　C. エネルギー情報なし　D. 空気校正</p>
+<p><strong>Q28.</strong> CTDIvolについて正しいものはどれか。 A. 個々の患者の臓器線量そのもの　B. 標準ファントムに基づく装置出力指標　C. 将来の発癌率　D. 造影剤量</p>
+<p><strong>Q29.</strong> CTDIvolが同じで撮影範囲を2倍にした。DLPはどうなるか。 A. 1/2　B. 不変　C. 2倍　D. 4倍</p>
+<p><strong>Q30.</strong> ヨード濃度300 mgI/mL、注入速度4 mL/sのIDRはいくらか。 A. 0.075 gI/s　B. 0.3 gI/s　C. 1.2 gI/s　D. 12 gI/s</p>
+<p><strong>Q31.</strong> 前向き心電図同期の逐次CTの特徴として正しいものはどれか。 A. 必ず全心周期を高線量で収集　B. 選んだ心位相を撮影し低線量化しやすい　C. ECGを使わない　D. CT値を作れない</p>
+<p><strong>Q32.</strong> VNCについて正しいものはどれか。 A. 常に実測単純CTを完全に代替する　B. スペクトラルデータからヨードを除いた推定画像で、限界がある　C. MRIの撮像法　D. 表示条件の変更のみ</p>
+<p><strong>Q33.</strong> 時間単位をそろえた中心容積原理の関係はどれか。 A. CBF=CBV/MTT　B. CBF=MTT/CBV　C. HU=CBF×1000　D. DLP=CBF×ピッチ</p>
+<p><strong>Q34.</strong> フォトンカウンティング検出器の説明として正しいものはどれか。 A. X線光子のエネルギーをすべて積算するだけ　B. 個々のX線光子を数え、エネルギー閾値で分類できる　C. X線を使わない　D. MRIコイルの一種</p>
+<p><strong>Q35.</strong> PET/CTの減弱補正アーチファクトを疑うときに重要なのはどれか。 A. 補正PETだけを見る　B. 非補正PETとCTの位置ずれも照合する　C. MRIのADCだけを見る　D. 表示条件を固定する</p>
+<p><strong>Q36.</strong> DRLについて正しいものはどれか。 A. 超えてはならない患者ごとの線量上限　B. 低ければ常に良い　C. 同種検査の最適化に用いる目安　D. 個人の発癌閾値</p>
+<h2 id="section-109" class="">頻出補充 37〜44</h2>
+<p><strong>Q37.</strong> STIRとFLAIRのTIの関係として一般に正しいものはどれか。 A. STIRのTIが短い　B. FLAIRのTIが短い　C. 常に同じ　D. TIはT1と無関係</p>
+<p><strong>Q38.</strong> FOV、スライス厚、NEX、BWなどを固定し、位相方向のマトリックスを増やしたときの組合せで正しいものはどれか。 A. 画素大・SNR高・時間短縮　B. 画素小・SNR低・時間延長　C. 画素小・SNR高・時間不変　D. 画素不変・SNR不変・時間短縮</p>
+<p><strong>Q39.</strong> 逆位相で正味の信号が低下するために必要な条件はどれか。 A. 同じボクセル内に水と脂肪が共存する　B. ボクセルが純粋な脂肪だけである　C. 180°パルスがないことだけ　D. ヨード投与</p>
+<p><strong>Q40.</strong> 通常SEと比べたFSEの特徴として正しいものはどれか。 A. 脂肪が高信号になりやすく、磁化率アーチファクトが弱く、長いETLでぼけ得る　B. 必ず脂肪低信号　C. エコーは1つだけ　D. SARは必ず低い</p>
+<p><strong>Q41.</strong> 2D多スライス撮像でクロストークを減らす方法はどれか。 A. スライスを重ねる　B. スライス間隔または交互撮像を使う　C. TEを無限に長くする　D. VENCを下げる</p>
+<p><strong>Q42.</strong> SPIO投与後に起こりやすい変化はどれか。 A. 超常磁性効果によるT2/T2*信号低下　B. X線を発生　C. ADCを必ずゼロ　D. CTDIvol上昇</p>
+<p><strong>Q43.</strong> 二重エネルギーCTのヨードマップが推定・表示するものはどれか。 A. ボクセル内のヨード濃度・分布　B. 肺換気ガスそのもの　C. 水素原子核のT1　D. 神経活動</p>
+<p><strong>Q44.</strong> 撮影・再構成・表示の対応で正しいものはどれか。 A. kVp＝表示、WW＝撮影　B. ピッチ＝表示拡大　C. kVp/mAs＝撮影、再構成関数/DFOV＝再構成、WL/WW＝表示　D. すべて後から任意に変更可能</p>
+<hr>
+<h1 id="section-110" class="chapter-title">27. 解答と一行解説</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>Q</th>
+<th>答</th>
+<th>解説</th>
+</tr></thead><tbody>
+<tr>
+<td>1</td>
+<td>B</td>
+<td>180°パルスは静的な周波数差による位相ずれを再収束させるが、本来のT2減衰や拡散は元に戻さない。</td>
+</tr>
+<tr>
+<td>2</td>
+<td>A</td>
+<td>短いTRでT1差を残し、短いTEでT2差を抑える。</td>
+</tr>
+<tr>
+<td>3</td>
+<td>C</td>
+<td>k空間の中央を収集するエコーの時刻が実効TEであり、画像コントラストを大きく左右する。</td>
+</tr>
+<tr>
+<td>4</td>
+<td>A</td>
+<td>k空間の周辺は輪郭や細部を担うため、減らすと画像がぼける。</td>
+</tr>
+<tr>
+<td>5</td>
+<td>D</td>
+<td>BWを広げると取り込む雑音が増えてSNRは下がるが、化学シフトによる画素のずれは減る。</td>
+</tr>
+<tr>
+<td>6</td>
+<td>B</td>
+<td>STIRは脂肪だけを選んで消す方法ではなく、GdでT1が短くなった増強組織まで抑え得る。</td>
+</tr>
+<tr>
+<td>7</td>
+<td>B</td>
+<td>ADCが低くなければ、真の拡散制限ではなくT2透過効果（T2シャインスルー）をまず考える。</td>
+</tr>
+<tr>
+<td>8</td>
+<td>C</td>
+<td>b値はG²に比例する。</td>
+</tr>
+<tr>
+<td>9</td>
+<td>A</td>
+<td>3D TOFではスラブ内の血液もRFを繰り返し受け、飽和して低信号になり得る。</td>
+</tr>
+<tr>
+<td>10</td>
+<td>A</td>
+<td>実際の速度がVENCを超えると、位相が折り返す。</td>
+</tr>
+<tr>
+<td>11</td>
+<td>B</td>
+<td>bSSFPでは共鳴周波数のずれにより暗い帯状のバンディングが生じる。</td>
+</tr>
+<tr>
+<td>12</td>
+<td>A</td>
+<td>規則正しく並ぶコラーゲンでは、約54.7°で双極子相互作用が小さくなり、短TEで高信号になり得る。</td>
+</tr>
+<tr>
+<td>13</td>
+<td>C</td>
+<td>水と脂肪の周波数差を位置の差と誤るため、読み出し方向に現れる。</td>
+</tr>
+<tr>
+<td>14</td>
+<td>B</td>
+<td><code>1/√4=1/2</code>。実際はコイル配置に由来するg因子の影響で、さらに低下し得る。</td>
+</tr>
+<tr>
+<td>15</td>
+<td>C</td>
+<td>安全と決めつけず、まず機器を同定して条件を照合する。未解決なら責任者が記録を残してリスク評価を行う。</td>
+</tr>
+<tr>
+<td>16</td>
+<td>B</td>
+<td>MREは外部振動で生じたせん断波の変位を測り、計算から組織の硬さを推定する。</td>
+</tr>
+<tr>
+<td>17</td>
+<td>A</td>
+<td>FA 0は等方性、1に近いほど一方向性が強い。</td>
+</tr>
+<tr>
+<td>18</td>
+<td>A</td>
+<td>低b値では、毛細血管内の微小灌流が見かけの拡散として信号減衰に加わる。</td>
+</tr>
+<tr>
+<td>19</td>
+<td>B</td>
+<td>ヨードのK吸収端は33.2 keVであり、管電圧を表すkVpとは別の量である。</td>
+</tr>
+<tr>
+<td>20</td>
+<td>C</td>
+<td>雑音の比は <code>√(100/25)=2</code>。</td>
+</tr>
+<tr>
+<td>21</td>
+<td>B</td>
+<td>単純式 <code>CTDIvol=CTDIw/ピッチ</code> から1/2になる。自動露出機構（AEC）などが働く場合は、この単純計算どおりとは限らない。</td>
+</tr>
+<tr>
+<td>22</td>
+<td>B</td>
+<td>z方向の分解能は、検出器コリメーション、ヘリカル収集と補間、再構成スライス厚で決まる。</td>
+</tr>
+<tr>
+<td>23</td>
+<td>B</td>
+<td>WWは表示条件であり、再構成済み画像データの物理的な雑音は変えない。</td>
+</tr>
+<tr>
+<td>24</td>
+<td>A</td>
+<td>鋭い再構成関数は高い空間周波数を強調するため、輪郭と雑音がともに増える。</td>
+</tr>
+<tr>
+<td>25</td>
+<td>A</td>
+<td>さまざまなエネルギーを含むX線のうち、低エネルギー成分が選択的に吸収される。</td>
+</tr>
+<tr>
+<td>26</td>
+<td>B</td>
+<td>金属アーチファクトは、適切な位置・X線出力、高keV VMI、MARなどを組み合わせて減らす。</td>
+</tr>
+<tr>
+<td>27</td>
+<td>A</td>
+<td>低keVほどヨードのX線減弱が相対的に高くなる。ただし雑音との両立が必要である。</td>
+</tr>
+<tr>
+<td>28</td>
+<td>B</td>
+<td>CTDIvolは標準ファントムで測る装置出力の指標で、患者個人の線量そのものではない。</td>
+</tr>
+<tr>
+<td>29</td>
+<td>C</td>
+<td><code>DLP=CTDIvol×撮影長</code>。撮影長を2倍にするとDLPも2倍になる。</td>
+</tr>
+<tr>
+<td>30</td>
+<td>C</td>
+<td><code>0.300 gI/mL × 4 mL/s = 1.2 gI/s</code>。</td>
+</tr>
+<tr>
+<td>31</td>
+<td>B</td>
+<td>必要な心位相だけを照射しやすいため、後向きECG同期より低線量化しやすい。</td>
+</tr>
+<tr>
+<td>32</td>
+<td>B</td>
+<td>VNCは物質分離でヨードを除いた推定画像であり、実測した単純CTとの差が残る。</td>
+</tr>
+<tr>
+<td>33</td>
+<td>A</td>
+<td><code>CBV=CBF×MTT</code>を変形する。MTT秒・CBF毎分の表示なら60倍の換算が必要。</td>
+</tr>
+<tr>
+<td>34</td>
+<td>B</td>
+<td>個々のX線光子を数え、エネルギーの範囲ごとに分類する。ただし高い計数率などに制約がある。</td>
+</tr>
+<tr>
+<td>35</td>
+<td>B</td>
+<td>CTとの位置ずれや高密度物質による補正誤差を、非補正PETとCTを照合して確認する。</td>
+</tr>
+<tr>
+<td>36</td>
+<td>C</td>
+<td>DRLは同種検査の代表的な線量と比べ、撮影手順を改善するための目安であり、患者ごとの線量上限ではない。</td>
+</tr>
+<tr>
+<td>37</td>
+<td>A</td>
+<td>脂肪のT1はCSFのT1より短いため、信号を消すのに必要なTIもSTIRの方が短い。</td>
+</tr>
+<tr>
+<td>38</td>
+<td>B</td>
+<td>FOV一定でマトリックスを増やすと画素・ボクセルが小さくなってSNRが下がり、位相方向の収集数が増えて撮像時間が延びる。</td>
+</tr>
+<tr>
+<td>39</td>
+<td>A</td>
+<td>同じボクセル内の水と脂肪の横磁化が反対向きになり、互いの信号を打ち消す。</td>
+</tr>
+<tr>
+<td>40</td>
+<td>A</td>
+<td>FSEでは脂肪が高信号になりやすく、磁化率アーチファクトが弱く、長いETLでぼけやすい。磁化移動効果とSARにも注意する。</td>
+</tr>
+<tr>
+<td>41</td>
+<td>B</td>
+<td>スライス断面の重なりを避ける。交互撮像中に動くと、奇数・偶数スライスの位置ずれが生じ得る。</td>
+</tr>
+<tr>
+<td>42</td>
+<td>A</td>
+<td>SPIOは局所磁場の不均一を強め、主にT2/T2*信号を低下させる。</td>
+</tr>
+<tr>
+<td>43</td>
+<td>A</td>
+<td>ヨードマップは物質分離に基づいてヨード濃度・分布を推定する。単一時相からCBFを直接測る画像ではない。</td>
+</tr>
+<tr>
+<td>44</td>
+<td>C</td>
+<td>撮影・再構成・表示を分けると、後から変更できる範囲と画質への影響を整理できる。</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h1 id="section-111" class="chapter-title">28. 7日間で仕上げる読み方</h1>
+<div class="table-wrap"><table><thead><tr>
+<th>日</th>
+<th>範囲</th>
+<th>到達目標</th>
+</tr></thead><tbody>
+<tr>
+<td>1</td>
+<td>1〜3章</td>
+<td><code>B0→RF→T1/T2→エコー→k空間</code>を白紙へ描く</td>
+</tr>
+<tr>
+<td>2</td>
+<td>4〜6章</td>
+<td>脂肪抑制、DWI/ADC、MRAを比較表なしで説明</td>
+</tr>
+<tr>
+<td>3</td>
+<td>7〜10章</td>
+<td>撮像条件表とアーチファクト表を「増やすとどうなる」で再現</td>
+</tr>
+<tr>
+<td>4</td>
+<td>11〜14章</td>
+<td><code>X線→対数変換→投影データ→再構成→HU</code>と画質4軸を説明</td>
+</tr>
+<tr>
+<td>5</td>
+<td>15〜20章</td>
+<td>アーチファクト、造影、線量、DECTを目的から選ぶ</td>
+</tr>
+<tr>
+<td>6</td>
+<td>21〜25章</td>
+<td>MRI/CT選択、ひっかけ、全数式を復習</td>
+</tr>
+<tr>
+<td>7</td>
+<td>44問を時間を測って解く</td>
+<td>誤答項目だけ本文へ戻り、自分の言葉で理由を書く</td>
+</tr>
+</tbody></table></div>
+<p>誤答は選択肢の丸暗記で直さず、<code>原因 → 撮像条件 → 信号・画像 → 代償</code>の4点で説明し直す。</p>
+<hr>
+<h1 id="section-112" class="chapter-title">29. 参照範囲と現行化</h1>
+<h2 id="section-113" class="">提供された3冊</h2>
+<div class="table-wrap"><table><thead><tr>
+<th>参照書</th>
+<th>主に使用した範囲</th>
+<th>本資料での使い方</th>
+</tr></thead><tbody>
+<tr>
+<td>MRIに強くなるための原理の基本 やさしく、深く教えます</td>
+<td>書籍p10–161（PDF p12–163）</td>
+<td>水素原子核、T1/T2、SE/GRE、位置情報の付加、造影、DWI、アーチファクトの骨格</td>
+</tr>
+<tr>
+<td>わかりやすいMRI 2</td>
+<td>書籍p1–141（PDF p8–148）</td>
+<td>k空間、FOV/BW、定常状態GRE、FSE/EPI、MRA、DWI/DTI、BOLDの深掘り</td>
+</tr>
+<tr>
+<td>MDCTの基本 パワーテキスト</td>
+<td>書籍p1–171（PDF p16–178）</td>
+<td>CT装置の構造、MDCT、撮影条件、心臓、線量、低線量、複合装置、QAの骨格</td>
+</tr>
+</tbody></table></div>
+<h3 id="section-114" class="">原書の年代差を補正した主な点</h3>
+<ul>
+<li>MRI：スピンの古典模型、3Tの位置づけ、体内機器の一律禁忌、GREの血流、部分フーリエ、STIR、DWI/DTIに関する断定を補正し、ディクソン法、SWI/QSM、ASL、MRE、圧縮センシング/SMS、現代のMR安全を追加。</li>
+<li>CT：ヨードK吸収端を33.2 keVへ訂正し、雑音 <code>∝1/√mAs</code>、ピッチの条件依存、CTDIvolの限界、IR/DLR、SSDE/DRL、現代のDECT、フォトンカウンティングCT、造影・後処理を追加。</li>
+<li>製品名、固定線量、固定の撮影時刻、薬剤管理値は将来変わるため、原理を本文に残し、実務は最新指針を優先する構成とした。</li>
+</ul>
+<h2 id="section-115" class="">現行安全・線量の一次資料</h2>
+<ul>
+<li>FDA, <a href="https://www.fda.gov/radiation-emitting-products/mri-magnetic-resonance-imaging/benefits-and-risks">MRIの利点とリスク</a></li>
+<li>FDA, <a href="https://www.fda.gov/radiation-emitting-products/mri-magnetic-resonance-imaging/information-professionals">医療従事者向けMRI情報</a></li>
+<li>ACR, <a href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/radiology-safety/mr-safety">MR安全マニュアル2026</a></li>
+<li>ACR, <a href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Contrast-Manual">造影剤マニュアル</a>（NSF章は2025更新）</li>
+<li>日本医学放射線学会・日本腎臓学会, <a href="https://www.radiology.jp/guideline/20240520_1.html">腎障害患者におけるガドリニウム造影剤使用に関するガイドライン 第3版（2024）</a></li>
+<li>FDA, <a href="https://www.fda.gov/radiation-emitting-products/medical-imaging/medical-x-ray-imaging">医療用X線画像</a></li>
+<li>FDA, <a href="https://www.fda.gov/radiation-emitting-products/medical-x-ray-imaging/radiation-quantities-and-units">放射線量の種類と単位</a></li>
+<li>AAPM報告書220, <a href="https://www.aapm.org/pubs/reports/detail.asp?docid=146">水等価径とSSDE</a></li>
+<li>AAPM報告書293, <a href="https://www.aapm.org/pubs/reports/detail.asp?docid=185">頭部CTのSSDE</a></li>
+<li>AAPM TG-291, <a href="https://www.aapm.org/pubs/reports/detail.asp?docid=201">マルチエナジーCTの原理と応用</a></li>
+<li>AAPM TG-299, <a href="https://www.aapm.org/pubs/reports/detail.asp?docid=288">マルチエナジーCTの品質管理</a></li>
+<li>AAPM報告書96, <a href="https://www.aapm.org/pubs/reports/rpt_96.pdf">CT線量の測定・報告・管理</a></li>
+<li>AAPM TG-233, <a href="https://www.aapm.org/pubs/reports/RPT_233.pdf">CT装置の性能評価</a></li>
+<li>NIBIB, <a href="https://www.nibib.nih.gov/science-education/science-topics/magnetic-resonance-imaging-mri">磁気共鳴画像（MRI）</a></li>
+<li>NIBIB, <a href="https://www.nibib.nih.gov/science-education/science-topics/computed-tomography-ct">コンピュータ断層撮影（CT）</a></li>
+</ul>
+<blockquote>安全・造影剤・線量管理は、試験学習と個別診療の判断を分ける。実際の患者では、最新の国内法令、添付文書、学会指針、施設の手順、MR安全管理責任者・放射線科医・医学物理士の判断を優先する。</blockquote>
+<hr>
+<h1 id="section-116" class="chapter-title">30. 最終まとめ</h1>
+<p>MRIは、<code>B0でMzを作る → B1で倒す → T1/T2/T2*で戻る → エコーを作る → 傾斜磁場で位置を付ける → k空間を読む</code>という一本線で理解する。撮像法の名称は、この流れのどこをどう変えたかを表している。</p>
+<p>CTは、<code>X線を通す → 検出器でIを測る → −ln（対数変換）で線積分へ直す → 多方向の投影データからμを再構成する → HUへ変換する → ウィンドウで表示する</code>という一本線で理解する。撮影条件は、X線光子数、エネルギー、データの細かさ（標本化）、再構成、表示のどの段階を変えるかで整理する。</p>
+<p>最後に常に問う：</p>
+<ol>
+<li>何を測っているか。</li>
+<li>どの撮像・撮影条件を変えたか。</li>
+<li>信号・コントラスト、分解能、雑音・SNR、時間、アーチファクト、線量・安全はどう動くか。</li>
+<li>その画像は元データか、再構成画像か、投影・表示画像か。</li>
+<li>例外や代償を無視した「必ず」「常に」になっていないか。</li>
+</ol>
+<p>この5問に戻れば、未知の選択肢でも原理から判定できる。</p></main>
+</body>
+</html>

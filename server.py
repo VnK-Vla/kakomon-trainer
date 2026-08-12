@@ -108,6 +108,14 @@ def is_correct_answer(user_answer: str, correct_answer: str) -> bool:
     return normalize_answer(user_answer) == normalize_answer(correct_answer)
 
 
+def question_number_snapshot(question: str, explanation: str = "") -> int | None:
+    for text in (question, explanation):
+        match = re.search(r"問\s*(\d{1,4})", text or "")
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def source_pdf_filename(exam: str, year: str, explanation: str) -> str:
     source_match = re.search(r"出典:\s*([^/\n]+?\.pdf)\b", explanation or "", re.IGNORECASE)
     if source_match:
@@ -247,6 +255,120 @@ def init_db() -> None:
                 FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS question_sets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_name TEXT NOT NULL,
+                exam TEXT NOT NULL,
+                title TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_name, exam, title),
+                FOREIGN KEY(user_name) REFERENCES users(name) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS question_set_items (
+                question_set_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                question_id INTEGER NOT NULL,
+                PRIMARY KEY(question_set_id, question_id),
+                UNIQUE(question_set_id, position),
+                FOREIGN KEY(question_set_id) REFERENCES question_sets(id) ON DELETE CASCADE,
+                FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS question_set_rounds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                question_set_id INTEGER NOT NULL,
+                round_number INTEGER NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'active'
+                    CHECK(status IN ('active', 'completed', 'abandoned')),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                completed_at TEXT,
+                abandoned_at TEXT,
+                UNIQUE(question_set_id, round_number),
+                FOREIGN KEY(question_set_id) REFERENCES question_sets(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS question_set_round_items (
+                round_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                question_id INTEGER,
+                source_question_id INTEGER NOT NULL,
+                source_year TEXT NOT NULL DEFAULT '',
+                source_category TEXT NOT NULL DEFAULT '',
+                source_question_number INTEGER,
+                completed_at TEXT,
+                attempt_id INTEGER,
+                user_answer TEXT,
+                correct_answer TEXT,
+                is_correct INTEGER,
+                self_mark TEXT,
+                PRIMARY KEY(round_id, source_question_id),
+                UNIQUE(round_id, position),
+                FOREIGN KEY(round_id) REFERENCES question_set_rounds(id) ON DELETE CASCADE,
+                FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE SET NULL,
+                FOREIGN KEY(attempt_id) REFERENCES attempts(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS disease_checklists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_name TEXT NOT NULL,
+                exam TEXT NOT NULL,
+                title TEXT NOT NULL,
+                source_sha256 TEXT NOT NULL DEFAULT '',
+                extraction_criteria TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_name, exam, title),
+                FOREIGN KEY(user_name) REFERENCES users(name) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS disease_checklist_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                checklist_id INTEGER NOT NULL,
+                position INTEGER NOT NULL,
+                disease_name TEXT NOT NULL,
+                aliases_json TEXT NOT NULL DEFAULT '[]',
+                concept_type TEXT NOT NULL DEFAULT 'disease',
+                primary_area TEXT NOT NULL DEFAULT '',
+                areas_json TEXT NOT NULL DEFAULT '[]',
+                curriculum_refs_json TEXT NOT NULL DEFAULT '[]',
+                base_included INTEGER NOT NULL DEFAULT 0
+                    CHECK(base_included IN (0, 1)),
+                review_note TEXT NOT NULL DEFAULT '',
+                sources_json TEXT NOT NULL DEFAULT '[]',
+                note_updated_at TEXT,
+                ever_wrong_at TEXT,
+                ever_wrong_question_id INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(checklist_id, position),
+                UNIQUE(checklist_id, disease_name),
+                FOREIGN KEY(checklist_id) REFERENCES disease_checklists(id) ON DELETE CASCADE,
+                FOREIGN KEY(ever_wrong_question_id) REFERENCES questions(id) ON DELETE RESTRICT
+            );
+
+            CREATE TABLE IF NOT EXISTS disease_checklist_item_questions (
+                item_id INTEGER NOT NULL,
+                question_id INTEGER NOT NULL,
+                match_type TEXT NOT NULL
+                    CHECK(match_type IN ('correct', 'structured_target')),
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(item_id, question_id, match_type),
+                FOREIGN KEY(item_id) REFERENCES disease_checklist_items(id) ON DELETE CASCADE,
+                FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE RESTRICT
+            );
+
+            CREATE TABLE IF NOT EXISTS disease_check_statuses (
+                item_id INTEGER PRIMARY KEY,
+                status TEXT NOT NULL CHECK(status IN ('ok', 'warn', 'wrong')),
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(item_id) REFERENCES disease_checklist_items(id) ON DELETE CASCADE
+            );
+
             CREATE INDEX IF NOT EXISTS idx_questions_exam ON questions(exam);
             CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category);
             CREATE INDEX IF NOT EXISTS idx_attempts_question_id ON attempts(question_id);
@@ -257,6 +379,27 @@ def init_db() -> None:
                 ON practice_sessions(user_name, exam);
             CREATE INDEX IF NOT EXISTS idx_practice_session_items_question_id
                 ON practice_session_items(question_id);
+            CREATE INDEX IF NOT EXISTS idx_question_sets_user_exam
+                ON question_sets(user_name, exam);
+            CREATE INDEX IF NOT EXISTS idx_question_set_items_question_id
+                ON question_set_items(question_id);
+            CREATE INDEX IF NOT EXISTS idx_question_set_rounds_set_number
+                ON question_set_rounds(question_set_id, round_number DESC);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_question_set_rounds_one_active
+                ON question_set_rounds(question_set_id)
+                WHERE status = 'active';
+            CREATE INDEX IF NOT EXISTS idx_question_set_round_items_question_id
+                ON question_set_round_items(question_id);
+            CREATE INDEX IF NOT EXISTS idx_question_set_round_items_attempt_id
+                ON question_set_round_items(attempt_id);
+            CREATE INDEX IF NOT EXISTS idx_disease_checklists_user_exam
+                ON disease_checklists(user_name, exam);
+            CREATE INDEX IF NOT EXISTS idx_disease_checklist_items_active
+                ON disease_checklist_items(checklist_id, base_included, ever_wrong_at);
+            CREATE INDEX IF NOT EXISTS idx_disease_checklist_item_questions_question
+                ON disease_checklist_item_questions(question_id, match_type);
+            CREATE INDEX IF NOT EXISTS idx_disease_check_statuses_status
+                ON disease_check_statuses(status);
             """
         )
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(questions)").fetchall()}
@@ -269,6 +412,42 @@ def init_db() -> None:
             conn.execute("ALTER TABLE attempts ADD COLUMN user_name TEXT NOT NULL DEFAULT '自分'")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_attempts_user_name ON attempts(user_name)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_attempts_question_user ON attempts(question_id, user_name)")
+        disease_item_columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(disease_checklist_items)").fetchall()
+        }
+        if "note_updated_at" not in disease_item_columns:
+            conn.execute("ALTER TABLE disease_checklist_items ADD COLUMN note_updated_at TEXT")
+        disease_status_columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(disease_check_statuses)").fetchall()
+        }
+        if "user_name" in disease_status_columns:
+            conn.executescript(
+                """
+                CREATE TABLE disease_check_statuses_owner_scoped (
+                    item_id INTEGER PRIMARY KEY,
+                    status TEXT NOT NULL CHECK(status IN ('ok', 'warn', 'wrong')),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(item_id) REFERENCES disease_checklist_items(id) ON DELETE CASCADE
+                );
+                INSERT INTO disease_check_statuses_owner_scoped (
+                    item_id, status, created_at, updated_at
+                )
+                SELECT s.item_id, s.status, s.created_at, s.updated_at
+                FROM disease_check_statuses s
+                JOIN disease_checklist_items i ON i.id = s.item_id
+                JOIN disease_checklists c ON c.id = i.checklist_id
+                WHERE s.user_name = c.user_name;
+                DROP TABLE disease_check_statuses;
+                ALTER TABLE disease_check_statuses_owner_scoped
+                    RENAME TO disease_check_statuses;
+                DROP INDEX IF EXISTS idx_disease_check_statuses_user_status;
+                CREATE INDEX IF NOT EXISTS idx_disease_check_statuses_status
+                    ON disease_check_statuses(status);
+                """
+            )
         timestamp = now_iso()
         conn.execute(
             """
@@ -426,6 +605,14 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_study_summary(parsed.query)
         elif parsed.path == "/api/practice-session":
             self.handle_get_practice_session(parsed.query)
+        elif parsed.path == "/api/question-sets":
+            self.handle_list_question_sets(parsed.query)
+        elif parsed.path.startswith("/api/question-sets/"):
+            self.route_get_question_set(parsed.path, parsed.query)
+        elif parsed.path == "/api/disease-checklists":
+            self.handle_list_disease_checklists(parsed.query)
+        elif parsed.path.startswith("/api/disease-checklists/"):
+            self.route_get_disease_checklist(parsed.path, parsed.query)
         elif parsed.path == "/api/export":
             self.handle_export()
         elif parsed.path == "/api/attempts":
@@ -452,6 +639,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_create_attempt()
         elif parsed.path == "/api/practice-session":
             self.handle_create_practice_session()
+        elif parsed.path.startswith("/api/question-sets/"):
+            self.route_post_question_set(parsed.path, parsed.query)
         elif parsed.path == "/api/import":
             self.handle_import()
         elif parsed.path == "/api/users":
@@ -479,6 +668,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": "Invalid attempt id"}, HTTPStatus.BAD_REQUEST)
                 return
             self.handle_update_attempt(attempt_id)
+        elif parsed.path.startswith("/api/disease-checklists/"):
+            self.route_put_disease_checklist(parsed.path)
         else:
             self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
@@ -492,6 +683,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.handle_delete_question(question_id)
         elif parsed.path == "/api/practice-session":
             self.handle_delete_practice_session(parsed.query)
+        elif parsed.path.startswith("/api/question-sets/"):
+            self.route_delete_question_set(parsed.path, parsed.query)
         elif parsed.path == "/api/attempts":
             self.handle_delete_attempts(parsed.query)
         elif parsed.path.startswith("/api/attempts/"):
@@ -515,6 +708,94 @@ class AppHandler(BaseHTTPRequestHandler):
             return int(raw)
         except ValueError:
             return None
+
+    def route_get_question_set(self, path: str, query: str) -> None:
+        active_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds/active", path)
+        if active_match:
+            self.handle_get_active_question_set_round(int(active_match.group(1)), query)
+            return
+
+        round_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds/(\d+)", path)
+        if round_match:
+            self.handle_get_question_set_round(
+                int(round_match.group(1)),
+                int(round_match.group(2)),
+                query,
+            )
+            return
+
+        rounds_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds", path)
+        if rounds_match:
+            self.handle_list_question_set_rounds(int(rounds_match.group(1)), query)
+            return
+
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+
+    def route_post_question_set(self, path: str, query: str) -> None:
+        restart_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds/restart", path)
+        if restart_match:
+            self.handle_restart_question_set_round(int(restart_match.group(1)), query)
+            return
+
+        abandon_match = re.fullmatch(
+            r"/api/question-sets/(\d+)/rounds/(\d+)/abandon",
+            path,
+        )
+        if abandon_match:
+            self.handle_abandon_question_set_round(
+                int(abandon_match.group(1)),
+                int(abandon_match.group(2)),
+                query,
+            )
+            return
+
+        rounds_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds", path)
+        if rounds_match:
+            self.handle_start_question_set_round(int(rounds_match.group(1)), query)
+            return
+
+        self.discard_request_body()
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+
+    def route_delete_question_set(self, path: str, query: str) -> None:
+        round_match = re.fullmatch(r"/api/question-sets/(\d+)/rounds/(\d+)", path)
+        if round_match:
+            self.handle_delete_question_set_round(
+                int(round_match.group(1)),
+                int(round_match.group(2)),
+                query,
+            )
+            return
+
+        set_match = re.fullmatch(r"/api/question-sets/(\d+)", path)
+        if set_match:
+            self.handle_delete_question_set(int(set_match.group(1)), query)
+            return
+
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+
+    def route_get_disease_checklist(self, path: str, query: str) -> None:
+        checklist_match = re.fullmatch(r"/api/disease-checklists/(\d+)", path)
+        if checklist_match:
+            self.handle_get_disease_checklist(int(checklist_match.group(1)), query)
+            return
+
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+
+    def route_put_disease_checklist(self, path: str) -> None:
+        item_match = re.fullmatch(
+            r"/api/disease-checklists/(\d+)/items/(\d+)",
+            path,
+        )
+        if item_match:
+            self.handle_update_disease_check_status(
+                int(item_match.group(1)),
+                int(item_match.group(2)),
+            )
+            return
+
+        self.discard_request_body()
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
     def request_content_length(self) -> int:
         try:
@@ -600,6 +881,14 @@ class AppHandler(BaseHTTPRequestHandler):
             return True
         self.discard_request_body()
         self.send_json({"error": "問題編集は管理者として許可されたTailscaleアカウントのみ使用できます。"}, HTTPStatus.FORBIDDEN)
+        return False
+
+    def require_disease_checklist_access(self) -> bool:
+        if self.can_manage_users():
+            return True
+        # リストの存在や所有者を推測できないよう、未認可時は常に404にそろえる。
+        self.discard_request_body()
+        self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
         return False
 
     def effective_user_name(self, params: dict | None = None, payload: dict | None = None) -> str:
@@ -884,6 +1173,996 @@ class AppHandler(BaseHTTPRequestHandler):
             }
         )
 
+    def question_set_for_user(
+        self,
+        conn: sqlite3.Connection,
+        question_set_id: int,
+        user_name: str,
+    ) -> sqlite3.Row | None:
+        return conn.execute(
+            """
+            SELECT *
+            FROM question_sets
+            WHERE id = ? AND user_name = ?
+            """,
+            (question_set_id, user_name),
+        ).fetchone()
+
+    def question_set_round_summary(
+        self,
+        conn: sqlite3.Connection,
+        row: sqlite3.Row,
+    ) -> dict:
+        aggregate = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN completed_at IS NOT NULL THEN 1 ELSE 0 END), 0)
+                    AS completed,
+                COALESCE(SUM(CASE
+                    WHEN question_id IS NOT NULL AND completed_at IS NULL THEN 1 ELSE 0
+                END), 0) AS remaining,
+                COALESCE(SUM(CASE WHEN question_id IS NULL THEN 1 ELSE 0 END), 0)
+                    AS unavailable,
+                COALESCE(SUM(CASE WHEN is_correct IN (0, 1) THEN 1 ELSE 0 END), 0)
+                    AS graded,
+                COALESCE(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END), 0)
+                    AS correct,
+                COALESCE(SUM(CASE WHEN self_mark = 'ok' THEN 1 ELSE 0 END), 0) AS mark_ok,
+                COALESCE(SUM(CASE WHEN self_mark = 'warn' THEN 1 ELSE 0 END), 0) AS mark_warn,
+                COALESCE(SUM(CASE WHEN self_mark = 'wrong' THEN 1 ELSE 0 END), 0) AS mark_wrong
+            FROM question_set_round_items
+            WHERE round_id = ?
+            """,
+            (row["id"],),
+        ).fetchone()
+
+        status = str(row["status"])
+        updated_at = row["updated_at"]
+        completed_at = row["completed_at"]
+        if status == "active" and int(aggregate["remaining"] or 0) == 0:
+            timestamp = now_iso()
+            cur = conn.execute(
+                """
+                UPDATE question_set_rounds
+                SET status = 'completed', updated_at = ?, completed_at = ?
+                WHERE id = ? AND status = 'active'
+                """,
+                (timestamp, timestamp, row["id"]),
+            )
+            if cur.rowcount:
+                conn.execute(
+                    "UPDATE question_sets SET updated_at = ? WHERE id = ?",
+                    (timestamp, row["question_set_id"]),
+                )
+            current = conn.execute(
+                """
+                SELECT status, updated_at, completed_at
+                FROM question_set_rounds
+                WHERE id = ?
+                """,
+                (row["id"],),
+            ).fetchone()
+            status = str(current["status"])
+            updated_at = current["updated_at"]
+            completed_at = current["completed_at"]
+
+        graded = int(aggregate["graded"] or 0)
+        correct = int(aggregate["correct"] or 0)
+        summary = {
+            "total": int(aggregate["total"] or 0),
+            "completed": int(aggregate["completed"] or 0),
+            "remaining": int(aggregate["remaining"] or 0),
+            "unavailable": int(aggregate["unavailable"] or 0),
+            "graded": graded,
+            "correct": correct,
+            "rate": round(correct * 100 / graded, 1) if graded else 0,
+            "self_marks": {
+                "ok": int(aggregate["mark_ok"] or 0),
+                "warn": int(aggregate["mark_warn"] or 0),
+                "wrong": int(aggregate["mark_wrong"] or 0),
+            },
+        }
+        payload = {
+            "id": int(row["id"]),
+            "question_set_id": int(row["question_set_id"]),
+            "round_number": int(row["round_number"]),
+            "token": row["token"],
+            "status": status,
+            "summary": summary,
+            "created_at": row["created_at"],
+            "updated_at": updated_at,
+            "completed_at": completed_at,
+            "abandoned_at": row["abandoned_at"],
+        }
+        payload.update(summary)
+        return payload
+
+    def question_set_round_active_payload(
+        self,
+        conn: sqlite3.Connection,
+        row: sqlite3.Row,
+    ) -> dict:
+        payload = self.question_set_round_summary(conn, row)
+        items = conn.execute(
+            """
+            SELECT question_id, completed_at
+            FROM question_set_round_items
+            WHERE round_id = ?
+            ORDER BY position
+            """,
+            (row["id"],),
+        ).fetchall()
+        payload["question_ids"] = [
+            int(item["question_id"])
+            for item in items
+            if item["question_id"] is not None
+        ]
+        payload["completed_question_ids"] = [
+            int(item["question_id"])
+            for item in items
+            if item["question_id"] is not None and item["completed_at"] is not None
+        ]
+        next_item = next(
+            (
+                item
+                for item in items
+                if item["question_id"] is not None and item["completed_at"] is None
+            ),
+            None,
+        )
+        payload["next_question_id"] = (
+            int(next_item["question_id"]) if next_item is not None else None
+        )
+        return payload
+
+    def create_question_set_round(
+        self,
+        conn: sqlite3.Connection,
+        question_set: sqlite3.Row,
+        timestamp: str,
+    ) -> sqlite3.Row:
+        questions = conn.execute(
+            """
+            SELECT q.id, q.year, q.category, q.question, q.explanation
+            FROM question_set_items i
+            JOIN questions q ON q.id = i.question_id
+            WHERE i.question_set_id = ?
+            ORDER BY i.position
+            """,
+            (question_set["id"],),
+        ).fetchall()
+        if not questions:
+            raise ValueError("この問題セットには利用できる問題がありません。")
+
+        shuffled_questions = list(questions)
+        secrets.SystemRandom().shuffle(shuffled_questions)
+        previous_order = [
+            int(item["source_question_id"])
+            for item in conn.execute(
+                """
+                SELECT i.source_question_id
+                FROM question_set_round_items i
+                JOIN question_set_rounds r ON r.id = i.round_id
+                WHERE r.id = (
+                    SELECT id
+                    FROM question_set_rounds
+                    WHERE question_set_id = ?
+                    ORDER BY round_number DESC
+                    LIMIT 1
+                )
+                ORDER BY i.position
+                """,
+                (question_set["id"],),
+            ).fetchall()
+        ]
+        shuffled_ids = [int(question["id"]) for question in shuffled_questions]
+        if len(shuffled_questions) > 1 and shuffled_ids == previous_order:
+            shuffled_questions = shuffled_questions[1:] + shuffled_questions[:1]
+        round_number = int(
+            conn.execute(
+                """
+                SELECT COALESCE(MAX(round_number), 0) + 1 AS next_number
+                FROM question_set_rounds
+                WHERE question_set_id = ?
+                """,
+                (question_set["id"],),
+            ).fetchone()["next_number"]
+        )
+        cur = conn.execute(
+            """
+            INSERT INTO question_set_rounds (
+                question_set_id, round_number, token, status,
+                created_at, updated_at, completed_at, abandoned_at
+            )
+            VALUES (?, ?, ?, 'active', ?, ?, NULL, NULL)
+            """,
+            (
+                question_set["id"],
+                round_number,
+                secrets.token_urlsafe(32),
+                timestamp,
+                timestamp,
+            ),
+        )
+        round_id = int(cur.lastrowid)
+        conn.executemany(
+            """
+            INSERT INTO question_set_round_items (
+                round_id, position, question_id, source_question_id,
+                source_year, source_category, source_question_number,
+                completed_at, attempt_id, user_answer, correct_answer,
+                is_correct, self_mark
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL)
+            """,
+            [
+                (
+                    round_id,
+                    position,
+                    int(question["id"]),
+                    int(question["id"]),
+                    str(question["year"] or ""),
+                    str(question["category"] or ""),
+                    question_number_snapshot(
+                        str(question["question"] or ""),
+                        str(question["explanation"] or ""),
+                    ),
+                )
+                for position, question in enumerate(shuffled_questions)
+            ],
+        )
+        conn.execute(
+            "UPDATE question_sets SET updated_at = ? WHERE id = ?",
+            (timestamp, question_set["id"]),
+        )
+        return conn.execute(
+            "SELECT * FROM question_set_rounds WHERE id = ?",
+            (round_id,),
+        ).fetchone()
+
+    def handle_list_question_sets(self, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        exam = " ".join((params.get("exam", [""])[0] or "").split()).strip()
+        if not exam:
+            self.send_json({"error": "試験を指定してください。"}, HTTPStatus.BAD_REQUEST)
+            return
+        if len(exam) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+            self.send_json({"error": "試験名が長すぎます。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            set_rows = conn.execute(
+                """
+                SELECT *
+                FROM question_sets
+                WHERE user_name = ? AND exam = ?
+                ORDER BY updated_at DESC, id DESC
+                """,
+                (user_name, exam),
+            ).fetchall()
+            question_sets = []
+            for set_row in set_rows:
+                total = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*) AS total
+                        FROM question_set_items
+                        WHERE question_set_id = ?
+                        """,
+                        (set_row["id"],),
+                    ).fetchone()["total"]
+                )
+                rounds_count = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*) AS total
+                        FROM question_set_rounds
+                        WHERE question_set_id = ?
+                        """,
+                        (set_row["id"],),
+                    ).fetchone()["total"]
+                )
+                active_row = conn.execute(
+                    """
+                    SELECT * FROM question_set_rounds
+                    WHERE question_set_id = ? AND status = 'active'
+                    """,
+                    (set_row["id"],),
+                ).fetchone()
+                active_round = (
+                    self.question_set_round_summary(conn, active_row)
+                    if active_row is not None
+                    else None
+                )
+                if active_round is not None and active_round["status"] != "active":
+                    active_round = None
+                latest_row = conn.execute(
+                    """
+                    SELECT * FROM question_set_rounds
+                    WHERE question_set_id = ?
+                    ORDER BY round_number DESC
+                    LIMIT 1
+                    """,
+                    (set_row["id"],),
+                ).fetchone()
+                latest_round = (
+                    self.question_set_round_summary(conn, latest_row)
+                    if latest_row is not None
+                    else None
+                )
+                question_sets.append(
+                    {
+                        "id": int(set_row["id"]),
+                        "user_name": set_row["user_name"],
+                        "exam": set_row["exam"],
+                        "title": set_row["title"],
+                        "total": total,
+                        "rounds_count": rounds_count,
+                        "active_round": active_round,
+                        "latest_round": latest_round,
+                        "created_at": set_row["created_at"],
+                        "updated_at": set_row["updated_at"],
+                    }
+                )
+
+        self.send_json({"question_sets": question_sets, "total": len(question_sets)})
+
+    def handle_start_question_set_round(self, question_set_id: int, query: str) -> None:
+        try:
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSONオブジェクトを送信してください。")
+            user_name = self.effective_user_name(
+                params=parse_qs(query),
+                payload=payload,
+            )
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        created = False
+        try:
+            with db() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                question_set = self.question_set_for_user(conn, question_set_id, user_name)
+                if question_set is None:
+                    self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                    return
+                active_row = conn.execute(
+                    """
+                    SELECT * FROM question_set_rounds
+                    WHERE question_set_id = ? AND status = 'active'
+                    """,
+                    (question_set_id,),
+                ).fetchone()
+                if active_row is not None:
+                    active_round = self.question_set_round_active_payload(conn, active_row)
+                    if active_round["status"] == "active":
+                        round_payload = active_round
+                    else:
+                        active_row = None
+                if active_row is None:
+                    round_row = self.create_question_set_round(conn, question_set, now_iso())
+                    round_payload = self.question_set_round_active_payload(conn, round_row)
+                    created = True
+        except sqlite3.IntegrityError:
+            self.send_json(
+                {"error": "問題セットの周回を開始できませんでした。もう一度お試しください。"},
+                HTTPStatus.CONFLICT,
+            )
+            return
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.CONFLICT)
+            return
+
+        self.send_json(
+            {"round": round_payload},
+            HTTPStatus.CREATED if created else HTTPStatus.OK,
+        )
+
+    def handle_get_active_question_set_round(self, question_set_id: int, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        with db() as conn:
+            question_set = self.question_set_for_user(conn, question_set_id, user_name)
+            if question_set is None:
+                self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            row = conn.execute(
+                """
+                SELECT * FROM question_set_rounds
+                WHERE question_set_id = ? AND status = 'active'
+                """,
+                (question_set_id,),
+            ).fetchone()
+            round_payload = (
+                self.question_set_round_active_payload(conn, row)
+                if row is not None
+                else None
+            )
+            if round_payload is not None and round_payload["status"] != "active":
+                round_payload = None
+
+        self.send_json({"round": round_payload})
+
+    def handle_restart_question_set_round(self, question_set_id: int, query: str) -> None:
+        try:
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSONオブジェクトを送信してください。")
+            user_name = self.effective_user_name(
+                params=parse_qs(query),
+                payload=payload,
+            )
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        try:
+            with db() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                question_set = self.question_set_for_user(conn, question_set_id, user_name)
+                if question_set is None:
+                    self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                    return
+                available = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*) AS total
+                        FROM question_set_items i
+                        JOIN questions q ON q.id = i.question_id
+                        WHERE i.question_set_id = ?
+                        """,
+                        (question_set_id,),
+                    ).fetchone()["total"]
+                )
+                if not available:
+                    raise ValueError("この問題セットには利用できる問題がありません。")
+                timestamp = now_iso()
+                conn.execute(
+                    """
+                    UPDATE question_set_rounds
+                    SET status = 'abandoned', updated_at = ?, abandoned_at = ?
+                    WHERE question_set_id = ? AND status = 'active'
+                    """,
+                    (timestamp, timestamp, question_set_id),
+                )
+                round_row = self.create_question_set_round(conn, question_set, timestamp)
+                round_payload = self.question_set_round_active_payload(conn, round_row)
+        except sqlite3.IntegrityError:
+            self.send_json(
+                {"error": "問題セットの周回を開始できませんでした。もう一度お試しください。"},
+                HTTPStatus.CONFLICT,
+            )
+            return
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.CONFLICT)
+            return
+
+        self.send_json({"round": round_payload}, HTTPStatus.CREATED)
+
+    def handle_abandon_question_set_round(
+        self,
+        question_set_id: int,
+        round_id: int,
+        query: str,
+    ) -> None:
+        try:
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSONオブジェクトを送信してください。")
+            user_name = self.effective_user_name(
+                params=parse_qs(query),
+                payload=payload,
+            )
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                """
+                SELECT r.*
+                FROM question_set_rounds r
+                JOIN question_sets s ON s.id = r.question_set_id
+                WHERE r.id = ? AND r.question_set_id = ? AND s.user_name = ?
+                """,
+                (round_id, question_set_id, user_name),
+            ).fetchone()
+            if row is None:
+                self.send_json({"error": "周回履歴が見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            if row["status"] != "active":
+                self.send_json({"error": "進行中の周回ではありません。"}, HTTPStatus.CONFLICT)
+                return
+            timestamp = now_iso()
+            conn.execute(
+                """
+                UPDATE question_set_rounds
+                SET status = 'abandoned', updated_at = ?, abandoned_at = ?
+                WHERE id = ?
+                """,
+                (timestamp, timestamp, round_id),
+            )
+            conn.execute(
+                "UPDATE question_sets SET updated_at = ? WHERE id = ?",
+                (timestamp, question_set_id),
+            )
+            row = conn.execute(
+                "SELECT * FROM question_set_rounds WHERE id = ?",
+                (round_id,),
+            ).fetchone()
+            round_payload = self.question_set_round_summary(conn, row)
+
+        self.send_json({"round": round_payload})
+
+    def handle_list_question_set_rounds(self, question_set_id: int, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        try:
+            limit = min(max(int(params.get("limit", ["20"])[0]), 1), 20)
+            offset = max(int(params.get("offset", ["0"])[0]), 0)
+        except ValueError:
+            self.send_json({"error": "ページ指定が正しくありません。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            question_set = self.question_set_for_user(conn, question_set_id, user_name)
+            if question_set is None:
+                self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            total = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM question_set_rounds
+                    WHERE question_set_id = ?
+                    """,
+                    (question_set_id,),
+                ).fetchone()["total"]
+            )
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM question_set_rounds
+                WHERE question_set_id = ?
+                ORDER BY round_number DESC
+                LIMIT ? OFFSET ?
+                """,
+                (question_set_id, limit, offset),
+            ).fetchall()
+            rounds = [self.question_set_round_summary(conn, row) for row in rows]
+
+        self.send_json(
+            {
+                "rounds": rounds,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + len(rounds) < total,
+            }
+        )
+
+    def handle_get_question_set_round(
+        self,
+        question_set_id: int,
+        round_id: int,
+        query: str,
+    ) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        try:
+            limit = min(max(int(params.get("limit", ["100"])[0]), 1), 100)
+            offset = max(int(params.get("offset", ["0"])[0]), 0)
+        except ValueError:
+            self.send_json({"error": "ページ指定が正しくありません。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            row = conn.execute(
+                """
+                SELECT r.*
+                FROM question_set_rounds r
+                JOIN question_sets s ON s.id = r.question_set_id
+                WHERE r.id = ? AND r.question_set_id = ? AND s.user_name = ?
+                """,
+                (round_id, question_set_id, user_name),
+            ).fetchone()
+            if row is None:
+                self.send_json({"error": "周回履歴が見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            total = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM question_set_round_items
+                    WHERE round_id = ?
+                    """,
+                    (round_id,),
+                ).fetchone()["total"]
+            )
+            item_rows = conn.execute(
+                """
+                SELECT *
+                FROM question_set_round_items
+                WHERE round_id = ?
+                ORDER BY position
+                LIMIT ? OFFSET ?
+                """,
+                (round_id, limit, offset),
+            ).fetchall()
+            items = [
+                {
+                    "position": int(item["position"]) + 1,
+                    "question_id": (
+                        int(item["question_id"])
+                        if item["question_id"] is not None
+                        else None
+                    ),
+                    "source_question_id": int(item["source_question_id"]),
+                    "year": item["source_year"],
+                    "category": item["source_category"],
+                    "question_number": item["source_question_number"],
+                    "available": item["question_id"] is not None,
+                    "completed_at": item["completed_at"],
+                    "attempt_id": item["attempt_id"],
+                    "user_answer": item["user_answer"],
+                    "correct_answer": item["correct_answer"],
+                    "is_correct": item["is_correct"],
+                    "self_mark": item["self_mark"],
+                }
+                for item in item_rows
+            ]
+            round_payload = self.question_set_round_summary(conn, row)
+            round_payload["items"] = items
+
+        self.send_json(
+            {
+                "round": round_payload,
+                "items": items,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + len(items) < total,
+            }
+        )
+
+    def handle_delete_question_set_round(
+        self,
+        question_set_id: int,
+        round_id: int,
+        query: str,
+    ) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        with db() as conn:
+            row = conn.execute(
+                """
+                SELECT r.status
+                FROM question_set_rounds r
+                JOIN question_sets s ON s.id = r.question_set_id
+                WHERE r.id = ? AND r.question_set_id = ? AND s.user_name = ?
+                """,
+                (round_id, question_set_id, user_name),
+            ).fetchone()
+            if row is None:
+                self.send_json({"error": "周回履歴が見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            if row["status"] == "active":
+                self.send_json(
+                    {"error": "進行中の周回は削除できません。先に中断してください。"},
+                    HTTPStatus.CONFLICT,
+                )
+                return
+            conn.execute("DELETE FROM question_set_rounds WHERE id = ?", (round_id,))
+            conn.execute(
+                "UPDATE question_sets SET updated_at = ? WHERE id = ?",
+                (now_iso(), question_set_id),
+            )
+
+        self.send_json({"ok": True, "round_id": round_id})
+
+    def handle_delete_question_set(self, question_set_id: int, query: str) -> None:
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        with db() as conn:
+            cur = conn.execute(
+                "DELETE FROM question_sets WHERE id = ? AND user_name = ?",
+                (question_set_id, user_name),
+            )
+            if cur.rowcount == 0:
+                self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+
+        self.send_json({"ok": True, "question_set_id": question_set_id})
+
+    @staticmethod
+    def parse_json_list(value: object) -> list:
+        try:
+            parsed = json.loads(str(value or "[]"))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return []
+        return parsed if isinstance(parsed, list) else []
+
+    def disease_checklist_summary(
+        self,
+        conn: sqlite3.Connection,
+        checklist: sqlite3.Row,
+        _user_name: str,
+    ) -> dict:
+        counts = conn.execute(
+            """
+            SELECT
+                COUNT(*) AS item_count,
+                COALESCE(SUM(CASE WHEN s.status IS NULL THEN 1 ELSE 0 END), 0)
+                    AS unreviewed,
+                COALESCE(SUM(CASE WHEN s.status = 'ok' THEN 1 ELSE 0 END), 0) AS ok,
+                COALESCE(SUM(CASE WHEN s.status = 'warn' THEN 1 ELSE 0 END), 0) AS warn,
+                COALESCE(SUM(CASE WHEN s.status = 'wrong' THEN 1 ELSE 0 END), 0) AS wrong,
+                COALESCE(SUM(CASE WHEN i.base_included = 1 THEN 1 ELSE 0 END), 0)
+                    AS base_item_count,
+                COALESCE(SUM(CASE WHEN i.ever_wrong_at IS NOT NULL THEN 1 ELSE 0 END), 0)
+                    AS ever_wrong_count,
+                COALESCE(SUM(CASE
+                    WHEN i.base_included = 0 AND i.ever_wrong_at IS NOT NULL THEN 1 ELSE 0
+                END), 0) AS added_by_wrong_count
+            FROM disease_checklist_items i
+            LEFT JOIN disease_check_statuses s ON s.item_id = i.id
+            WHERE i.checklist_id = ?
+              AND (i.base_included = 1 OR i.ever_wrong_at IS NOT NULL)
+            """,
+            (checklist["id"],),
+        ).fetchone()
+        definition_count = int(
+            conn.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM disease_checklist_items
+                WHERE checklist_id = ?
+                """,
+                (checklist["id"],),
+            ).fetchone()["total"]
+        )
+        status_counts = {
+            "unreviewed": int(counts["unreviewed"] or 0),
+            "ok": int(counts["ok"] or 0),
+            "warn": int(counts["warn"] or 0),
+            "wrong": int(counts["wrong"] or 0),
+        }
+        return {
+            "id": int(checklist["id"]),
+            "exam": checklist["exam"],
+            "title": checklist["title"],
+            "name": checklist["title"],
+            "item_count": int(counts["item_count"] or 0),
+            "definition_count": definition_count,
+            "base_item_count": int(counts["base_item_count"] or 0),
+            "ever_wrong_count": int(counts["ever_wrong_count"] or 0),
+            "added_by_wrong_count": int(counts["added_by_wrong_count"] or 0),
+            "status_counts": status_counts,
+            "source_sha256": checklist["source_sha256"],
+            "extraction_criteria": checklist["extraction_criteria"],
+            "created_at": checklist["created_at"],
+            "updated_at": checklist["updated_at"],
+        }
+
+    def disease_checklist_item_payload(self, row: sqlite3.Row) -> dict:
+        aliases = self.parse_json_list(row["aliases_json"])
+        areas = self.parse_json_list(row["areas_json"])
+        curriculum_refs = self.parse_json_list(row["curriculum_refs_json"])
+        additional_sources = self.parse_json_list(row["sources_json"])
+        status = row["status"] if "status" in row.keys() else None
+        first_reviewed_at = (
+            row["status_created_at"] if "status_created_at" in row.keys() else None
+        )
+        status_updated_at = (
+            row["status_updated_at"] if "status_updated_at" in row.keys() else None
+        )
+        base_included = bool(row["base_included"])
+        ever_wrong = row["ever_wrong_at"] is not None
+        return {
+            "id": int(row["id"]),
+            "position": int(row["position"]),
+            "disease_name": row["disease_name"],
+            "aliases": aliases,
+            "concept_type": row["concept_type"],
+            "primary_area": row["primary_area"],
+            "primary_region": row["primary_area"],
+            "areas": areas,
+            "hierarchy": curriculum_refs,
+            "curriculum_refs": curriculum_refs,
+            "review_note": row["review_note"],
+            "note": row["review_note"],
+            "note_updated_at": row["note_updated_at"],
+            "sources": additional_sources,
+            "additional_sources": additional_sources,
+            "base_included": base_included,
+            "ever_wrong": ever_wrong,
+            "ever_wrong_at": row["ever_wrong_at"],
+            "ever_wrong_question_id": row["ever_wrong_question_id"],
+            "added_by_wrong": not base_included and ever_wrong,
+            "status": status,
+            "first_reviewed_at": first_reviewed_at,
+            "status_updated_at": status_updated_at,
+            "reviewed_at": status_updated_at,
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+
+    def disease_checklist_for_user(
+        self,
+        conn: sqlite3.Connection,
+        checklist_id: int,
+        user_name: str,
+    ) -> sqlite3.Row | None:
+        return conn.execute(
+            """
+            SELECT *
+            FROM disease_checklists
+            WHERE id = ? AND user_name = ?
+            """,
+            (checklist_id, user_name),
+        ).fetchone()
+
+    def disease_checklist_item_for_user(
+        self,
+        conn: sqlite3.Connection,
+        checklist_id: int,
+        item_id: int,
+        user_name: str,
+    ) -> sqlite3.Row | None:
+        return conn.execute(
+            """
+            SELECT
+                i.*,
+                s.status,
+                s.created_at AS status_created_at,
+                s.updated_at AS status_updated_at
+            FROM disease_checklist_items i
+            JOIN disease_checklists c ON c.id = i.checklist_id
+            LEFT JOIN disease_check_statuses s
+                ON s.item_id = i.id
+            WHERE c.id = ?
+              AND i.id = ?
+              AND c.user_name = ?
+              AND (i.base_included = 1 OR i.ever_wrong_at IS NOT NULL)
+            """,
+            (checklist_id, item_id, user_name),
+        ).fetchone()
+
+    def handle_list_disease_checklists(self, query: str) -> None:
+        if not self.require_disease_checklist_access():
+            return
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        exam = " ".join((params.get("exam", [""])[0] or "").split()).strip()
+        if not exam:
+            self.send_json({"error": "試験を指定してください。"}, HTTPStatus.BAD_REQUEST)
+            return
+        if len(exam) > MAX_PRACTICE_FILTER_TEXT_LENGTH:
+            self.send_json({"error": "試験名が長すぎます。"}, HTTPStatus.BAD_REQUEST)
+            return
+
+        with db() as conn:
+            rows = conn.execute(
+                """
+                SELECT *
+                FROM disease_checklists
+                WHERE user_name = ? AND exam = ?
+                ORDER BY updated_at DESC, id DESC
+                """,
+                (user_name, exam),
+            ).fetchall()
+            checklists = [
+                self.disease_checklist_summary(conn, row, user_name)
+                for row in rows
+            ]
+
+        self.send_json({"checklists": checklists, "total": len(checklists)})
+
+    def handle_get_disease_checklist(self, checklist_id: int, query: str) -> None:
+        if not self.require_disease_checklist_access():
+            return
+        params = parse_qs(query)
+        user_name = self.effective_user_name(params=params)
+        with db() as conn:
+            checklist = self.disease_checklist_for_user(conn, checklist_id, user_name)
+            if checklist is None:
+                self.send_json({"error": "疾患確認リストが見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            rows = conn.execute(
+                """
+                SELECT
+                    i.*,
+                    s.status,
+                    s.created_at AS status_created_at,
+                    s.updated_at AS status_updated_at
+                FROM disease_checklist_items i
+                LEFT JOIN disease_check_statuses s ON s.item_id = i.id
+                WHERE i.checklist_id = ?
+                  AND (i.base_included = 1 OR i.ever_wrong_at IS NOT NULL)
+                ORDER BY i.position, i.id
+                """,
+                (checklist_id,),
+            ).fetchall()
+            checklist_payload = self.disease_checklist_summary(
+                conn,
+                checklist,
+                user_name,
+            )
+            checklist_payload["items"] = [
+                self.disease_checklist_item_payload(row) for row in rows
+            ]
+
+        self.send_json({"checklist": checklist_payload})
+
+    def handle_update_disease_check_status(
+        self,
+        checklist_id: int,
+        item_id: int,
+    ) -> None:
+        if not self.require_disease_checklist_access():
+            return
+        try:
+            payload = self.read_json()
+            if not isinstance(payload, dict):
+                raise ValueError("JSONオブジェクトを送信してください。")
+            user_name = self.effective_user_name(payload=payload)
+            status = str(payload.get("status") or "").strip()
+            if status not in {"ok", "warn", "wrong"}:
+                raise ValueError("評価は○、△、×から選択してください。")
+        except ValueError as exc:
+            self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+            return
+
+        timestamp = now_iso()
+        with db() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            checklist = self.disease_checklist_for_user(conn, checklist_id, user_name)
+            item = self.disease_checklist_item_for_user(
+                conn,
+                checklist_id,
+                item_id,
+                user_name,
+            )
+            if checklist is None or item is None:
+                self.send_json({"error": "疾患確認項目が見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            conn.execute(
+                """
+                INSERT INTO disease_check_statuses (
+                    item_id, status, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(item_id) DO UPDATE SET
+                    status = excluded.status,
+                    updated_at = excluded.updated_at
+                """,
+                (item_id, status, timestamp, timestamp),
+            )
+            conn.execute(
+                "UPDATE disease_checklists SET updated_at = ? WHERE id = ?",
+                (timestamp, checklist_id),
+            )
+            checklist = self.disease_checklist_for_user(conn, checklist_id, user_name)
+            item = self.disease_checklist_item_for_user(
+                conn,
+                checklist_id,
+                item_id,
+                user_name,
+            )
+            checklist_payload = self.disease_checklist_summary(
+                conn,
+                checklist,
+                user_name,
+            )
+            item_payload = self.disease_checklist_item_payload(item)
+
+        self.send_json({"item": item_payload, "checklist": checklist_payload})
+
     def serve_static(self, raw_path: str) -> None:
         path = unquote(raw_path)
         if path in ("", "/"):
@@ -1108,13 +2387,34 @@ class AppHandler(BaseHTTPRequestHandler):
         args.append(question_id)
 
         with db() as conn:
-            cur = conn.execute(
+            existing = conn.execute(
+                "SELECT exam FROM questions WHERE id = ?",
+                (question_id,),
+            ).fetchone()
+            if existing is None:
+                self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
+                return
+            if "exam" in fields and fields["exam"] != existing["exam"]:
+                linked_count = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*) AS total
+                        FROM disease_checklist_item_questions
+                        WHERE question_id = ?
+                        """,
+                        (question_id,),
+                    ).fetchone()["total"]
+                )
+                if linked_count:
+                    self.send_json(
+                        {"error": "疾患確認の監査対象になっている問題は試験を変更できません。"},
+                        HTTPStatus.BAD_REQUEST,
+                    )
+                    return
+            conn.execute(
                 f"UPDATE questions SET {', '.join(updates)} WHERE id = ?",
                 args,
             )
-            if cur.rowcount == 0:
-                self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
-                return
             row = conn.execute("SELECT * FROM questions WHERE id = ?", (question_id,)).fetchone()
 
         self.send_json({"question": row_to_question(row)})
@@ -1123,10 +2423,34 @@ class AppHandler(BaseHTTPRequestHandler):
         if not self.require_question_edit():
             return
         with db() as conn:
-            cur = conn.execute("DELETE FROM questions WHERE id = ?", (question_id,))
-            if cur.rowcount == 0:
+            row = conn.execute(
+                "SELECT id FROM questions WHERE id = ?",
+                (question_id,),
+            ).fetchone()
+            if row is None:
                 self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
                 return
+            disease_reference_count = int(
+                conn.execute(
+                    """
+                    SELECT
+                        (SELECT COUNT(*)
+                         FROM disease_checklist_item_questions
+                         WHERE question_id = ?)
+                      + (SELECT COUNT(*)
+                         FROM disease_checklist_items
+                         WHERE ever_wrong_question_id = ?) AS total
+                    """,
+                    (question_id, question_id),
+                ).fetchone()["total"]
+            )
+            if disease_reference_count:
+                self.send_json(
+                    {"error": "疾患確認の監査根拠に使われている問題は削除できません。"},
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+            conn.execute("DELETE FROM questions WHERE id = ?", (question_id,))
         self.send_json({"ok": True})
 
     def handle_save_note(self, question_id: int) -> None:
@@ -1210,6 +2534,61 @@ class AppHandler(BaseHTTPRequestHandler):
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def activate_disease_checklist_items_for_wrong_attempt(
+        self,
+        conn: sqlite3.Connection,
+        user_name: str,
+        question_id: int,
+        timestamp: str,
+    ) -> int:
+        checklist_rows = conn.execute(
+            """
+            SELECT DISTINCT c.id
+            FROM disease_checklist_item_questions iq
+            JOIN disease_checklist_items i ON i.id = iq.item_id
+            JOIN disease_checklists c ON c.id = i.checklist_id
+            JOIN questions q ON q.id = iq.question_id AND q.exam = c.exam
+            WHERE iq.question_id = ?
+              AND iq.match_type IN ('correct', 'structured_target')
+              AND c.user_name = ?
+              AND i.ever_wrong_at IS NULL
+            """,
+            (question_id, user_name),
+        ).fetchall()
+        checklist_ids = [int(row["id"]) for row in checklist_rows]
+        if not checklist_ids:
+            return 0
+
+        cur = conn.execute(
+            """
+            UPDATE disease_checklist_items
+            SET ever_wrong_at = ?, ever_wrong_question_id = ?, updated_at = ?
+            WHERE ever_wrong_at IS NULL
+              AND id IN (
+                  SELECT iq.item_id
+                  FROM disease_checklist_item_questions iq
+                  JOIN disease_checklist_items linked_item ON linked_item.id = iq.item_id
+                  JOIN disease_checklists c ON c.id = linked_item.checklist_id
+                  JOIN questions q ON q.id = iq.question_id AND q.exam = c.exam
+                  WHERE iq.question_id = ?
+                    AND iq.match_type IN ('correct', 'structured_target')
+                    AND c.user_name = ?
+              )
+            """,
+            (timestamp, question_id, timestamp, question_id, user_name),
+        )
+        if cur.rowcount:
+            placeholders = ", ".join("?" for _ in checklist_ids)
+            conn.execute(
+                f"""
+                UPDATE disease_checklists
+                SET updated_at = ?
+                WHERE id IN ({placeholders})
+                """,
+                [timestamp, *checklist_ids],
+            )
+        return max(0, int(cur.rowcount))
+
     def handle_create_attempt(self) -> None:
         try:
             payload = self.read_json()
@@ -1225,6 +2604,12 @@ class AppHandler(BaseHTTPRequestHandler):
             ):
                 raise ValueError("一周トークンの形式が正しくありません。")
             practice_session_token = str(raw_practice_session_token or "").strip()
+            raw_question_set_round_token = payload.get("question_set_round_token")
+            if raw_question_set_round_token is not None and not isinstance(
+                raw_question_set_round_token, str
+            ):
+                raise ValueError("問題セット周回トークンの形式が正しくありません。")
+            question_set_round_token = str(raw_question_set_round_token or "").strip()
             if question_id <= 0:
                 raise ValueError("問題を選択してください。")
             if not user_answer:
@@ -1233,6 +2618,10 @@ class AppHandler(BaseHTTPRequestHandler):
                 raise ValueError("評価は○、△、×から選択してください。")
             if len(practice_session_token) > MAX_PRACTICE_SESSION_TOKEN_LENGTH:
                 raise ValueError("一周トークンが長すぎます。")
+            if len(question_set_round_token) > MAX_PRACTICE_SESSION_TOKEN_LENGTH:
+                raise ValueError("問題セット周回トークンが長すぎます。")
+            if practice_session_token and question_set_round_token:
+                raise ValueError("クイック演習と問題セットの周回トークンは同時に指定できません。")
         except (TypeError, ValueError) as exc:
             self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
@@ -1265,6 +2654,16 @@ class AppHandler(BaseHTTPRequestHandler):
                 ),
             )
             attempt_id = cur.lastrowid
+            disease_checklist_items_activated = 0
+            if correct is False:
+                disease_checklist_items_activated = (
+                    self.activate_disease_checklist_items_for_wrong_attempt(
+                        conn,
+                        user_name,
+                        question_id,
+                        timestamp,
+                    )
+                )
 
             practice_session = None
             practice_session_stale = False
@@ -1312,6 +2711,76 @@ class AppHandler(BaseHTTPRequestHandler):
                     ).fetchone()
                     practice_session = self.practice_session_payload(conn, session_row)
 
+            question_set_round = None
+            question_set_round_stale = False
+            if question_set_round_token:
+                round_item = conn.execute(
+                    """
+                    SELECT
+                        r.*,
+                        i.completed_at AS item_completed_at
+                    FROM question_set_rounds r
+                    JOIN question_sets s ON s.id = r.question_set_id
+                    JOIN question_set_round_items i ON i.round_id = r.id
+                    WHERE
+                        r.token = ?
+                        AND r.status = 'active'
+                        AND s.user_name = ?
+                        AND i.question_id = ?
+                    """,
+                    (question_set_round_token, user_name, question_id),
+                ).fetchone()
+                if round_item is None:
+                    question_set_round_stale = True
+                else:
+                    if round_item["item_completed_at"] is None:
+                        conn.execute(
+                            """
+                            UPDATE question_set_round_items
+                            SET
+                                completed_at = ?,
+                                attempt_id = ?,
+                                user_answer = ?,
+                                correct_answer = ?,
+                                is_correct = ?,
+                                self_mark = ?
+                            WHERE
+                                round_id = ?
+                                AND question_id = ?
+                                AND completed_at IS NULL
+                            """,
+                            (
+                                timestamp,
+                                attempt_id,
+                                user_answer,
+                                row["answer"],
+                                1 if correct is True else 0 if correct is False else -1,
+                                self_mark,
+                                round_item["id"],
+                                question_id,
+                            ),
+                        )
+                        conn.execute(
+                            """
+                            UPDATE question_set_rounds
+                            SET updated_at = ?
+                            WHERE id = ?
+                            """,
+                            (timestamp, round_item["id"]),
+                        )
+                        conn.execute(
+                            "UPDATE question_sets SET updated_at = ? WHERE id = ?",
+                            (timestamp, round_item["question_set_id"]),
+                        )
+                    round_row = conn.execute(
+                        "SELECT * FROM question_set_rounds WHERE id = ?",
+                        (round_item["id"],),
+                    ).fetchone()
+                    question_set_round = self.question_set_round_active_payload(
+                        conn,
+                        round_row,
+                    )
+
             attempts = self.attempt_rows_for_question(conn, question_id, user_name)
 
         self.send_json(
@@ -1326,6 +2795,9 @@ class AppHandler(BaseHTTPRequestHandler):
                 "attempts": attempts,
                 "practice_session": practice_session,
                 "practice_session_stale": practice_session_stale,
+                "question_set_round": question_set_round,
+                "question_set_round_stale": question_set_round_stale,
+                "disease_checklist_items_activated": disease_checklist_items_activated,
             }
         )
 
@@ -1351,6 +2823,14 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_json({"error": "This attempt belongs to another user."}, HTTPStatus.FORBIDDEN)
                 return
             conn.execute("UPDATE attempts SET self_mark = ? WHERE id = ?", (self_mark, attempt_id))
+            conn.execute(
+                """
+                UPDATE question_set_round_items
+                SET self_mark = ?
+                WHERE attempt_id = ?
+                """,
+                (self_mark, attempt_id),
+            )
             attempts = self.attempt_rows_for_question(conn, row["question_id"], row["user_name"])
 
         self.send_json({"attempt_id": attempt_id, "user_name": row["user_name"], "self_mark": self_mark, "attempts": attempts})
@@ -1381,12 +2861,33 @@ class AppHandler(BaseHTTPRequestHandler):
                 (user_name,),
             )
             practice_sessions_deleted = session_cur.rowcount
+            question_set_rounds_deleted = int(
+                conn.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM question_set_rounds r
+                    JOIN question_sets s ON s.id = r.question_set_id
+                    WHERE s.user_name = ?
+                    """,
+                    (user_name,),
+                ).fetchone()["total"]
+            )
+            conn.execute(
+                """
+                DELETE FROM question_set_rounds
+                WHERE question_set_id IN (
+                    SELECT id FROM question_sets WHERE user_name = ?
+                )
+                """,
+                (user_name,),
+            )
 
         self.send_json(
             {
                 "ok": True,
                 "deleted": deleted,
                 "practice_sessions_deleted": practice_sessions_deleted,
+                "question_set_rounds_deleted": question_set_rounds_deleted,
                 "user_name": user_name,
             }
         )
@@ -1455,8 +2956,24 @@ class AppHandler(BaseHTTPRequestHandler):
                 "SELECT COUNT(*) AS total FROM attempts WHERE user_name = ?",
                 (row["name"],),
             ).fetchone()["total"]
-            if attempts_count:
-                self.send_json({"error": "履歴があるユーザーは削除できません。"}, HTTPStatus.BAD_REQUEST)
+            question_sets_count = conn.execute(
+                "SELECT COUNT(*) AS total FROM question_sets WHERE user_name = ?",
+                (row["name"],),
+            ).fetchone()["total"]
+            disease_checklists_count = conn.execute(
+                "SELECT COUNT(*) AS total FROM disease_checklists WHERE user_name = ?",
+                (row["name"],),
+            ).fetchone()["total"]
+            if attempts_count or question_sets_count or disease_checklists_count:
+                self.send_json(
+                    {
+                        "error": (
+                            "履歴、問題セット、または疾患確認リストがあるユーザーは"
+                            "削除できません。"
+                        )
+                    },
+                    HTTPStatus.BAD_REQUEST,
+                )
                 return
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
             rows = self.user_rows(conn)

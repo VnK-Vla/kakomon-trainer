@@ -2,6 +2,9 @@ const DEFAULT_USER_NAME = "自分";
 const USER_STORAGE_KEY = "kakomon-trainer-user";
 const LIBRARY_PAGE_SIZE = 40;
 const QUESTION_ATTEMPT_HISTORY_LIMIT = 30;
+const QUESTION_SET_ROUND_PAGE_SIZE = 20;
+const QUESTION_SET_ROUND_ITEM_PAGE_SIZE = 100;
+const DISEASE_CHECKLIST_PAGE_SIZE = 12;
 const COMPACT_FILTER_MEDIA = "(max-width: 520px)";
 
 function normalizeUserName(value) {
@@ -57,6 +60,45 @@ const state = {
   practiceFlowRequestId: 0,
   practiceSessionRequestId: 0,
   refreshRequestId: 0,
+  questionSets: [],
+  questionSetsLoaded: false,
+  questionSetsLoading: false,
+  questionSetsError: "",
+  questionSetView: "list",
+  selectedQuestionSetId: null,
+  questionSetRounds: [],
+  questionSetRoundsTotal: 0,
+  questionSetRoundsOffset: 0,
+  selectedQuestionSetRoundId: null,
+  questionSetRoundDetail: null,
+  questionSetRoundItems: [],
+  questionSetRoundItemsTotal: 0,
+  questionSetRoundItemsOffset: 0,
+  questionSetPractice: null,
+  questionSetPracticeActive: false,
+  questionSetRequestId: 0,
+  questionSetHistoryRequestId: 0,
+  questionSetDetailRequestId: 0,
+  questionSetFlowRequestId: 0,
+  diseaseChecklists: [],
+  diseaseChecklistsLoaded: false,
+  diseaseChecklistsLoading: false,
+  diseaseChecklistsError: "",
+  selectedDiseaseChecklistId: null,
+  diseaseChecklistDetail: null,
+  diseaseChecklistDetailLoading: false,
+  diseaseChecklistDetailError: "",
+  diseaseChecklistStatusFilter: "unreviewed",
+  diseaseChecklistRegionFilter: "",
+  diseaseChecklistPage: 1,
+  diseaseChecklistSearchFilter: "",
+  diseaseChecklistEverWrongFilter: false,
+  diseaseChecklistAddedByWrongFilter: false,
+  diseaseChecklistRecentlyReviewedItemId: null,
+  diseaseChecklistUpdatingItemIds: new Set(),
+  diseaseChecklistContextRequestId: 0,
+  diseaseChecklistListRequestId: 0,
+  diseaseChecklistDetailRequestId: 0,
   localFilter: null,
   resultContext: null,
   questionAttemptHistoryRequestId: 0,
@@ -71,6 +113,8 @@ const SELF_MARKS = {
   warn: { label: "△", text: "要確認", className: "warn" },
   wrong: { label: "×", text: "できない", className: "wrong" },
 };
+
+const DISEASE_CHECKLIST_STATUSES = new Set(["ok", "warn", "wrong"]);
 
 const RESULT_FILTER_ORDER = ["ok", "warn", "wrong", "untried"];
 
@@ -148,6 +192,25 @@ const fields = {
   userNameInput: $("#userNameInput"),
   userSourceLabel: $("#userSourceLabel"),
   usersTab: $("#usersTab"),
+  diseaseChecklistTab: $("#diseaseChecklistTab"),
+  diseaseChecklistMessage: $("#diseaseChecklistMessage"),
+  diseaseChecklistContent: $("#diseaseChecklistContent"),
+  diseaseChecklistSelect: $("#diseaseChecklistSelect"),
+  diseaseChecklistSummary: $("#diseaseChecklistSummary"),
+  diseaseStatusFilter: $("#diseaseStatusFilter"),
+  diseaseRegionFilter: $("#diseaseRegionFilter"),
+  diseasePreviousRegion: $("#diseasePreviousRegion"),
+  diseaseNextRegion: $("#diseaseNextRegion"),
+  diseaseAreaPageStatus: $("#diseaseAreaPageStatus"),
+  diseaseSearchFilter: $("#diseaseSearchFilter"),
+  diseaseEverWrongFilter: $("#diseaseEverWrongFilter"),
+  diseaseAddedByWrongFilter: $("#diseaseAddedByWrongFilter"),
+  diseaseChecklistResultCount: $("#diseaseChecklistResultCount"),
+  diseaseChecklistPaginationTop: $("#diseaseChecklistPaginationTop"),
+  diseaseChecklistPaginationBottom: $("#diseaseChecklistPaginationBottom"),
+  diseaseChecklistCards: $("#diseaseChecklistCards"),
+  refreshDiseaseChecklists: $("#refreshDiseaseChecklists"),
+  exportDiseaseChecklist: $("#exportDiseaseChecklist"),
   userAdminForm: $("#userAdminForm"),
   newUserNameInput: $("#newUserNameInput"),
   userTable: $("#userTable"),
@@ -162,6 +225,25 @@ const fields = {
   studyMap: $("#studyMap"),
   practiceSessionCard: $("#practiceSessionCard"),
   studyList: $("#studyList"),
+  questionSetPanel: $("#questionSetPanel"),
+  questionSetListView: $("#questionSetListView"),
+  questionSetCards: $("#questionSetCards"),
+  refreshQuestionSets: $("#refreshQuestionSets"),
+  questionSetHistoryView: $("#questionSetHistoryView"),
+  questionSetHistoryTitle: $("#questionSetHistoryTitle"),
+  questionSetRoundList: $("#questionSetRoundList"),
+  questionSetRoundPagination: $("#questionSetRoundPagination"),
+  questionSetRoundPrev: $("#questionSetRoundPrev"),
+  questionSetRoundNext: $("#questionSetRoundNext"),
+  questionSetRoundPageStatus: $("#questionSetRoundPageStatus"),
+  questionSetRoundDetailView: $("#questionSetRoundDetailView"),
+  questionSetRoundDetailTitle: $("#questionSetRoundDetailTitle"),
+  questionSetRoundDetailSummary: $("#questionSetRoundDetailSummary"),
+  questionSetRoundItems: $("#questionSetRoundItems"),
+  questionSetRoundItemPagination: $("#questionSetRoundItemPagination"),
+  questionSetRoundItemPrev: $("#questionSetRoundItemPrev"),
+  questionSetRoundItemNext: $("#questionSetRoundItemNext"),
+  questionSetRoundItemPageStatus: $("#questionSetRoundItemPageStatus"),
   practiceSession: $("#practiceSession"),
   practiceRoundProgress: $("#practiceRoundProgress"),
   practiceRoundComplete: $("#practiceRoundComplete"),
@@ -286,8 +368,152 @@ function normalizePracticeSession(value) {
   };
 }
 
+function normalizeQuestionSetRound(value, fallback = null) {
+  if (!value || typeof value !== "object") return null;
+  const fallbackRound = fallback && typeof fallback === "object" ? fallback : {};
+  const summary = value.summary && typeof value.summary === "object" ? value.summary : {};
+  const source = { ...summary, ...value };
+  const questionIds = Array.isArray(value.question_ids)
+    ? value.question_ids.map(Number).filter(Number.isInteger)
+    : Array.isArray(fallbackRound.question_ids)
+      ? [...fallbackRound.question_ids]
+      : [];
+  const completedQuestionIds = Array.isArray(value.completed_question_ids)
+    ? value.completed_question_ids.map(Number).filter(Number.isInteger)
+    : Array.isArray(fallbackRound.completed_question_ids)
+      ? [...fallbackRound.completed_question_ids]
+      : [];
+  const total = Math.max(0, Number(source.total ?? fallbackRound.total ?? questionIds.length));
+  const completed = Math.min(
+    total,
+    Math.max(0, Number(source.completed ?? fallbackRound.completed ?? completedQuestionIds.length)),
+  );
+  const selfMarks = source.self_marks && typeof source.self_marks === "object"
+    ? source.self_marks
+    : fallbackRound.self_marks || {};
+  const rawStatus = source.status || fallbackRound.status || "active";
+  const status = ["active", "completed", "abandoned"].includes(rawStatus) ? rawStatus : "active";
+  return {
+    ...fallbackRound,
+    ...source,
+    id: Number(source.id ?? fallbackRound.id),
+    round_number: Number(source.round_number ?? fallbackRound.round_number ?? 0),
+    status,
+    total,
+    completed,
+    remaining: Math.max(0, Number(source.remaining ?? fallbackRound.remaining ?? total - completed)),
+    unavailable: Math.max(0, Number(source.unavailable ?? fallbackRound.unavailable ?? 0)),
+    graded: Math.max(0, Number(source.graded ?? fallbackRound.graded ?? 0)),
+    correct: Math.max(0, Number(source.correct ?? fallbackRound.correct ?? 0)),
+    rate: Number(source.rate ?? fallbackRound.rate ?? 0),
+    self_marks: {
+      ok: Math.max(0, Number(selfMarks.ok || 0)),
+      warn: Math.max(0, Number(selfMarks.warn || 0)),
+      wrong: Math.max(0, Number(selfMarks.wrong || 0)),
+    },
+    question_ids: questionIds,
+    completed_question_ids: completedQuestionIds,
+    next_question_id: Object.prototype.hasOwnProperty.call(value, "next_question_id")
+      ? value.next_question_id == null
+        ? null
+        : Number(value.next_question_id)
+      : fallbackRound.next_question_id ?? null,
+  };
+}
+
+function normalizeQuestionSet(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    ...value,
+    id: Number(value.id),
+    title: String(value.title || "名称未設定"),
+    exam: String(value.exam || ""),
+    total: Math.max(0, Number(value.total || 0)),
+    rounds_count: Math.max(0, Number(value.rounds_count || 0)),
+    active_round: normalizeQuestionSetRound(value.active_round),
+    latest_round: normalizeQuestionSetRound(value.latest_round),
+  };
+}
+
+function questionSetById(id) {
+  const normalizedId = Number(id);
+  return state.questionSets.find((item) => item.id === normalizedId) || null;
+}
+
+function normalizeDiseaseChecklistStatus(value) {
+  return DISEASE_CHECKLIST_STATUSES.has(value) ? value : null;
+}
+
+function normalizeDiseaseChecklistSummary(value) {
+  if (!value || typeof value !== "object") return null;
+  const counts = value.status_counts && typeof value.status_counts === "object" ? value.status_counts : {};
+  const itemCount = Math.max(0, Number(value.item_count || 0));
+  return {
+    ...value,
+    id: Number(value.id),
+    title: String(value.title || "名称未設定"),
+    exam: String(value.exam || ""),
+    item_count: itemCount,
+    base_item_count: Math.max(0, Number(value.base_item_count ?? itemCount)),
+    ever_wrong_count: Math.max(0, Number(value.ever_wrong_count || 0)),
+    added_by_wrong_count: Math.max(0, Number(value.added_by_wrong_count || 0)),
+    status_counts: {
+      unreviewed: Math.max(0, Number(counts.unreviewed ?? itemCount)),
+      ok: Math.max(0, Number(counts.ok || 0)),
+      warn: Math.max(0, Number(counts.warn || 0)),
+      wrong: Math.max(0, Number(counts.wrong || 0)),
+    },
+  };
+}
+
+function normalizeDiseaseChecklistItem(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    ...value,
+    id: Number(value.id),
+    position: Math.max(0, Number(value.position || 0)),
+    disease_name: String(value.disease_name || "名称未設定"),
+    primary_region: String(value.primary_region || "未分類"),
+    hierarchy: value.hierarchy ?? "",
+    review_note: String(value.review_note || ""),
+    sources: Array.isArray(value.sources) ? value.sources : [],
+    status: normalizeDiseaseChecklistStatus(value.status),
+    ever_wrong: value.ever_wrong === true,
+    added_by_wrong: value.added_by_wrong === true,
+  };
+}
+
+function normalizeDiseaseChecklist(value) {
+  const summary = normalizeDiseaseChecklistSummary(value);
+  if (!summary) return null;
+  const items = Array.isArray(value.items)
+    ? value.items.map(normalizeDiseaseChecklistItem).filter((item) => Number.isInteger(item?.id))
+    : [];
+  return { ...summary, items };
+}
+
+function diseaseChecklistById(id) {
+  const normalizedId = Number(id);
+  return state.diseaseChecklists.find((item) => item.id === normalizedId) || null;
+}
+
+function canUseDiseaseChecklists() {
+  return state.session?.can_manage_users === true;
+}
+
 function hasActivePracticeSession() {
   return Boolean(state.practiceSessionActive && state.practiceSession?.token);
+}
+
+function hasActiveQuestionSetRound() {
+  return Boolean(
+    hasQuestionSetPracticeContext() &&
+      state.questionSetPractice.round.status === "active",
+  );
+}
+
+function hasQuestionSetPracticeContext() {
+  return Boolean(state.questionSetPracticeActive && state.questionSetPractice?.round?.token);
 }
 
 function practiceSessionInProgress(session = state.practiceSession) {
@@ -382,7 +608,20 @@ function practiceSessionQuestions() {
     .filter(Boolean);
 }
 
+function questionSetRoundQuestions() {
+  const round = state.questionSetPractice?.round;
+  if (!hasQuestionSetPracticeContext() || !round) return null;
+  const questionsById = new Map(state.allQuestions.map((question) => [Number(question.id), question]));
+  const completed = new Set(round.completed_question_ids);
+  return round.question_ids
+    .filter((id) => !completed.has(id))
+    .map((id) => questionsById.get(id))
+    .filter(Boolean);
+}
+
 function filteredPracticeQuestions() {
+  const questionSetQuestions = questionSetRoundQuestions();
+  if (questionSetQuestions) return questionSetQuestions;
   const sessionQuestions = practiceSessionQuestions();
   if (sessionQuestions) return sessionQuestions;
   return applyPracticeOrder(applyResultFilter(baseQuestionList(), state.practiceResultFilter));
@@ -437,6 +676,801 @@ function practiceSessionParams(user = state.currentUser, exam = state.selectedEx
   params.set("user", user);
   if (exam) params.set("exam", exam);
   return params;
+}
+
+function questionSetParams(initial = {}, user = state.currentUser, exam = state.selectedExam) {
+  const params = new URLSearchParams(initial);
+  params.set("user", user);
+  if (exam) params.set("exam", exam);
+  return params;
+}
+
+function diseaseChecklistParams({ includeExam = false } = {}, user = state.currentUser, exam = state.selectedExam) {
+  const params = new URLSearchParams();
+  params.set("user", user);
+  if (includeExam && exam) params.set("exam", exam);
+  return params;
+}
+
+function clearDiseaseChecklistState() {
+  state.diseaseChecklistContextRequestId += 1;
+  state.diseaseChecklistListRequestId += 1;
+  state.diseaseChecklistDetailRequestId += 1;
+  state.diseaseChecklists = [];
+  state.diseaseChecklistsLoaded = false;
+  state.diseaseChecklistsLoading = false;
+  state.diseaseChecklistsError = "";
+  state.selectedDiseaseChecklistId = null;
+  state.diseaseChecklistDetail = null;
+  state.diseaseChecklistDetailLoading = false;
+  state.diseaseChecklistDetailError = "";
+  state.diseaseChecklistStatusFilter = "unreviewed";
+  state.diseaseChecklistRegionFilter = "";
+  state.diseaseChecklistPage = 1;
+  state.diseaseChecklistSearchFilter = "";
+  state.diseaseChecklistEverWrongFilter = false;
+  state.diseaseChecklistAddedByWrongFilter = false;
+  state.diseaseChecklistRecentlyReviewedItemId = null;
+  state.diseaseChecklistUpdatingItemIds = new Set();
+}
+
+function diseaseChecklistStatusMeta(status) {
+  if (status === "ok") return { label: "○", text: "知っている", className: "ok" };
+  if (status === "warn") return { label: "△", text: "要確認", className: "warn" };
+  if (status === "wrong") return { label: "×", text: "知らない", className: "wrong" };
+  return { label: "未", text: "未確認", className: "unreviewed" };
+}
+
+function diseaseHierarchyParts(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => diseaseHierarchyParts(item));
+  }
+  if (!value || typeof value !== "object") {
+    const text = String(value ?? "").trim();
+    return text ? [text] : [];
+  }
+  const orderedKeys = [
+    "chapter",
+    "major",
+    "middle",
+    "small",
+    "章",
+    "大項目",
+    "中項目",
+    "小項目",
+  ];
+  const consumed = new Set(["no", "No", "No.", "source_no"]);
+  const sourceNo = value.no ?? value.No ?? value["No."] ?? value.source_no;
+  const parts = sourceNo == null || String(sourceNo).trim() === "" ? [] : [`No.${String(sourceNo).trim()}`];
+  orderedKeys.forEach((key) => {
+    if (!Object.prototype.hasOwnProperty.call(value, key) || consumed.has(key)) return;
+    consumed.add(key);
+    const text = String(value[key] ?? "").trim();
+    if (text && parts.at(-1) !== text) parts.push(text);
+  });
+  Object.entries(value).forEach(([key, raw]) => {
+    if (consumed.has(key)) return;
+    const text = String(raw ?? "").trim();
+    if (text && parts.at(-1) !== text) parts.push(text);
+  });
+  return parts;
+}
+
+function diseaseHierarchyText(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => diseaseHierarchyParts(item).join(" › "))
+      .filter(Boolean)
+      .join(" / ");
+  }
+  return diseaseHierarchyParts(value).join(" › ");
+}
+
+function diseaseSourceText(source) {
+  if (!source || typeof source !== "object") return String(source ?? "").trim();
+  const no = source.no ?? source.No ?? source["No."] ?? source.source_no;
+  const parts = [
+    source.chapter ?? source["章"],
+    source.major ?? source["大項目"],
+    source.middle ?? source["中項目"],
+    source.small ?? source["小項目"],
+  ]
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean)
+    .filter((item, index, values) => index === 0 || item !== values[index - 1]);
+  const prefix = no == null || String(no).trim() === "" ? "" : `No.${String(no).trim()}`;
+  const curriculumText = [prefix, ...parts].filter(Boolean).join(" › ");
+  if (curriculumText) return curriculumText;
+  const label = String(source.label ?? source.title ?? source.name ?? "").trim();
+  const url = String(source.url ?? "").trim();
+  return label && url ? `${label} (${url})` : label || url;
+}
+
+function diseaseSourceHttpsUrl(source) {
+  const rawUrl = typeof source === "string" ? source : source?.url;
+  if (!rawUrl) return null;
+  try {
+    const url = new URL(String(rawUrl));
+    return url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderDiseaseSource(source) {
+  const text = diseaseSourceText(source);
+  const url = diseaseSourceHttpsUrl(source);
+  if (!url) return escapeHtml(text);
+  const label =
+    (typeof source === "object"
+      ? String(source.label ?? source.title ?? source.name ?? "").trim()
+      : "") || url;
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+}
+
+function normalizedDiseaseSearchText(value) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .toLocaleLowerCase("ja-JP")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function diseaseChecklistItemSearchText(item) {
+  return normalizedDiseaseSearchText(
+    [
+      item.disease_name,
+      item.primary_region,
+      diseaseHierarchyText(item.hierarchy),
+      item.review_note,
+      ...item.sources.map(diseaseSourceText),
+    ].join(" "),
+  );
+}
+
+function diseaseChecklistRegions() {
+  const seen = new Set();
+  return [...(state.diseaseChecklistDetail?.items || [])]
+    .sort((a, b) => a.position - b.position || a.id - b.id)
+    .map((item) => String(item.primary_region || "").trim())
+    .filter((region) => {
+      if (!region || seen.has(region)) return false;
+      seen.add(region);
+      return true;
+    });
+}
+
+function diseaseChecklistItemMatches(item, { ignoreStatus = false, ignoreRegion = false } = {}) {
+  if (!ignoreStatus) {
+    const selectedStatus = state.diseaseChecklistStatusFilter;
+    if (selectedStatus === "unreviewed" && item.status !== null) return false;
+    if (DISEASE_CHECKLIST_STATUSES.has(selectedStatus) && item.status !== selectedStatus) return false;
+    if (selectedStatus === "review" && !["wrong", "warn"].includes(item.status)) {
+      return false;
+    }
+  }
+  if (
+    !ignoreRegion &&
+    state.diseaseChecklistRegionFilter &&
+    item.primary_region !== state.diseaseChecklistRegionFilter
+  ) {
+    return false;
+  }
+  const query = normalizedDiseaseSearchText(state.diseaseChecklistSearchFilter);
+  if (query && !diseaseChecklistItemSearchText(item).includes(query)) return false;
+  if (state.diseaseChecklistEverWrongFilter && !item.ever_wrong) return false;
+  if (state.diseaseChecklistAddedByWrongFilter && !item.added_by_wrong) return false;
+  return true;
+}
+
+function filteredDiseaseChecklistItems() {
+  const reviewRank = { wrong: 0, warn: 1 };
+  const items = [...(state.diseaseChecklistDetail?.items || [])].sort((a, b) => {
+    if (state.diseaseChecklistStatusFilter === "review") {
+      const rankDifference = (reviewRank[a.status] ?? 2) - (reviewRank[b.status] ?? 2);
+      if (rankDifference) return rankDifference;
+    }
+    return a.position - b.position || a.id - b.id;
+  });
+  const matching = items.filter((item) => diseaseChecklistItemMatches(item));
+  const pageCount = Math.max(1, Math.ceil(matching.length / DISEASE_CHECKLIST_PAGE_SIZE));
+  const requestedPage = Number.isInteger(state.diseaseChecklistPage)
+    ? state.diseaseChecklistPage
+    : 1;
+  const page = Math.min(Math.max(1, requestedPage), pageCount);
+  state.diseaseChecklistPage = page;
+  const pageStart = (page - 1) * DISEASE_CHECKLIST_PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + DISEASE_CHECKLIST_PAGE_SIZE, matching.length);
+  const pageItems = matching.slice(pageStart, pageEnd);
+  const recentId = Number(state.diseaseChecklistRecentlyReviewedItemId);
+  const recent = items.find((item) => item.id === recentId);
+  const showRecent = Boolean(
+    recent &&
+      state.diseaseChecklistStatusFilter === "unreviewed" &&
+      !matching.some((item) => item.id === recent.id) &&
+      diseaseChecklistItemMatches(recent, { ignoreStatus: true }),
+  );
+  const visible = (showRecent ? [recent, ...pageItems] : pageItems).slice(
+    0,
+    DISEASE_CHECKLIST_PAGE_SIZE,
+  );
+  return { matching, visible, showRecent, page, pageCount, pageStart, pageEnd };
+}
+
+function diseaseChecklistCounts(items) {
+  const counts = { unreviewed: 0, ok: 0, warn: 0, wrong: 0 };
+  (items || []).forEach((item) => {
+    const key = item.status || "unreviewed";
+    counts[key] += 1;
+  });
+  return counts;
+}
+
+function replaceDiseaseChecklistSummary(value) {
+  const summary = normalizeDiseaseChecklistSummary(value);
+  if (!summary || !Number.isInteger(summary.id)) return;
+  state.diseaseChecklists = state.diseaseChecklists.map((item) =>
+    item.id === summary.id ? summary : item,
+  );
+  if (state.diseaseChecklistDetail?.id === summary.id) {
+    state.diseaseChecklistDetail = {
+      ...state.diseaseChecklistDetail,
+      ...summary,
+      items: state.diseaseChecklistDetail.items,
+    };
+  }
+}
+
+function renderDiseaseChecklistSummary() {
+  if (!fields.diseaseChecklistSummary) return;
+  const detail = state.diseaseChecklistDetail;
+  if (!detail) {
+    fields.diseaseChecklistSummary.innerHTML = "";
+    return;
+  }
+  const counts = detail.status_counts || diseaseChecklistCounts(detail.items);
+  fields.diseaseChecklistSummary.innerHTML = `
+    <span class="unreviewed">未 ${Number(counts.unreviewed || 0)}</span>
+    <span class="ok">○ ${Number(counts.ok || 0)}</span>
+    <span class="warn">△ ${Number(counts.warn || 0)}</span>
+    <span class="wrong">× ${Number(counts.wrong || 0)}</span>
+    <span>基本 ${Number(detail.base_item_count || 0)}</span>
+    <span>誤答経験 ${Number(detail.ever_wrong_count || 0)}</span>
+    <span>誤答追加 ${Number(detail.added_by_wrong_count || 0)}</span>
+  `;
+}
+
+function renderDiseaseChecklistRegionOptions() {
+  if (!fields.diseaseRegionFilter) return;
+  const regions = diseaseChecklistRegions();
+  if (!regions.includes(state.diseaseChecklistRegionFilter)) {
+    state.diseaseChecklistRegionFilter = regions[0] || "";
+    state.diseaseChecklistPage = 1;
+  }
+  const filteredCounts = new Map(regions.map((region) => [region, 0]));
+  (state.diseaseChecklistDetail?.items || [])
+    .filter((item) => diseaseChecklistItemMatches(item, { ignoreRegion: true }))
+    .forEach((item) => {
+      const region = String(item.primary_region || "").trim();
+      if (filteredCounts.has(region)) filteredCounts.set(region, filteredCounts.get(region) + 1);
+    });
+  fields.diseaseRegionFilter.innerHTML = regions
+    .map((region) => {
+      const selected = region === state.diseaseChecklistRegionFilter ? " selected" : "";
+      const count = filteredCounts.get(region) || 0;
+      return `<option value="${escapeHtml(region)}"${selected}>${escapeHtml(region)}（${count}件）</option>`;
+    })
+    .join("");
+  fields.diseaseRegionFilter.toggleAttribute("disabled", regions.length === 0);
+
+  const regionIndex = regions.indexOf(state.diseaseChecklistRegionFilter);
+  fields.diseasePreviousRegion?.toggleAttribute("disabled", regionIndex <= 0);
+  fields.diseaseNextRegion?.toggleAttribute(
+    "disabled",
+    regionIndex < 0 || regionIndex >= regions.length - 1,
+  );
+  if (fields.diseaseAreaPageStatus) {
+    fields.diseaseAreaPageStatus.textContent =
+      regionIndex >= 0 ? `分野 ${regionIndex + 1} / ${regions.length}` : "分野はありません";
+  }
+}
+
+function renderDiseaseChecklistDetails(item) {
+  if (!item.status) return "";
+  const hierarchy = diseaseHierarchyText(item.hierarchy);
+  const sources = item.sources.map(diseaseSourceText).filter(Boolean);
+  const flags = [
+    item.ever_wrong ? `<span>一度でも誤答</span>` : "",
+    item.added_by_wrong ? `<span>誤答により追加</span>` : "",
+  ]
+    .filter(Boolean)
+    .join("");
+  return `
+    <div class="disease-card-details">
+      ${flags ? `<div class="disease-card-flags">${flags}</div>` : ""}
+      ${hierarchy ? `<div><strong>カリキュラム</strong><p>${escapeHtml(hierarchy)}</p></div>` : ""}
+      ${item.review_note ? `<div><strong>画像所見メモ</strong><p>${escapeHtml(item.review_note)}</p></div>` : ""}
+      ${
+        sources.length
+          ? `<div><strong>出典</strong><ul>${item.sources
+              .filter((source) => diseaseSourceText(source))
+              .map((source) => `<li>${renderDiseaseSource(source)}</li>`)
+              .join("")}</ul></div>`
+          : ""
+      }
+      ${
+        item.status === "wrong"
+          ? `<p class="disease-review-hint">復習できたら「△ 復習した」で要確認へ移せます。</p>`
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderDiseaseChecklistCard(item) {
+  const meta = diseaseChecklistStatusMeta(item.status);
+  const updating = state.diseaseChecklistUpdatingItemIds.has(item.id);
+  const recent = item.id === Number(state.diseaseChecklistRecentlyReviewedItemId);
+  const warnText = item.status === "wrong" ? "△ 復習した" : "△ 要確認";
+  return `
+    <article class="disease-card ${item.status ? `reviewed ${meta.className}` : "unreviewed"}${recent ? " recently-reviewed" : ""}" data-disease-item-card="${item.id}">
+      <div class="disease-card-head">
+        <div>
+          <h3>${escapeHtml(item.disease_name)}</h3>
+          <span class="disease-region">${escapeHtml(item.primary_region)}</span>
+        </div>
+        ${item.status ? `<span class="disease-status ${meta.className}">${meta.label} ${meta.text}</span>` : ""}
+      </div>
+      ${renderDiseaseChecklistDetails(item)}
+      <div class="disease-card-actions" role="group" aria-label="${escapeHtml(item.disease_name)}の評価">
+        <button class="disease-status-button ok${item.status === "ok" ? " active" : ""}" type="button" data-disease-item-status="ok" data-disease-item-id="${item.id}" ${updating ? "disabled" : ""}>○ 知っている</button>
+        <button class="disease-status-button warn${item.status === "warn" ? " active" : ""}" type="button" data-disease-item-status="warn" data-disease-item-id="${item.id}" ${updating ? "disabled" : ""}>${warnText}</button>
+        <button class="disease-status-button wrong${item.status === "wrong" ? " active" : ""}" type="button" data-disease-item-status="wrong" data-disease-item-id="${item.id}" ${updating ? "disabled" : ""}>× 知らない</button>
+      </div>
+      ${recent && item.status ? `<button class="disease-next-unreviewed ghost small" type="button" data-disease-next-unreviewed>次の未確認へ</button>` : ""}
+    </article>
+  `;
+}
+
+function clearDiseaseChecklistPagination() {
+  [fields.diseaseChecklistPaginationTop, fields.diseaseChecklistPaginationBottom].forEach(
+    (container) => {
+      if (!container) return;
+      container.innerHTML = "";
+      container.classList.add("hidden");
+    },
+  );
+}
+
+function clearDiseaseChecklistRegionNavigation() {
+  if (fields.diseaseRegionFilter) {
+    fields.diseaseRegionFilter.innerHTML = "";
+    fields.diseaseRegionFilter.setAttribute("disabled", "");
+  }
+  fields.diseasePreviousRegion?.setAttribute("disabled", "");
+  fields.diseaseNextRegion?.setAttribute("disabled", "");
+  if (fields.diseaseAreaPageStatus) fields.diseaseAreaPageStatus.textContent = "";
+}
+
+function diseaseChecklistPaginationMarkup({ page, pageCount }) {
+  const pageOptions = Array.from({ length: pageCount }, (_, index) => {
+    const pageNumber = index + 1;
+    const selected = pageNumber === page ? " selected" : "";
+    return `<option value="${pageNumber}"${selected}>${pageNumber} / ${pageCount}</option>`;
+  }).join("");
+  return `
+    <button class="ghost small" type="button" data-disease-page="${page - 1}" ${page <= 1 ? "disabled" : ""} aria-label="前の12件">前へ</button>
+    <label class="disease-page-select">
+      <span>ページ</span>
+      <select data-disease-page-select aria-label="疾患一覧のページ">${pageOptions}</select>
+    </label>
+    <button class="ghost small" type="button" data-disease-page="${page + 1}" ${page >= pageCount ? "disabled" : ""} aria-label="次の12件">次へ</button>
+  `;
+}
+
+function renderDiseaseChecklistPagination(result) {
+  const containers = [
+    fields.diseaseChecklistPaginationTop,
+    fields.diseaseChecklistPaginationBottom,
+  ].filter(Boolean);
+  if (!result.matching.length || result.pageCount <= 1) {
+    clearDiseaseChecklistPagination();
+    return;
+  }
+  const markup = diseaseChecklistPaginationMarkup(result);
+  containers.forEach((container) => {
+    container.innerHTML = markup;
+    container.classList.remove("hidden");
+  });
+}
+
+function renderDiseaseChecklistCards() {
+  if (!fields.diseaseChecklistCards || !fields.diseaseChecklistResultCount) return;
+  const result = filteredDiseaseChecklistItems();
+  const { matching, visible, showRecent, pageStart, pageEnd } = result;
+  const selectedRegion = state.diseaseChecklistRegionFilter || "分野未選択";
+  const rangeText = matching.length ? `${pageStart + 1}〜${pageEnd} / ${matching.length}件` : "0件";
+  fields.diseaseChecklistResultCount.textContent = `${selectedRegion}：${rangeText}${
+    showRecent ? "（直前の評価を先頭に表示）" : ""
+  }`;
+  renderDiseaseChecklistPagination(result);
+  if (!visible.length) {
+    fields.diseaseChecklistCards.innerHTML = `
+      <div class="disease-checklist-message compact">
+        <strong>条件に一致する疾患はありません</strong>
+        <span>状態や分野ページの選択を変更してください。</span>
+      </div>
+    `;
+    return;
+  }
+  fields.diseaseChecklistCards.innerHTML = visible.map(renderDiseaseChecklistCard).join("");
+}
+
+function renderDiseaseChecklistResults() {
+  renderDiseaseChecklistRegionOptions();
+  renderDiseaseChecklistCards();
+}
+
+function scrollDiseaseChecklistResultsIntoView() {
+  fields.diseaseChecklistResultCount?.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+function moveDiseaseChecklistRegion(direction) {
+  const regions = diseaseChecklistRegions();
+  const currentIndex = regions.indexOf(state.diseaseChecklistRegionFilter);
+  const nextIndex = currentIndex + direction;
+  if (nextIndex < 0 || nextIndex >= regions.length) return;
+  state.diseaseChecklistRegionFilter = regions[nextIndex];
+  state.diseaseChecklistPage = 1;
+  state.diseaseChecklistRecentlyReviewedItemId = null;
+  renderDiseaseChecklistResults();
+  scrollDiseaseChecklistResultsIntoView();
+}
+
+function setDiseaseChecklistPage(value) {
+  const page = Number(value);
+  if (!Number.isInteger(page) || page < 1) return;
+  state.diseaseChecklistPage = page;
+  state.diseaseChecklistRecentlyReviewedItemId = null;
+  renderDiseaseChecklistCards();
+  scrollDiseaseChecklistResultsIntoView();
+}
+
+function handleDiseaseChecklistPaginationClick(event) {
+  const button = event.target.closest("[data-disease-page]");
+  if (button && !button.disabled) setDiseaseChecklistPage(button.dataset.diseasePage);
+}
+
+function handleDiseaseChecklistPaginationChange(event) {
+  const select = event.target.closest("[data-disease-page-select]");
+  if (select) setDiseaseChecklistPage(select.value);
+}
+
+function renderDiseaseChecklistView() {
+  if (!fields.diseaseChecklistMessage || !fields.diseaseChecklistContent) return;
+  const canUse = canUseDiseaseChecklists();
+  fields.refreshDiseaseChecklists?.toggleAttribute(
+    "disabled",
+    !canUse || state.diseaseChecklistsLoading || state.diseaseChecklistDetailLoading,
+  );
+  if (!canUse) {
+    fields.diseaseChecklistContent.classList.add("hidden");
+    fields.diseaseChecklistMessage.classList.remove("hidden", "error");
+    fields.diseaseChecklistMessage.innerHTML = "この画面は指定されたTailscale管理者専用です。";
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+  if (state.diseaseChecklistsLoading && !state.diseaseChecklistsLoaded) {
+    fields.diseaseChecklistContent.classList.add("hidden");
+    fields.diseaseChecklistMessage.classList.remove("hidden", "error");
+    fields.diseaseChecklistMessage.innerHTML = "疾患確認リストを読み込んでいます...";
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+  if (state.diseaseChecklistsError && !state.diseaseChecklistsLoaded) {
+    fields.diseaseChecklistContent.classList.add("hidden");
+    fields.diseaseChecklistMessage.classList.remove("hidden");
+    fields.diseaseChecklistMessage.classList.add("error");
+    fields.diseaseChecklistMessage.innerHTML = `
+      <strong>疾患確認リストを読み込めませんでした</strong>
+      <span>${escapeHtml(state.diseaseChecklistsError)}</span>
+    `;
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+  if (!state.diseaseChecklists.length) {
+    const isDiagnostic = state.selectedExam === "放射線診断専門医認定試験";
+    fields.diseaseChecklistContent.classList.add("hidden");
+    fields.diseaseChecklistMessage.classList.remove("hidden", "error");
+    fields.diseaseChecklistMessage.innerHTML = `
+      <strong>${isDiagnostic ? "疾患確認リストはまだありません" : "この試験の疾患確認リストはありません"}</strong>
+      <span>${escapeHtml(examLabel(state.selectedExam))}には利用できるリストが登録されていません。</span>
+    `;
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+
+  fields.diseaseChecklistMessage.classList.add("hidden");
+  fields.diseaseChecklistMessage.classList.remove("error");
+  fields.diseaseChecklistContent.classList.remove("hidden");
+  fields.diseaseChecklistSelect.innerHTML = state.diseaseChecklists
+    .map((checklist) => {
+      const selected = checklist.id === Number(state.selectedDiseaseChecklistId) ? " selected" : "";
+      return `<option value="${checklist.id}"${selected}>${escapeHtml(checklist.title)}（${checklist.item_count}件）</option>`;
+    })
+    .join("");
+
+  fields.diseaseStatusFilter.value = state.diseaseChecklistStatusFilter;
+  fields.diseaseSearchFilter.value = state.diseaseChecklistSearchFilter;
+  fields.diseaseEverWrongFilter.checked = state.diseaseChecklistEverWrongFilter;
+  fields.diseaseAddedByWrongFilter.checked = state.diseaseChecklistAddedByWrongFilter;
+
+  if (state.diseaseChecklistDetailLoading) {
+    fields.diseaseChecklistSummary.innerHTML = "";
+    fields.diseaseChecklistResultCount.textContent = "";
+    clearDiseaseChecklistRegionNavigation();
+    clearDiseaseChecklistPagination();
+    fields.diseaseChecklistCards.innerHTML = `<div class="disease-checklist-message compact">疾患を読み込んでいます...</div>`;
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+  if (state.diseaseChecklistDetailError) {
+    fields.diseaseChecklistSummary.innerHTML = "";
+    fields.diseaseChecklistResultCount.textContent = "";
+    clearDiseaseChecklistRegionNavigation();
+    clearDiseaseChecklistPagination();
+    fields.diseaseChecklistCards.innerHTML = `
+      <div class="disease-checklist-message compact error">
+        <strong>疾患を読み込めませんでした</strong>
+        <span>${escapeHtml(state.diseaseChecklistDetailError)}</span>
+      </div>
+    `;
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+  if (!state.diseaseChecklistDetail) {
+    fields.diseaseChecklistSummary.innerHTML = "";
+    fields.diseaseChecklistResultCount.textContent = "";
+    clearDiseaseChecklistRegionNavigation();
+    clearDiseaseChecklistPagination();
+    fields.diseaseChecklistCards.innerHTML = `<div class="disease-checklist-message compact">確認リストを選択してください。</div>`;
+    fields.exportDiseaseChecklist?.setAttribute("disabled", "");
+    return;
+  }
+
+  renderDiseaseChecklistSummary();
+  renderDiseaseChecklistResults();
+  const exportable = state.diseaseChecklistDetail.items.some((item) => ["warn", "wrong"].includes(item.status));
+  fields.exportDiseaseChecklist?.toggleAttribute("disabled", !exportable);
+}
+
+async function loadDiseaseChecklist(checklistId) {
+  const normalizedId = Number(checklistId);
+  if (!Number.isInteger(normalizedId) || !canUseDiseaseChecklists()) return;
+  const activeChecklistId = Number(
+    state.diseaseChecklistDetail?.id ?? state.selectedDiseaseChecklistId,
+  );
+  const switchingChecklist = normalizedId !== activeChecklistId;
+  const requestId = ++state.diseaseChecklistDetailRequestId;
+  const contextRequestId = state.diseaseChecklistContextRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  state.selectedDiseaseChecklistId = normalizedId;
+  state.diseaseChecklistDetail = null;
+  state.diseaseChecklistDetailLoading = true;
+  state.diseaseChecklistDetailError = "";
+  state.diseaseChecklistRecentlyReviewedItemId = null;
+  if (switchingChecklist) {
+    state.diseaseChecklistRegionFilter = "";
+    state.diseaseChecklistPage = 1;
+  }
+  renderDiseaseChecklistView();
+  try {
+    const payload = await api(
+      `/api/disease-checklists/${normalizedId}${queryFor(
+        diseaseChecklistParams({}, requestedUser, requestedExam),
+      )}`,
+    );
+    if (
+      requestId !== state.diseaseChecklistDetailRequestId ||
+      contextRequestId !== state.diseaseChecklistContextRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam ||
+      normalizedId !== Number(state.selectedDiseaseChecklistId)
+    ) {
+      return;
+    }
+    const detail = normalizeDiseaseChecklist(payload.checklist);
+    if (!detail || !Number.isInteger(detail.id)) throw new Error("疾患確認リストの形式が不正です。");
+    state.diseaseChecklistDetail = detail;
+    state.diseaseChecklistDetailError = "";
+    replaceDiseaseChecklistSummary(detail);
+  } catch (error) {
+    if (
+      requestId === state.diseaseChecklistDetailRequestId &&
+      contextRequestId === state.diseaseChecklistContextRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      state.diseaseChecklistDetailError = error.message;
+    }
+  } finally {
+    if (
+      requestId === state.diseaseChecklistDetailRequestId &&
+      contextRequestId === state.diseaseChecklistContextRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      state.diseaseChecklistDetailLoading = false;
+      renderDiseaseChecklistView();
+    }
+  }
+}
+
+async function refreshDiseaseChecklists() {
+  if (!canUseDiseaseChecklists() || state.diseaseChecklistsLoading) return;
+  const requestId = ++state.diseaseChecklistListRequestId;
+  const contextRequestId = state.diseaseChecklistContextRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  state.diseaseChecklistsLoading = true;
+  state.diseaseChecklistsError = "";
+  renderDiseaseChecklistView();
+  try {
+    const payload = await api(
+      `/api/disease-checklists${queryFor(
+        diseaseChecklistParams({ includeExam: true }, requestedUser, requestedExam),
+      )}`,
+    );
+    if (
+      requestId !== state.diseaseChecklistListRequestId ||
+      contextRequestId !== state.diseaseChecklistContextRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+    state.diseaseChecklists = (payload.checklists || [])
+      .map(normalizeDiseaseChecklistSummary)
+      .filter((item) => Number.isInteger(item?.id));
+    state.diseaseChecklistsLoaded = true;
+    state.diseaseChecklistsError = "";
+    const selected = diseaseChecklistById(state.selectedDiseaseChecklistId) || state.diseaseChecklists[0] || null;
+    state.selectedDiseaseChecklistId = selected?.id ?? null;
+    if (!selected) {
+      state.diseaseChecklistDetail = null;
+      state.diseaseChecklistDetailError = "";
+    }
+  } catch (error) {
+    if (
+      requestId === state.diseaseChecklistListRequestId &&
+      contextRequestId === state.diseaseChecklistContextRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      state.diseaseChecklistsError = error.message;
+    }
+  } finally {
+    if (
+      requestId === state.diseaseChecklistListRequestId &&
+      contextRequestId === state.diseaseChecklistContextRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      state.diseaseChecklistsLoading = false;
+      renderDiseaseChecklistView();
+      if (state.selectedDiseaseChecklistId != null && !state.diseaseChecklistsError) {
+        void loadDiseaseChecklist(state.selectedDiseaseChecklistId);
+      }
+    }
+  }
+}
+
+async function updateDiseaseChecklistItem(itemId, status) {
+  const normalizedItemId = Number(itemId);
+  if (
+    !Number.isInteger(normalizedItemId) ||
+    !DISEASE_CHECKLIST_STATUSES.has(status) ||
+    !canUseDiseaseChecklists() ||
+    state.diseaseChecklistUpdatingItemIds.has(normalizedItemId)
+  ) {
+    return;
+  }
+  const checklistId = Number(state.selectedDiseaseChecklistId);
+  const currentItem = state.diseaseChecklistDetail?.items.find((item) => item.id === normalizedItemId);
+  if (!Number.isInteger(checklistId) || !currentItem || currentItem.status === status) return;
+  const contextRequestId = state.diseaseChecklistContextRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  state.diseaseChecklistUpdatingItemIds.add(normalizedItemId);
+  renderDiseaseChecklistCards();
+  try {
+    const payload = await api(`/api/disease-checklists/${checklistId}/items/${normalizedItemId}`, {
+      method: "PUT",
+      body: JSON.stringify({ status, user_name: requestedUser }),
+    });
+    if (
+      contextRequestId !== state.diseaseChecklistContextRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam ||
+      checklistId !== Number(state.selectedDiseaseChecklistId)
+    ) {
+      return;
+    }
+    const updatedItem = normalizeDiseaseChecklistItem(payload.item);
+    if (!updatedItem || updatedItem.id !== normalizedItemId) {
+      throw new Error("評価結果の形式が不正です。");
+    }
+    state.diseaseChecklistDetail.items = state.diseaseChecklistDetail.items.map((item) =>
+      item.id === normalizedItemId ? updatedItem : item,
+    );
+    state.diseaseChecklistRecentlyReviewedItemId = normalizedItemId;
+    if (payload.checklist) {
+      replaceDiseaseChecklistSummary(payload.checklist);
+    } else {
+      const counts = diseaseChecklistCounts(state.diseaseChecklistDetail.items);
+      replaceDiseaseChecklistSummary({
+        ...state.diseaseChecklistDetail,
+        item_count: state.diseaseChecklistDetail.items.length,
+        status_counts: counts,
+      });
+    }
+    toast(`${updatedItem.disease_name}を「${diseaseChecklistStatusMeta(status).text}」に更新しました。`);
+  } catch (error) {
+    if (
+      contextRequestId === state.diseaseChecklistContextRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      toast(error.message);
+    }
+  } finally {
+    if (contextRequestId === state.diseaseChecklistContextRequestId) {
+      state.diseaseChecklistUpdatingItemIds.delete(normalizedItemId);
+      renderDiseaseChecklistView();
+    }
+  }
+}
+
+function safeTsvCell(value) {
+  let text = String(value ?? "").replace(/\r\n?/g, "\n");
+  if (/^[\t\n ]*[=+\-@]/.test(text)) text = `'${text}`;
+  return /[\t\n"]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function exportDiseaseChecklistTsv() {
+  const detail = state.diseaseChecklistDetail;
+  if (!detail) return;
+  const items = detail.items.filter((item) => ["warn", "wrong"].includes(item.status));
+  if (!items.length) {
+    toast("TSVに出力する△または×の疾患はありません。");
+    return;
+  }
+  const header = ["疾患名", "領域", "評価", "誤答経験", "画像所見メモ", "出典", "更新日時"];
+  const rows = items.map((item) => [
+    item.disease_name,
+    item.primary_region,
+    diseaseChecklistStatusMeta(item.status).label,
+    item.ever_wrong ? "あり" : "なし",
+    item.review_note,
+    item.sources.map(diseaseSourceText).filter(Boolean).join(" | "),
+    item.status_updated_at || item.reviewed_at || item.first_reviewed_at || "",
+  ]);
+  const tsv = `\uFEFF${[header, ...rows].map((row) => row.map(safeTsvCell).join("\t")).join("\r\n")}\r\n`;
+  const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const title = `${examLabel(detail.exam || state.selectedExam)}-${detail.title}`
+    .replace(/[\\/:*?"<>|\s]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title || "disease-checklist"}-${date}.tsv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 async function refreshPracticeSession() {
@@ -588,7 +1622,13 @@ function renderUserSwitcher() {
 function renderUserManagementAccess() {
   const canManage = state.session?.can_manage_users === true;
   fields.usersTab?.classList.toggle("hidden", !canManage);
+  const canUseDiseaseChecklist = canUseDiseaseChecklists();
+  fields.diseaseChecklistTab?.classList.toggle("hidden", !canUseDiseaseChecklist);
   if (!canManage && state.activeTab === "users") {
+    activateTab("practice");
+  }
+  if (!canUseDiseaseChecklist && state.activeTab === "diseaseChecklist") {
+    clearDiseaseChecklistState();
     activateTab("practice");
   }
 }
@@ -608,6 +1648,8 @@ function switchUser(value) {
   state.practiceSession = null;
   state.practiceSessionActive = false;
   state.practiceFlowRequestId += 1;
+  clearQuestionSetState();
+  clearDiseaseChecklistState();
   setPracticeStarting(false);
   state.practiceSessionRequestId += 1;
   state.showStudyMap = true;
@@ -618,6 +1660,7 @@ function switchUser(value) {
   }
   toast(`${nextUser} の履歴に切り替えました。`);
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
+  if (state.activeTab === "diseaseChecklist") void refreshDiseaseChecklists();
 }
 
 function renderStats() {
@@ -837,7 +1880,7 @@ function renderPracticeSessionCard() {
   fields.practiceSessionCard.classList.remove("hidden");
   fields.practiceSessionCard.innerHTML = `
     <div class="practice-session-card-copy">
-      <span class="practice-session-card-kicker">保存中のランダム一周</span>
+      <span class="practice-session-card-kicker">保存中のクイックランダム</span>
       <strong>${isComplete ? "一周完了" : `${completed}/${total}問 完了`}</strong>
       <span>${conditionLabels.length ? escapeHtml(conditionLabels.join(" / ")) : "全問題"}</span>
     </div>
@@ -850,6 +1893,697 @@ function renderPracticeSessionCard() {
       <button class="ghost small" type="button" data-discard-practice-session>破棄</button>
     </div>
   `;
+}
+
+function questionSetRoundStatusLabel(status) {
+  if (status === "completed") return "完了";
+  if (status === "abandoned") return "中断";
+  return "進行中";
+}
+
+function formatQuestionSetDate(value) {
+  if (!value) return "日時不明";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "日時不明" : date.toLocaleString("ja-JP");
+}
+
+function questionSetRoundDate(round) {
+  return formatQuestionSetDate(
+    round?.completed_at || round?.abandoned_at || round?.updated_at || round?.created_at,
+  );
+}
+
+function questionSetRoundMarks(round) {
+  const marks = round?.self_marks || {};
+  return `○${Number(marks.ok || 0)} △${Number(marks.warn || 0)} ×${Number(marks.wrong || 0)}`;
+}
+
+function renderQuestionSetCards() {
+  if (!fields.questionSetCards) return;
+  if (state.questionSetsLoading && !state.questionSetsLoaded) {
+    fields.questionSetCards.innerHTML = `<div class="question-set-message">問題セットを読み込んでいます...</div>`;
+    return;
+  }
+  if (state.questionSetsError && !state.questionSetsLoaded) {
+    fields.questionSetCards.innerHTML = `
+      <div class="question-set-message error">
+        <strong>問題セットを読み込めませんでした</strong>
+        <span>${escapeHtml(state.questionSetsError)}</span>
+      </div>
+    `;
+    return;
+  }
+  if (!state.questionSets.length) {
+    fields.questionSetCards.innerHTML = `
+      <div class="question-set-message">
+        <strong>この試験の問題セットはありません</strong>
+        <span>Codexでセットを作成すると、ここからランダム演習を開始できます。</span>
+      </div>
+    `;
+    return;
+  }
+
+  fields.questionSetCards.innerHTML = state.questionSets
+    .map((questionSet) => {
+      const activeRound = questionSet.active_round;
+      const latestRound = questionSet.latest_round;
+      const displayRound = activeRound || latestRound;
+      const total = Math.max(0, Number(questionSet.total || displayRound?.total || 0));
+      const completed = Math.min(total, Math.max(0, Number(displayRound?.completed || 0)));
+      const remaining = Math.max(0, Number(displayRound?.remaining ?? total - completed));
+      const isCompleted = !activeRound && latestRound?.status === "completed";
+      const primaryAction = activeRound
+        ? `<button class="primary" type="button" data-question-set-resume="${questionSet.id}">続きから</button>`
+        : `<button class="primary" type="button" data-question-set-start="${questionSet.id}">${isCompleted ? "再シャッフルしてもう一周" : "ランダムに始める"}</button>`;
+      const activeActions = activeRound
+        ? `
+          <button class="ghost" type="button" data-question-set-restart="${questionSet.id}">最初からやり直す</button>
+          <button class="ghost" type="button" data-question-set-abandon="${questionSet.id}" data-round-id="${activeRound.id}">中断して保存</button>
+        `
+        : "";
+      const roundLabel = activeRound
+        ? `第${activeRound.round_number}周・進行中`
+        : latestRound
+          ? `第${latestRound.round_number}周・${questionSetRoundStatusLabel(latestRound.status)}`
+          : "未開始";
+      const progressText = activeRound
+        ? `${completed}/${total}問 完了・残り${remaining}問`
+        : latestRound
+          ? `${completed}/${total}問 実施・${questionSetRoundMarks(latestRound)}`
+          : `${total}問`;
+
+      return `
+        <article class="question-set-card" data-question-set-id="${questionSet.id}">
+          <div class="question-set-card-head">
+            <div class="question-set-card-title-wrap">
+              <span class="question-set-card-kicker">${escapeHtml(roundLabel)}</span>
+              <h3>${escapeHtml(questionSet.title)}</h3>
+            </div>
+            <span class="count-pill">${total}問</span>
+          </div>
+          <div class="question-set-card-progress">
+            <progress value="${completed}" max="${Math.max(1, total)}" aria-label="${completed}/${total}問 完了"></progress>
+            <span>${escapeHtml(progressText)}</span>
+          </div>
+          <div class="question-set-card-actions">
+            ${primaryAction}
+            ${activeActions}
+            <button class="ghost" type="button" data-question-set-history="${questionSet.id}">周回履歴</button>
+          </div>
+          <div class="question-set-card-danger">
+            <button class="danger small" type="button" data-question-set-delete="${questionSet.id}">セットを削除</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderQuestionSetRoundList() {
+  if (!fields.questionSetRoundList) return;
+  const questionSet = questionSetById(state.selectedQuestionSetId);
+  if (fields.questionSetHistoryTitle) {
+    fields.questionSetHistoryTitle.textContent = questionSet?.title || "問題セット";
+  }
+  if (!state.questionSetRounds.length) {
+    fields.questionSetRoundList.innerHTML = `<div class="question-set-message">保存された周回履歴はありません。</div>`;
+  } else {
+    fields.questionSetRoundList.innerHTML = state.questionSetRounds
+      .map((round) => {
+        const status = questionSetRoundStatusLabel(round.status);
+        const rate = round.graded ? `${round.rate}%` : "-";
+        const activeActions = round.status === "active"
+          ? `
+            <button class="primary" type="button" data-question-set-resume="${state.selectedQuestionSetId}">続きから</button>
+            <button class="ghost" type="button" data-question-set-abandon="${state.selectedQuestionSetId}" data-round-id="${round.id}">中断して保存</button>
+          `
+          : `
+            <button class="danger small" type="button" data-question-set-round-delete="${round.id}">この周回を削除</button>
+          `;
+        return `
+          <article class="question-set-round-card ${escapeHtml(round.status)}">
+            <div class="question-set-round-card-head">
+              <strong>第${round.round_number}周</strong>
+              <span class="round-status ${escapeHtml(round.status)}">${status}</span>
+            </div>
+            <time>${escapeHtml(questionSetRoundDate(round))}</time>
+            <div class="question-set-round-metrics">
+              <span><strong>${round.completed}/${round.total}</strong>問 実施</span>
+              <span>正答率 <strong>${escapeHtml(rate)}</strong></span>
+              <span>${escapeHtml(questionSetRoundMarks(round))}</span>
+              ${round.unavailable ? `<span>利用不可 ${round.unavailable}問</span>` : ""}
+            </div>
+            <div class="question-set-round-actions">
+              <button class="ghost" type="button" data-question-set-round-detail="${round.id}">問題別結果</button>
+              ${activeActions}
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  const pageCount = Math.max(1, Math.ceil(state.questionSetRoundsTotal / QUESTION_SET_ROUND_PAGE_SIZE));
+  const page = Math.floor(state.questionSetRoundsOffset / QUESTION_SET_ROUND_PAGE_SIZE) + 1;
+  fields.questionSetRoundPagination?.classList.toggle(
+    "hidden",
+    state.questionSetRoundsTotal <= QUESTION_SET_ROUND_PAGE_SIZE,
+  );
+  if (fields.questionSetRoundPageStatus) fields.questionSetRoundPageStatus.textContent = `${page} / ${pageCount}`;
+  if (fields.questionSetRoundPrev) fields.questionSetRoundPrev.disabled = state.questionSetRoundsOffset <= 0;
+  if (fields.questionSetRoundNext) {
+    fields.questionSetRoundNext.disabled =
+      state.questionSetRoundsOffset + QUESTION_SET_ROUND_PAGE_SIZE >= state.questionSetRoundsTotal;
+  }
+}
+
+function questionSetItemResult(item) {
+  if (item?.available === false) {
+    return { className: "pending", label: "利用不可" };
+  }
+  const value = item?.is_correct;
+  if (value === true || value === 1 || value === "1") {
+    return { className: "ok", label: "正解" };
+  }
+  if (value === false || value === 0 || value === "0") {
+    return { className: "ng", label: "不正解" };
+  }
+  return { className: "pending", label: "未採点" };
+}
+
+function renderQuestionSetRoundDetail() {
+  if (!fields.questionSetRoundItems) return;
+  const questionSet = questionSetById(state.selectedQuestionSetId);
+  const round = state.questionSetRoundDetail;
+  if (fields.questionSetRoundDetailTitle) {
+    fields.questionSetRoundDetailTitle.textContent = round
+      ? `${questionSet?.title || "問題セット"}・第${round.round_number}周`
+      : questionSet?.title || "周回";
+  }
+  if (fields.questionSetRoundDetailSummary) {
+    fields.questionSetRoundDetailSummary.innerHTML = round
+      ? `
+        <span class="round-status ${escapeHtml(round.status)}">${questionSetRoundStatusLabel(round.status)}</span>
+        <span>${round.completed}/${round.total}問 実施</span>
+        <span>正答率 ${round.graded ? `${round.rate}%` : "-"}</span>
+        <span>${escapeHtml(questionSetRoundMarks(round))}</span>
+      `
+      : "";
+  }
+
+  if (!state.questionSetRoundItems.length) {
+    fields.questionSetRoundItems.innerHTML = `<div class="question-set-message">このページに表示できる問題別結果はありません。</div>`;
+  } else {
+    fields.questionSetRoundItems.innerHTML = state.questionSetRoundItems
+      .map((item) => {
+        const result = questionSetItemResult(item);
+        const selfMark = SELF_MARKS[item.self_mark];
+        return `
+          <article class="question-set-round-item">
+            <div class="question-set-round-item-position">${Number(item.position || 0)}</div>
+            <div class="question-set-round-item-meta">
+              <strong>${escapeHtml(item.year || "年度不明")}・問${escapeHtml(item.question_number ?? "-")}</strong>
+              <span>${escapeHtml(item.category || "分野不明")}</span>
+            </div>
+            <dl class="question-set-round-item-answers">
+              <div><dt>解答</dt><dd>${escapeHtml(item.user_answer || "-")}</dd></div>
+              <div><dt>正答</dt><dd>${escapeHtml(item.correct_answer || "-")}</dd></div>
+            </dl>
+            <div class="question-set-round-item-result">
+              <span class="result-mark ${result.className}">${result.label}</span>
+              <span>${selfMark ? `${selfMark.label} ${selfMark.text}` : "自己評価なし"}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  const pageCount = Math.max(1, Math.ceil(state.questionSetRoundItemsTotal / QUESTION_SET_ROUND_ITEM_PAGE_SIZE));
+  const page = Math.floor(state.questionSetRoundItemsOffset / QUESTION_SET_ROUND_ITEM_PAGE_SIZE) + 1;
+  fields.questionSetRoundItemPagination?.classList.toggle(
+    "hidden",
+    state.questionSetRoundItemsTotal <= QUESTION_SET_ROUND_ITEM_PAGE_SIZE,
+  );
+  if (fields.questionSetRoundItemPageStatus) fields.questionSetRoundItemPageStatus.textContent = `${page} / ${pageCount}`;
+  if (fields.questionSetRoundItemPrev) fields.questionSetRoundItemPrev.disabled = state.questionSetRoundItemsOffset <= 0;
+  if (fields.questionSetRoundItemNext) {
+    fields.questionSetRoundItemNext.disabled =
+      state.questionSetRoundItemsOffset + QUESTION_SET_ROUND_ITEM_PAGE_SIZE >= state.questionSetRoundItemsTotal;
+  }
+}
+
+function renderQuestionSetPanel() {
+  const isQuestionSetMode = state.studyMode === "sets";
+  fields.practiceResultFilter?.classList.toggle("hidden", isQuestionSetMode);
+  fields.startAllRandom?.classList.toggle("hidden", isQuestionSetMode);
+  fields.studyList?.classList.toggle("hidden", isQuestionSetMode);
+  fields.questionSetPanel?.classList.toggle("hidden", !isQuestionSetMode);
+  if (!isQuestionSetMode) return;
+
+  fields.questionSetPanel?.toggleAttribute("aria-busy", state.questionSetsLoading || state.practiceStarting);
+  if (fields.refreshQuestionSets) {
+    fields.refreshQuestionSets.disabled = state.questionSetsLoading || state.practiceStarting;
+  }
+
+  fields.questionSetListView?.classList.toggle("hidden", state.questionSetView !== "list");
+  fields.questionSetHistoryView?.classList.toggle("hidden", state.questionSetView !== "history");
+  fields.questionSetRoundDetailView?.classList.toggle("hidden", state.questionSetView !== "detail");
+  if (state.questionSetView === "list") renderQuestionSetCards();
+  if (state.questionSetView === "history") renderQuestionSetRoundList();
+  if (state.questionSetView === "detail") renderQuestionSetRoundDetail();
+}
+
+function clearQuestionSetState() {
+  state.questionSetRequestId += 1;
+  state.questionSetHistoryRequestId += 1;
+  state.questionSetDetailRequestId += 1;
+  state.questionSetFlowRequestId += 1;
+  state.questionSets = [];
+  state.questionSetsLoaded = false;
+  state.questionSetsLoading = false;
+  state.questionSetsError = "";
+  state.questionSetView = "list";
+  state.selectedQuestionSetId = null;
+  state.questionSetRounds = [];
+  state.questionSetRoundsTotal = 0;
+  state.questionSetRoundsOffset = 0;
+  state.selectedQuestionSetRoundId = null;
+  state.questionSetRoundDetail = null;
+  state.questionSetRoundItems = [];
+  state.questionSetRoundItemsTotal = 0;
+  state.questionSetRoundItemsOffset = 0;
+  state.questionSetPractice = null;
+  state.questionSetPracticeActive = false;
+}
+
+function upsertQuestionSet(value) {
+  if (!value || typeof value !== "object") return null;
+  const id = Number(value.id);
+  const index = state.questionSets.findIndex((item) => item.id === id);
+  const current = index >= 0 ? state.questionSets[index] : null;
+  const normalized = normalizeQuestionSet({ ...(current || {}), ...value });
+  if (!normalized || !Number.isInteger(normalized.id)) return null;
+  if (index >= 0) {
+    state.questionSets[index] = normalized;
+  } else {
+    state.questionSets.push(normalized);
+  }
+  return normalized;
+}
+
+function syncQuestionSetRoundInList(roundValue, questionSetValue = null) {
+  const practiceSet = questionSetValue || state.questionSetPractice?.question_set;
+  const questionSet = practiceSet ? upsertQuestionSet(practiceSet) : null;
+  const setId = Number(questionSet?.id || state.questionSetPractice?.question_set?.id);
+  const current = questionSetById(setId);
+  if (!current) return;
+  const previousRound =
+    current.active_round?.id === Number(roundValue?.id)
+      ? current.active_round
+      : current.latest_round?.id === Number(roundValue?.id)
+        ? current.latest_round
+        : null;
+  const round = normalizeQuestionSetRound(roundValue, previousRound);
+  if (!round) return;
+  current.active_round = round.status === "active" ? round : null;
+  current.latest_round = round;
+  current.rounds_count = Math.max(Number(current.rounds_count || 0), Number(round.round_number || 0));
+  current.updated_at = round.updated_at || current.updated_at;
+}
+
+async function refreshQuestionSets({ force = false } = {}) {
+  if (state.questionSetsLoading && !force) return;
+  const requestId = ++state.questionSetRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  state.questionSetsLoading = true;
+  state.questionSetsError = "";
+  renderQuestionSetPanel();
+  try {
+    const payload = await api(
+      `/api/question-sets${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+    );
+    if (
+      requestId !== state.questionSetRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+    state.questionSets = (Array.isArray(payload.question_sets) ? payload.question_sets : [])
+      .map(normalizeQuestionSet)
+      .filter((item) => item && Number.isInteger(item.id))
+      .sort((left, right) => {
+        const leftTime = new Date(left.updated_at || left.created_at || 0).getTime() || 0;
+        const rightTime = new Date(right.updated_at || right.created_at || 0).getTime() || 0;
+        return rightTime - leftTime || right.id - left.id;
+      });
+      state.questionSetsLoaded = true;
+    if (state.selectedQuestionSetId && !questionSetById(state.selectedQuestionSetId)) {
+      state.questionSetView = "list";
+      state.selectedQuestionSetId = null;
+    }
+  } catch (error) {
+    if (
+      requestId === state.questionSetRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      state.questionSetsError = error.message;
+      toast(error.message);
+    }
+  } finally {
+    if (requestId === state.questionSetRequestId) {
+      state.questionSetsLoading = false;
+      renderQuestionSetPanel();
+    }
+  }
+}
+
+async function openQuestionSetHistory(setId, offset = 0) {
+  const normalizedSetId = Number(setId);
+  if (!Number.isInteger(normalizedSetId)) return;
+  const requestId = ++state.questionSetHistoryRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const normalizedOffset = Math.max(0, Number(offset) || 0);
+  state.selectedQuestionSetId = normalizedSetId;
+  state.questionSetView = "history";
+  state.questionSetRoundsOffset = normalizedOffset;
+  state.questionSetRounds = [];
+  renderQuestionSetPanel();
+  fields.questionSetRoundList.innerHTML = `<div class="question-set-message">周回履歴を読み込んでいます...</div>`;
+  try {
+    const params = questionSetParams(
+      { limit: String(QUESTION_SET_ROUND_PAGE_SIZE), offset: String(normalizedOffset) },
+      requestedUser,
+      requestedExam,
+    );
+    const payload = await api(`/api/question-sets/${normalizedSetId}/rounds${queryFor(params)}`);
+    if (
+      requestId !== state.questionSetHistoryRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam ||
+      state.selectedQuestionSetId !== normalizedSetId
+    ) {
+      return;
+    }
+    state.questionSetRounds = (Array.isArray(payload.rounds) ? payload.rounds : [])
+      .map((round) => normalizeQuestionSetRound(round))
+      .filter(Boolean);
+    state.questionSetRoundsTotal = Math.max(0, Number(payload.total || 0));
+    state.questionSetRoundsOffset = Math.max(0, Number(payload.offset ?? normalizedOffset));
+    renderQuestionSetPanel();
+  } catch (error) {
+    if (
+      requestId === state.questionSetHistoryRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      fields.questionSetRoundList.innerHTML = `<div class="question-set-message error">${escapeHtml(error.message)}</div>`;
+      toast(error.message);
+    }
+  }
+}
+
+async function openQuestionSetRoundDetail(setId, roundId, offset = 0) {
+  const normalizedSetId = Number(setId);
+  const normalizedRoundId = Number(roundId);
+  if (!Number.isInteger(normalizedSetId) || !Number.isInteger(normalizedRoundId)) return;
+  const requestId = ++state.questionSetDetailRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const normalizedOffset = Math.max(0, Number(offset) || 0);
+  state.selectedQuestionSetId = normalizedSetId;
+  state.selectedQuestionSetRoundId = normalizedRoundId;
+  state.questionSetView = "detail";
+  state.questionSetRoundItemsOffset = normalizedOffset;
+  state.questionSetRoundDetail = null;
+  state.questionSetRoundItems = [];
+  renderQuestionSetPanel();
+  fields.questionSetRoundItems.innerHTML = `<div class="question-set-message">問題別結果を読み込んでいます...</div>`;
+  try {
+    const params = questionSetParams(
+      { limit: String(QUESTION_SET_ROUND_ITEM_PAGE_SIZE), offset: String(normalizedOffset) },
+      requestedUser,
+      requestedExam,
+    );
+    const payload = await api(
+      `/api/question-sets/${normalizedSetId}/rounds/${normalizedRoundId}${queryFor(params)}`,
+    );
+    if (
+      requestId !== state.questionSetDetailRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam ||
+      state.selectedQuestionSetId !== normalizedSetId ||
+      state.selectedQuestionSetRoundId !== normalizedRoundId
+    ) {
+      return;
+    }
+    state.questionSetRoundDetail = normalizeQuestionSetRound(payload.round);
+    state.questionSetRoundItems = Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload.round?.items)
+        ? payload.round.items
+        : [];
+    state.questionSetRoundItemsTotal = Math.max(
+      0,
+      Number(payload.total ?? payload.round?.items_total ?? state.questionSetRoundItems.length),
+    );
+    state.questionSetRoundItemsOffset = Math.max(0, Number(payload.offset ?? normalizedOffset));
+    renderQuestionSetPanel();
+  } catch (error) {
+    if (
+      requestId === state.questionSetDetailRequestId &&
+      requestedUser === state.currentUser &&
+      requestedExam === state.selectedExam
+    ) {
+      fields.questionSetRoundItems.innerHTML = `<div class="question-set-message error">${escapeHtml(error.message)}</div>`;
+      toast(error.message);
+    }
+  }
+}
+
+function showQuestionSetList() {
+  state.questionSetHistoryRequestId += 1;
+  state.questionSetDetailRequestId += 1;
+  state.questionSetView = "list";
+  state.selectedQuestionSetId = null;
+  state.selectedQuestionSetRoundId = null;
+  renderQuestionSetPanel();
+}
+
+function showQuestionSetHistoryFromDetail() {
+  state.questionSetDetailRequestId += 1;
+  state.questionSetView = "history";
+  state.selectedQuestionSetRoundId = null;
+  renderQuestionSetPanel();
+}
+
+async function openQuestionSetRoundForPractice(setId, { action = "resume" } = {}) {
+  if (state.practiceStarting) return;
+  const normalizedSetId = Number(setId);
+  if (!Number.isInteger(normalizedSetId)) return;
+  const flowRequestId = ++state.questionSetFlowRequestId;
+  const requestId = ++state.refreshRequestId;
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const questionSet = questionSetById(normalizedSetId) || {
+    id: normalizedSetId,
+    title: "問題セット",
+    exam: requestedExam,
+  };
+  setPracticeStarting(true);
+  try {
+    if (action === "start" || action === "restart") {
+      const suffix = action === "restart" ? "/rounds/restart" : "/rounds";
+      const mutationPayload = await api(
+        `/api/question-sets/${normalizedSetId}${suffix}${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      if (mutationPayload.question_set) upsertQuestionSet(mutationPayload.question_set);
+    }
+
+    const questionParams = userScopedParams();
+    questionParams.set("exam", questionSet.exam || requestedExam);
+    const [activePayload, questionPayload] = await Promise.all([
+      api(
+        `/api/question-sets/${normalizedSetId}/rounds/active${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+      ),
+      api(`/api/questions${queryFor(questionParams)}`),
+    ]);
+    if (
+      flowRequestId !== state.questionSetFlowRequestId ||
+      requestId !== state.refreshRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+
+    const activeSet = normalizeQuestionSet(activePayload.question_set) || normalizeQuestionSet(questionSet);
+    const round = normalizeQuestionSetRound(activePayload.round);
+    if (!round?.token || round.status !== "active") {
+      throw new Error("進行中の周回を取得できませんでした。");
+    }
+    state.practiceSessionActive = false;
+    clearStudyFilters();
+    state.questionSetPractice = { question_set: activeSet, round };
+    state.questionSetPracticeActive = true;
+    state.allQuestions = questionPayload.questions || [];
+    state.studyQuestions = state.allQuestions;
+    state.questions = filteredPracticeQuestions();
+    state.questionsLoaded = true;
+    state.libraryPage = 1;
+    state.showStudyMap = false;
+    syncQuestionSetRoundInList(round, activeSet);
+    renderFilterSummary();
+    renderPracticeSessionCard();
+    renderQuestionTable();
+    const nextId = Number(round.next_question_id);
+    const nextIndex = Number.isInteger(nextId)
+      ? state.questions.findIndex((question) => Number(question.id) === nextId)
+      : -1;
+    setCurrentQuestionByIndex(nextIndex >= 0 ? nextIndex : 0);
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (flowRequestId === state.questionSetFlowRequestId) setPracticeStarting(false);
+  }
+}
+
+function startQuestionSetRound(setId) {
+  void openQuestionSetRoundForPractice(setId, { action: "start" });
+}
+
+function restartQuestionSetRound(setId) {
+  const questionSet = questionSetById(setId) || state.questionSetPractice?.question_set;
+  const activeRound = questionSet?.active_round || state.questionSetPractice?.round;
+  if (!activeRound || activeRound.status !== "active") {
+    startQuestionSetRound(setId);
+    return;
+  }
+  const message = `「${questionSet.title}」第${activeRound.round_number}周を中断として保存し、問題順を変えて新しい周回を始めます。解答済みの結果は周回履歴に残ります。よろしいですか？`;
+  if (!window.confirm(message)) return;
+  void openQuestionSetRoundForPractice(setId, { action: "restart" });
+}
+
+async function abandonQuestionSetRound(setId, roundId) {
+  if (state.practiceStarting) return;
+  const normalizedSetId = Number(setId);
+  const normalizedRoundId = Number(roundId);
+  if (!Number.isInteger(normalizedSetId) || !Number.isInteger(normalizedRoundId)) return;
+  const questionSet = questionSetById(normalizedSetId) || state.questionSetPractice?.question_set;
+  const round = questionSet?.active_round || state.questionSetPractice?.round;
+  const title = questionSet?.title || "この問題セット";
+  const roundNumber = round?.round_number || "現在の";
+  if (
+    !window.confirm(
+      `「${title}」第${roundNumber}周を中断として保存します。解答済みの結果は周回履歴に残り、この周回は再開できなくなります。よろしいですか？`,
+    )
+  ) {
+    return;
+  }
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  const flowRequestId = ++state.questionSetFlowRequestId;
+  setPracticeStarting(true);
+  try {
+    await api(
+      `/api/question-sets/${normalizedSetId}/rounds/${normalizedRoundId}/abandon${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+      { method: "POST", body: JSON.stringify({}) },
+    );
+    if (
+      flowRequestId !== state.questionSetFlowRequestId ||
+      requestedUser !== state.currentUser ||
+      requestedExam !== state.selectedExam
+    ) {
+      return;
+    }
+    if (
+      state.questionSetPractice?.question_set?.id === normalizedSetId &&
+      state.questionSetPractice?.round?.id === normalizedRoundId
+    ) {
+      state.questionSetPracticeActive = false;
+      state.questionSetPractice = null;
+    }
+    toast("周回を中断として保存しました。");
+    await refreshQuestionSets({ force: true });
+    if (state.questionSetView === "history" && state.selectedQuestionSetId === normalizedSetId) {
+      await openQuestionSetHistory(normalizedSetId, state.questionSetRoundsOffset);
+    }
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    if (flowRequestId === state.questionSetFlowRequestId) setPracticeStarting(false);
+  }
+}
+
+async function deleteQuestionSetRound(roundId) {
+  const setId = Number(state.selectedQuestionSetId);
+  const normalizedRoundId = Number(roundId);
+  if (!Number.isInteger(setId) || !Number.isInteger(normalizedRoundId)) return;
+  const round = state.questionSetRounds.find((item) => item.id === normalizedRoundId);
+  const questionSet = questionSetById(setId);
+  if (!round || round.status === "active") return;
+  if (
+    !window.confirm(
+      `「${questionSet?.title || "問題セット"}」第${round.round_number}周（${questionSetRoundStatusLabel(round.status)}・${round.completed}/${round.total}問）の周回履歴だけを削除します。問題セットと通常の解答履歴は残ります。よろしいですか？`,
+    )
+  ) {
+    return;
+  }
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  try {
+    await api(
+      `/api/question-sets/${setId}/rounds/${normalizedRoundId}${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+      { method: "DELETE" },
+    );
+    if (requestedUser !== state.currentUser || requestedExam !== state.selectedExam) return;
+    toast("周回履歴を削除しました。");
+    await refreshQuestionSets({ force: true });
+    const nextOffset =
+      state.questionSetRounds.length === 1 && state.questionSetRoundsOffset > 0
+        ? Math.max(0, state.questionSetRoundsOffset - QUESTION_SET_ROUND_PAGE_SIZE)
+        : state.questionSetRoundsOffset;
+    await openQuestionSetHistory(setId, nextOffset);
+  } catch (error) {
+    toast(error.message);
+  }
+}
+
+async function deleteQuestionSet(setId) {
+  const normalizedSetId = Number(setId);
+  if (!Number.isInteger(normalizedSetId)) return;
+  const questionSet = questionSetById(normalizedSetId);
+  if (!questionSet) return;
+  if (
+    !window.confirm(
+      `「${questionSet.title}」と、その全周回履歴を削除します。元の問題と通常の解答履歴は削除されません。よろしいですか？`,
+    )
+  ) {
+    return;
+  }
+  const requestedUser = state.currentUser;
+  const requestedExam = state.selectedExam;
+  try {
+    await api(
+      `/api/question-sets/${normalizedSetId}${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+      { method: "DELETE" },
+    );
+    if (requestedUser !== state.currentUser || requestedExam !== state.selectedExam) return;
+    if (state.questionSetPractice?.question_set?.id === normalizedSetId) {
+      state.questionSetPractice = null;
+      state.questionSetPracticeActive = false;
+    }
+    showQuestionSetList();
+    toast("問題セットと全周回履歴を削除しました。");
+    await refreshQuestionSets({ force: true });
+  } catch (error) {
+    toast(error.message);
+  }
 }
 
 function renderStudyMap() {
@@ -906,6 +2640,10 @@ function renderStudyMap() {
     tab.classList.toggle("active", tab.dataset.studyMode === state.studyMode);
   });
   renderPracticeResultFilter();
+  renderQuestionSetPanel();
+  if (state.studyMode === "sets" && !state.questionSetsLoaded && !state.questionSetsLoading) {
+    void refreshQuestionSets();
+  }
 }
 
 function renderPracticeResultFilter() {
@@ -952,6 +2690,7 @@ function showPracticeSession() {
   fields.jumpForm.classList.remove("hidden");
   fields.navButtons.classList.remove("hidden");
   fields.backToStudyMap.classList.remove("hidden");
+  fields.backToStudyMap.textContent = hasQuestionSetPracticeContext() ? "問題セット一覧へ" : "一覧へ戻る";
   updateFilterPanelOpen();
   document.body.classList.remove("study-map-active");
   document.body.classList.toggle("practice-session-active", state.activeTab === "practice");
@@ -961,12 +2700,17 @@ function setPracticeStarting(value) {
   state.practiceStarting = value;
   fields.studyMap?.toggleAttribute("aria-busy", value);
   fields.startAllRandom.disabled = value;
+  if (fields.refreshQuestionSets) fields.refreshQuestionSets.disabled = value;
   fields.studyList?.querySelectorAll("button").forEach((button) => {
     button.disabled = value;
   });
   fields.practiceSessionCard?.querySelectorAll("button").forEach((button) => {
     button.disabled = value;
   });
+  fields.questionSetPanel?.querySelectorAll("button").forEach((button) => {
+    button.disabled = value;
+  });
+  if (!value) renderQuestionSetPanel();
 }
 
 function shuffledQuestionIds(questions) {
@@ -989,6 +2733,8 @@ function applyPracticeStartFilter(filter = {}) {
 
 async function startPractice(filter = {}, { forceRandom = false } = {}) {
   if (state.practiceStarting) return;
+  state.questionSetPracticeActive = false;
+  state.questionSetPractice = null;
   const randomStart = forceRandom || state.practiceRandomStart;
   if (
     randomStart &&
@@ -1085,6 +2831,8 @@ async function startPractice(filter = {}, { forceRandom = false } = {}) {
 
 async function resumePracticeSession() {
   if (state.practiceStarting || !state.practiceSession?.token) return;
+  state.questionSetPracticeActive = false;
+  state.questionSetPractice = null;
   const requestId = ++state.refreshRequestId;
   const flowRequestId = ++state.practiceFlowRequestId;
   const requestedUser = state.currentUser;
@@ -1181,18 +2929,28 @@ async function discardPracticeSession() {
 }
 
 function leavePracticeSessionForStudyMap() {
+  const leavingQuestionSet = hasQuestionSetPracticeContext();
   if (state.practiceStarting) {
     state.refreshRequestId += 1;
     state.practiceFlowRequestId += 1;
     setPracticeStarting(false);
   }
   state.practiceSessionActive = false;
+  state.questionSetPracticeActive = false;
+  if (leavingQuestionSet) {
+    state.questionSetPractice = null;
+    state.studyMode = "sets";
+    state.questionSetView = "list";
+    state.selectedQuestionSetId = null;
+    state.selectedQuestionSetRoundId = null;
+  }
   state.practiceOrder = null;
   state.practiceShufflePending = false;
   state.showStudyMap = false;
   clearStudyFilters();
   showStudyMap();
   renderStudyMap();
+  if (leavingQuestionSet) void refreshQuestionSets({ force: true });
   resetScroll();
 }
 
@@ -1208,6 +2966,8 @@ function switchExam(exam) {
   state.practiceSession = null;
   state.practiceSessionActive = false;
   state.practiceFlowRequestId += 1;
+  clearQuestionSetState();
+  clearDiseaseChecklistState();
   setPracticeStarting(false);
   state.practiceSessionRequestId += 1;
   clearStudyFilters();
@@ -1217,6 +2977,7 @@ function switchExam(exam) {
   state.resultContext = null;
   state.showStudyMap = true;
   refreshAll({ keepQuestion: false }).catch((error) => toast(error.message));
+  if (state.activeTab === "diseaseChecklist") void refreshDiseaseChecklists();
 }
 
 function resetScroll() {
@@ -1274,6 +3035,21 @@ function jumpToQuestion(event) {
 
   const index = state.questions.findIndex((question) => questionNumber(question) === number);
   if (index < 0) {
+    if (hasQuestionSetPracticeContext()) {
+      const round = state.questionSetPractice.round;
+      const completedIds = new Set(round.completed_question_ids);
+      const roundIds = new Set(round.question_ids);
+      const completedMatch = state.allQuestions.some(
+        (question) =>
+          roundIds.has(Number(question.id)) &&
+          completedIds.has(Number(question.id)) &&
+          questionNumber(question) === number,
+      );
+      if (completedMatch) {
+        toast(`問${number}はこの周回で解答済みです。`);
+        return;
+      }
+    }
     if (hasActivePracticeSession()) {
       const completedIds = new Set(state.practiceSession.completed_question_ids);
       const sessionIds = new Set(state.practiceSession.question_ids);
@@ -1297,19 +3073,23 @@ function jumpToQuestion(event) {
 
 function renderPracticeRoundProgress() {
   if (!fields.practiceRoundProgress) return;
-  if (!hasActivePracticeSession()) {
+  const questionSetContext = hasQuestionSetPracticeContext();
+  if (!questionSetContext && !hasActivePracticeSession()) {
     fields.practiceRoundProgress.classList.add("hidden");
     fields.practiceRoundProgress.innerHTML = "";
     return;
   }
 
-  const session = state.practiceSession;
+  const session = questionSetContext ? state.questionSetPractice.round : state.practiceSession;
   const total = Math.max(0, Number(session.total || 0));
   const completed = Math.min(total, Math.max(0, Number(session.completed || 0)));
   const remaining = Math.max(0, Number(session.remaining ?? total - completed));
+  const title = questionSetContext
+    ? `${state.questionSetPractice.question_set?.title || "問題セット"}・第${session.round_number}周 ${completed}/${total}`
+    : `一周 ${completed}/${total}`;
   fields.practiceRoundProgress.classList.remove("hidden");
   fields.practiceRoundProgress.innerHTML = `
-    <strong>一周 ${completed}/${total}</strong>
+    <strong>${escapeHtml(title)}</strong>
     <progress value="${completed}" max="${Math.max(1, total)}" aria-label="${completed}/${total}問 完了"></progress>
     <span>残り${remaining}問</span>
   `;
@@ -1334,9 +3114,45 @@ function renderPractice() {
   setAnswerControlsDisabled(false);
 
   if (!question) {
-    const roundComplete =
+    const quickRoundComplete =
       hasActivePracticeSession() &&
       (state.practiceSession.status === "completed" || Number(state.practiceSession.remaining || 0) === 0);
+    const questionSetRound = state.questionSetPractice?.round;
+    const questionSetRoundComplete =
+      hasQuestionSetPracticeContext() &&
+      (questionSetRound.status === "completed" || Number(questionSetRound.remaining || 0) === 0);
+    const roundComplete = quickRoundComplete || questionSetRoundComplete;
+    if (roundComplete && fields.practiceRoundComplete) {
+      if (questionSetRoundComplete) {
+        const questionSet = state.questionSetPractice.question_set;
+        fields.practiceRoundComplete.innerHTML = `
+          <strong>${escapeHtml(questionSet?.title || "問題セット")} 第${questionSetRound.round_number}周が完了しました</strong>
+          <span>この周回で利用できる問題をすべて解答しました。結果は周回履歴に保存されています。</span>
+          <div class="practice-round-complete-actions">
+            <button class="primary" type="button" data-question-set-next-round="${questionSet?.id}">再シャッフルしてもう一周</button>
+            <button class="ghost" type="button" data-leave-practice-session>問題セット一覧へ</button>
+          </div>
+        `;
+      } else {
+        fields.practiceRoundComplete.innerHTML = `
+          <strong>ランダム一周が完了しました</strong>
+          <span>開始時に選んだ問題をすべて解答しました。</span>
+          <div class="practice-round-complete-actions">
+            <button class="primary" type="button" data-restart-practice-session>現在の条件でもう一周</button>
+            <button class="ghost" type="button" data-leave-practice-session>一覧へ戻る</button>
+          </div>
+        `;
+      }
+    }
+    if (!roundComplete && fields.emptyPractice) {
+      const unavailable = Number(questionSetRound?.unavailable || 0);
+      fields.emptyPractice.innerHTML = hasQuestionSetPracticeContext()
+        ? `
+          <strong>続けられる問題がありません</strong>
+          <span>${unavailable ? `${unavailable}問が利用できません。` : "この周回の状態を更新してください。"}</span>
+        `
+        : `<strong>問題がありません</strong><span>条件に一致する問題がありません。</span>`;
+    }
     fields.practiceRoundComplete?.classList.toggle("hidden", !roundComplete);
     fields.emptyPractice.classList.toggle("hidden", roundComplete);
     fields.questionArea.classList.add("hidden");
@@ -1869,6 +3685,7 @@ async function registerPendingResult() {
 
   const previousQuestionId = state.currentQuestion?.id || context.question_id;
   const previousIndex = state.currentIndex;
+  const activeQuestionSetRound = hasActiveQuestionSetRound();
   const activePracticeSession = hasActivePracticeSession();
   const requestBody = {
     question_id: context.question_id,
@@ -1876,7 +3693,9 @@ async function registerPendingResult() {
     user_answer: context.user_answer,
     self_mark: context.self_mark || "warn",
   };
-  if (activePracticeSession) {
+  if (activeQuestionSetRound) {
+    requestBody.question_set_round_token = state.questionSetPractice.round.token;
+  } else if (activePracticeSession) {
     requestBody.practice_session_token = state.practiceSession.token;
   }
   state.resultContext = { ...context, registering: true };
@@ -1885,7 +3704,15 @@ async function registerPendingResult() {
       method: "POST",
       body: JSON.stringify(requestBody),
     });
+    const questionSetRoundStale = activeQuestionSetRound && result.question_set_round_stale === true;
     const sessionStale = activePracticeSession && result.practice_session_stale === true;
+    if (activeQuestionSetRound && result.question_set_round) {
+      state.questionSetPractice.round = normalizeQuestionSetRound(
+        result.question_set_round,
+        state.questionSetPractice.round,
+      );
+      syncQuestionSetRoundInList(state.questionSetPractice.round);
+    }
     if (activePracticeSession && result.practice_session) {
       state.practiceSession = normalizePracticeSession(result.practice_session);
     }
@@ -1897,6 +3724,12 @@ async function registerPendingResult() {
       graded: Boolean(result.graded),
       correct: result.correct === true,
     });
+    if (questionSetRoundStale) {
+      leavePracticeSessionForStudyMap();
+      await refreshQuestionSets({ force: true });
+      toast("解答履歴は保存されました。別の端末で周回が更新されたため、問題セット一覧から最新の状態を確認してください。");
+      return;
+    }
     if (sessionStale) {
       try {
         await refreshPracticeSession();
@@ -1907,11 +3740,22 @@ async function registerPendingResult() {
       toast("別の端末で一周が更新されました。最新の進捗から再開してください。");
       return;
     }
+    const questionSetRoundCompleted =
+      activeQuestionSetRound &&
+      state.questionSetPractice?.round &&
+      (state.questionSetPractice.round.status === "completed" ||
+        Number(state.questionSetPractice.round.remaining || 0) === 0);
     const roundCompleted =
       activePracticeSession &&
       state.practiceSession &&
       (state.practiceSession.status === "completed" || Number(state.practiceSession.remaining || 0) === 0);
-    toast(roundCompleted ? "ランダム一周が完了しました。" : "結果を登録しました。");
+    toast(
+      questionSetRoundCompleted
+        ? `${state.questionSetPractice.question_set?.title || "問題セット"} 第${state.questionSetPractice.round.round_number}周が完了しました。`
+        : roundCompleted
+          ? "ランダム一周が完了しました。"
+          : "結果を登録しました。",
+    );
     pickQuestionAfterRefresh(previousQuestionId, previousIndex);
   } catch (error) {
     state.resultContext = { ...context, registering: false };
@@ -2056,12 +3900,22 @@ function renderHistory(attempts) {
 }
 
 async function deleteAllHistory() {
-  if (!window.confirm("自分の解答履歴をすべて削除します。よろしいですか？")) return;
+  if (
+    !window.confirm(
+      "通常の解答履歴、問題セットの全周回履歴（進行中を含む）、クイックランダムの進捗をすべて削除します。問題セットの定義と固定された問題構成は残ります。よろしいですか？",
+    )
+  ) {
+    return;
+  }
 
   try {
     const result = await api(`/api/attempts${queryFor(userScopedParams())}`, { method: "DELETE" });
-    toast(`${Number(result.deleted || 0)}件の履歴を削除しました。`);
+    state.practiceSession = null;
+    state.practiceSessionActive = false;
+    clearQuestionSetState();
+    toast(`${Number(result.deleted || 0)}件の通常履歴と、保存中の周回・進捗を削除しました。`);
     await refreshAll({ keepQuestion: true, renderPracticePanel: false });
+    if (state.studyMode === "sets") await refreshQuestionSets({ force: true });
     syncCurrentQuestion();
   } catch (error) {
     toast(error.message);
@@ -2194,6 +4048,8 @@ function practiceQuestionFromLibrary(id) {
   }
   state.practiceResultFilter = copyResultFilter(state.libraryResultFilter);
   state.practiceSessionActive = false;
+  state.questionSetPracticeActive = false;
+  state.questionSetPractice = null;
   state.practiceOrder = null;
   state.practiceShufflePending = false;
   state.questions = questions;
@@ -2205,6 +4061,10 @@ function practiceQuestionFromLibrary(id) {
 function activateTab(name) {
   if (name === "users" && state.session?.can_manage_users !== true) {
     toast("ユーザー管理は管理者として許可されたTailscaleアカウントのみ使用できます。");
+    name = "practice";
+  }
+  if (name === "diseaseChecklist" && !canUseDiseaseChecklists()) {
+    toast("疾患確認は指定されたTailscale管理者のみ使用できます。");
     name = "practice";
   }
   state.activeTab = name;
@@ -2240,6 +4100,12 @@ function activateTab(name) {
   }
   if (name === "users") {
     refreshUsers().catch((error) => toast(error.message));
+  }
+  if (name === "diseaseChecklist") {
+    renderDiseaseChecklistView();
+    if (!state.diseaseChecklistsLoaded && !state.diseaseChecklistsLoading) {
+      void refreshDiseaseChecklists();
+    }
   }
   resetScroll();
 }
@@ -2307,7 +4173,14 @@ function bindEvents() {
         setPracticeStarting(false);
       }
       if (tab.dataset.tab === "practice") {
+        const returningFromQuestionSet = hasQuestionSetPracticeContext();
         state.practiceSessionActive = false;
+        state.questionSetPracticeActive = false;
+        state.questionSetPractice = null;
+        if (returningFromQuestionSet) {
+          state.studyMode = "sets";
+          state.questionSetView = "list";
+        }
         clearStudyFilters();
         state.showStudyMap = true;
         renderStudyMap();
@@ -2326,6 +4199,72 @@ function bindEvents() {
   }
   fields.userAdminForm.addEventListener("submit", createManagedUser);
   fields.userTable.addEventListener("click", handleUserTableClick);
+  fields.refreshDiseaseChecklists?.addEventListener("click", () => {
+    void refreshDiseaseChecklists();
+  });
+  fields.diseaseChecklistSelect?.addEventListener("change", () => {
+    const checklistId = Number(fields.diseaseChecklistSelect.value);
+    if (Number.isInteger(checklistId)) void loadDiseaseChecklist(checklistId);
+  });
+  fields.diseaseStatusFilter?.addEventListener("change", () => {
+    state.diseaseChecklistStatusFilter = fields.diseaseStatusFilter.value;
+    state.diseaseChecklistPage = 1;
+    state.diseaseChecklistRecentlyReviewedItemId = null;
+    renderDiseaseChecklistResults();
+  });
+  fields.diseaseRegionFilter?.addEventListener("change", () => {
+    state.diseaseChecklistRegionFilter = fields.diseaseRegionFilter.value;
+    state.diseaseChecklistPage = 1;
+    state.diseaseChecklistRecentlyReviewedItemId = null;
+    renderDiseaseChecklistResults();
+    scrollDiseaseChecklistResultsIntoView();
+  });
+  fields.diseasePreviousRegion?.addEventListener("click", () => {
+    moveDiseaseChecklistRegion(-1);
+  });
+  fields.diseaseNextRegion?.addEventListener("click", () => {
+    moveDiseaseChecklistRegion(1);
+  });
+  fields.diseaseSearchFilter?.addEventListener("input", () => {
+    state.diseaseChecklistSearchFilter = fields.diseaseSearchFilter.value;
+    state.diseaseChecklistPage = 1;
+    state.diseaseChecklistRecentlyReviewedItemId = null;
+    renderDiseaseChecklistResults();
+  });
+  fields.diseaseEverWrongFilter?.addEventListener("change", () => {
+    state.diseaseChecklistEverWrongFilter = fields.diseaseEverWrongFilter.checked;
+    state.diseaseChecklistPage = 1;
+    state.diseaseChecklistRecentlyReviewedItemId = null;
+    renderDiseaseChecklistResults();
+  });
+  fields.diseaseAddedByWrongFilter?.addEventListener("change", () => {
+    state.diseaseChecklistAddedByWrongFilter = fields.diseaseAddedByWrongFilter.checked;
+    state.diseaseChecklistPage = 1;
+    state.diseaseChecklistRecentlyReviewedItemId = null;
+    renderDiseaseChecklistResults();
+  });
+  [fields.diseaseChecklistPaginationTop, fields.diseaseChecklistPaginationBottom].forEach(
+    (container) => {
+      container?.addEventListener("click", handleDiseaseChecklistPaginationClick);
+      container?.addEventListener("change", handleDiseaseChecklistPaginationChange);
+    },
+  );
+  fields.diseaseChecklistCards?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-disease-next-unreviewed]")) {
+      state.diseaseChecklistRecentlyReviewedItemId = null;
+      renderDiseaseChecklistCards();
+      fields.diseaseChecklistCards.querySelector(".disease-card")?.scrollIntoView({ block: "start" });
+      return;
+    }
+    const statusButton = event.target.closest("[data-disease-item-status]");
+    if (statusButton) {
+      void updateDiseaseChecklistItem(
+        Number(statusButton.dataset.diseaseItemId),
+        statusButton.dataset.diseaseItemStatus,
+      );
+    }
+  });
+  fields.exportDiseaseChecklist?.addEventListener("click", exportDiseaseChecklistTsv);
   fields.examTabs.addEventListener("click", (event) => {
     const button = event.target.closest("[data-exam]");
     if (button) switchExam(button.dataset.exam);
@@ -2333,6 +4272,7 @@ function bindEvents() {
   $$(".study-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       state.studyMode = tab.dataset.studyMode;
+      if (state.studyMode === "sets") state.questionSetView = "list";
       renderStudyMap();
     });
   });
@@ -2355,6 +4295,93 @@ function bindEvents() {
     if (event.target.closest("[data-discard-practice-session]")) {
       void discardPracticeSession();
     }
+  });
+  fields.refreshQuestionSets?.addEventListener("click", () => {
+    void refreshQuestionSets({ force: true });
+  });
+  fields.questionSetPanel?.addEventListener("click", (event) => {
+    const backList = event.target.closest("[data-question-set-back-list]");
+    if (backList) {
+      showQuestionSetList();
+      return;
+    }
+    const backHistory = event.target.closest("[data-question-set-back-history]");
+    if (backHistory) {
+      showQuestionSetHistoryFromDetail();
+      return;
+    }
+    const startButton = event.target.closest("[data-question-set-start]");
+    if (startButton) {
+      startQuestionSetRound(Number(startButton.dataset.questionSetStart));
+      return;
+    }
+    const resumeButton = event.target.closest("[data-question-set-resume]");
+    if (resumeButton) {
+      void openQuestionSetRoundForPractice(Number(resumeButton.dataset.questionSetResume));
+      return;
+    }
+    const restartButton = event.target.closest("[data-question-set-restart]");
+    if (restartButton) {
+      restartQuestionSetRound(Number(restartButton.dataset.questionSetRestart));
+      return;
+    }
+    const abandonButton = event.target.closest("[data-question-set-abandon]");
+    if (abandonButton) {
+      void abandonQuestionSetRound(
+        Number(abandonButton.dataset.questionSetAbandon),
+        Number(abandonButton.dataset.roundId),
+      );
+      return;
+    }
+    const historyButton = event.target.closest("[data-question-set-history]");
+    if (historyButton) {
+      void openQuestionSetHistory(Number(historyButton.dataset.questionSetHistory), 0);
+      return;
+    }
+    const detailButton = event.target.closest("[data-question-set-round-detail]");
+    if (detailButton) {
+      void openQuestionSetRoundDetail(
+        state.selectedQuestionSetId,
+        Number(detailButton.dataset.questionSetRoundDetail),
+        0,
+      );
+      return;
+    }
+    const deleteRoundButton = event.target.closest("[data-question-set-round-delete]");
+    if (deleteRoundButton) {
+      void deleteQuestionSetRound(Number(deleteRoundButton.dataset.questionSetRoundDelete));
+      return;
+    }
+    const deleteSetButton = event.target.closest("[data-question-set-delete]");
+    if (deleteSetButton) {
+      void deleteQuestionSet(Number(deleteSetButton.dataset.questionSetDelete));
+    }
+  });
+  fields.questionSetRoundPrev?.addEventListener("click", () => {
+    void openQuestionSetHistory(
+      state.selectedQuestionSetId,
+      Math.max(0, state.questionSetRoundsOffset - QUESTION_SET_ROUND_PAGE_SIZE),
+    );
+  });
+  fields.questionSetRoundNext?.addEventListener("click", () => {
+    void openQuestionSetHistory(
+      state.selectedQuestionSetId,
+      state.questionSetRoundsOffset + QUESTION_SET_ROUND_PAGE_SIZE,
+    );
+  });
+  fields.questionSetRoundItemPrev?.addEventListener("click", () => {
+    void openQuestionSetRoundDetail(
+      state.selectedQuestionSetId,
+      state.selectedQuestionSetRoundId,
+      Math.max(0, state.questionSetRoundItemsOffset - QUESTION_SET_ROUND_ITEM_PAGE_SIZE),
+    );
+  });
+  fields.questionSetRoundItemNext?.addEventListener("click", () => {
+    void openQuestionSetRoundDetail(
+      state.selectedQuestionSetId,
+      state.selectedQuestionSetRoundId,
+      state.questionSetRoundItemsOffset + QUESTION_SET_ROUND_ITEM_PAGE_SIZE,
+    );
   });
   fields.practiceResultFilter?.addEventListener("change", (event) => {
     const input = event.target.closest("[data-practice-result-filter]");
@@ -2385,6 +4412,8 @@ function bindEvents() {
       setPracticeStarting(false);
     }
     state.practiceSessionActive = false;
+    state.questionSetPracticeActive = false;
+    state.questionSetPractice = null;
     state.localFilter = null;
     if (!(state.activeTab === "practice" && !state.showStudyMap)) {
       state.practiceResultFilter = null;
@@ -2417,6 +4446,11 @@ function bindEvents() {
   $("#clearAnswer").addEventListener("click", renderPractice);
   fields.resultBox.addEventListener("click", handleResultBoxClick);
   fields.practiceSession.addEventListener("click", (event) => {
+    const nextQuestionSetRound = event.target.closest("[data-question-set-next-round]");
+    if (nextQuestionSetRound) {
+      startQuestionSetRound(Number(nextQuestionSetRound.dataset.questionSetNextRound));
+      return;
+    }
     if (event.target.closest("[data-restart-practice-session]")) {
       restartPracticeSession();
       return;

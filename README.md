@@ -9,6 +9,8 @@
 - [docs/full-migration-handoff.md](docs/full-migration-handoff.md): 完全移行時の公開/非公開の分け方
 - [docs/remote-access-backup-handoff.md](docs/remote-access-backup-handoff.md): Tailscale と Google Drive の引き継ぎ
 - [docs/google-drive-backup.md](docs/google-drive-backup.md): Google Drive バックアップ
+- [docs/question-sets.md](docs/question-sets.md): Codex で名前付き問題セットを安全に作る手順
+- [docs/disease-checklists.md](docs/disease-checklists.md): 非公開の疾患知識チェックリストを安全に作成・保守する手順
 - [kakomon-trainer.service.example](kakomon-trainer.service.example): systemd 設定の見本
 
 ## このリポジトリに置くもの
