@@ -23,6 +23,7 @@ QUERY_CHUNK_SIZE = 500
 REQUIRED_SCHEMA = {
     "questions": {"id", "exam", "year", "category"},
     "users": {"name"},
+    "private_question_owners": {"question_id", "user_name"},
     "question_sets": {"id", "user_name", "exam", "title", "created_at", "updated_at"},
     "question_set_items": {"question_set_id", "position", "question_id"},
 }
@@ -157,9 +158,10 @@ def _fetch_question_rows(
         placeholders = ", ".join("?" for _ in chunk)
         rows = conn.execute(
             f"""
-            SELECT id, exam, year, category
-            FROM questions
-            WHERE id IN ({placeholders})
+            SELECT q.id, q.exam, q.year, q.category, p.user_name AS private_owner
+            FROM questions q
+            LEFT JOIN private_question_owners p ON p.question_id = q.id
+            WHERE q.id IN ({placeholders})
             """,
             chunk,
         ).fetchall()
@@ -216,6 +218,18 @@ def inspect_request(
     if wrong_exam_ids:
         raise QuestionSetError(
             "指定examに属さない問題IDがあります: " + _format_id_sample(wrong_exam_ids)
+        )
+
+    other_owner_ids = [
+        question_id
+        for question_id in question_ids
+        if rows_by_id[question_id]["private_owner"] is not None
+        and str(rows_by_id[question_id]["private_owner"]) != user_name
+    ]
+    if other_owner_ids:
+        raise QuestionSetError(
+            "別ユーザーの個人問題が含まれています: "
+            + _format_id_sample(other_owner_ids)
         )
 
     year_counts = Counter(

@@ -70,6 +70,7 @@ def db_counts(db_path: Path) -> dict[str, int]:
             "attempts",
             "users",
             "question_notes",
+            "private_question_owners",
             "question_sets",
             "question_set_items",
             "question_set_rounds",

@@ -229,6 +229,14 @@ def init_db() -> None:
                 FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS private_question_owners (
+                question_id INTEGER PRIMARY KEY,
+                user_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_name) REFERENCES users(name) ON DELETE RESTRICT
+            );
+
             CREATE TABLE IF NOT EXISTS practice_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 token TEXT NOT NULL UNIQUE,
@@ -375,6 +383,8 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_attempts_created_at ON attempts(created_at);
             CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
             CREATE INDEX IF NOT EXISTS idx_question_notes_user_name ON question_notes(user_name);
+            CREATE INDEX IF NOT EXISTS idx_private_question_owners_user
+                ON private_question_owners(user_name);
             CREATE INDEX IF NOT EXISTS idx_practice_sessions_user_exam
                 ON practice_sessions(user_name, exam);
             CREATE INDEX IF NOT EXISTS idx_practice_session_items_question_id
@@ -916,6 +926,22 @@ class AppHandler(BaseHTTPRequestHandler):
                 (cleaned, now_iso()),
             )
 
+    @staticmethod
+    def question_for_user(
+        conn: sqlite3.Connection,
+        question_id: int,
+        user_name: str,
+    ) -> sqlite3.Row | None:
+        return conn.execute(
+            """
+            SELECT q.*
+            FROM questions q
+            LEFT JOIN private_question_owners p ON p.question_id = q.id
+            WHERE q.id = ? AND (p.user_name IS NULL OR p.user_name = ?)
+            """,
+            (question_id, user_name),
+        ).fetchone()
+
     def handle_session(self) -> None:
         tailscale_user = self.tailscale_user()
         if tailscale_user:
@@ -1083,8 +1109,13 @@ class AppHandler(BaseHTTPRequestHandler):
                 rows = conn.execute(
                     f"""
                     SELECT id
-                    FROM questions
-                    WHERE exam = ? AND id IN ({placeholders})
+                    FROM questions q
+                    WHERE exam = ?
+                      AND id IN ({placeholders})
+                      AND NOT EXISTS (
+                          SELECT 1 FROM private_question_owners p
+                          WHERE p.question_id = q.id
+                      )
                     """,
                     [exam, *chunk],
                 ).fetchall()
@@ -1327,10 +1358,12 @@ class AppHandler(BaseHTTPRequestHandler):
             SELECT q.id, q.year, q.category, q.question, q.explanation
             FROM question_set_items i
             JOIN questions q ON q.id = i.question_id
+            LEFT JOIN private_question_owners p ON p.question_id = q.id
             WHERE i.question_set_id = ?
+              AND (p.user_name IS NULL OR p.user_name = ?)
             ORDER BY i.position
             """,
-            (question_set["id"],),
+            (question_set["id"], question_set["user_name"]),
         ).fetchall()
         if not questions:
             raise ValueError("この問題セットには利用できる問題がありません。")
@@ -1448,10 +1481,13 @@ class AppHandler(BaseHTTPRequestHandler):
                     conn.execute(
                         """
                         SELECT COUNT(*) AS total
-                        FROM question_set_items
-                        WHERE question_set_id = ?
+                        FROM question_set_items i
+                        JOIN questions q ON q.id = i.question_id
+                        LEFT JOIN private_question_owners p ON p.question_id = q.id
+                        WHERE i.question_set_id = ?
+                          AND (p.user_name IS NULL OR p.user_name = ?)
                         """,
-                        (set_row["id"],),
+                        (set_row["id"], user_name),
                     ).fetchone()["total"]
                 )
                 rounds_count = int(
@@ -1613,9 +1649,11 @@ class AppHandler(BaseHTTPRequestHandler):
                         SELECT COUNT(*) AS total
                         FROM question_set_items i
                         JOIN questions q ON q.id = i.question_id
+                        LEFT JOIN private_question_owners p ON p.question_id = q.id
                         WHERE i.question_set_id = ?
+                          AND (p.user_name IS NULL OR p.user_name = ?)
                         """,
-                        (question_set_id,),
+                        (question_set_id, user_name),
                     ).fetchone()["total"]
                 )
                 if not available:
@@ -1869,6 +1907,19 @@ class AppHandler(BaseHTTPRequestHandler):
         params = parse_qs(query)
         user_name = self.effective_user_name(params=params)
         with db() as conn:
+            private_question_ids = [
+                int(row["question_id"])
+                for row in conn.execute(
+                    """
+                    SELECT i.question_id
+                    FROM question_set_items i
+                    JOIN question_sets s ON s.id = i.question_set_id
+                    JOIN private_question_owners p ON p.question_id = i.question_id
+                    WHERE s.id = ? AND s.user_name = ? AND p.user_name = ?
+                    """,
+                    (question_set_id, user_name, user_name),
+                ).fetchall()
+            ]
             cur = conn.execute(
                 "DELETE FROM question_sets WHERE id = ? AND user_name = ?",
                 (question_set_id, user_name),
@@ -1876,6 +1927,22 @@ class AppHandler(BaseHTTPRequestHandler):
             if cur.rowcount == 0:
                 self.send_json({"error": "問題セットが見つかりません。"}, HTTPStatus.NOT_FOUND)
                 return
+            for private_question_id in private_question_ids:
+                conn.execute(
+                    """
+                    DELETE FROM questions
+                    WHERE id = ?
+                      AND EXISTS (
+                          SELECT 1 FROM private_question_owners p
+                          WHERE p.question_id = questions.id AND p.user_name = ?
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM question_set_items i
+                          WHERE i.question_id = questions.id
+                      )
+                    """,
+                    (private_question_id, user_name),
+                )
 
         self.send_json({"ok": True, "question_set_id": question_set_id})
 
@@ -2304,6 +2371,55 @@ class AppHandler(BaseHTTPRequestHandler):
         filters = []
         args: list[str] = []
 
+        question_set_round_token = str(
+            params.get("question_set_round_token", [""])[0] or ""
+        ).strip()
+        if len(question_set_round_token) > MAX_PRACTICE_SESSION_TOKEN_LENGTH:
+            self.send_json(
+                {"error": "問題セット周回トークンが長すぎます。"},
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+
+        if question_set_round_token:
+            filters.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM question_set_round_items ri
+                    JOIN question_set_rounds r ON r.id = ri.round_id
+                    JOIN question_sets s ON s.id = r.question_set_id
+                    WHERE ri.question_id = q.id
+                      AND r.token = ?
+                      AND r.status = 'active'
+                      AND s.user_name = ?
+                )
+                """
+            )
+            args.extend([question_set_round_token, user_name])
+            filters.append(
+                """
+                (
+                    NOT EXISTS (
+                        SELECT 1 FROM private_question_owners p
+                        WHERE p.question_id = q.id
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM private_question_owners p
+                        WHERE p.question_id = q.id AND p.user_name = ?
+                    )
+                )
+                """
+            )
+            args.append(user_name)
+        else:
+            # Owner-private authored questions are delivered only through an
+            # active question-set round, never through ordinary study/library
+            # listings or random practice.
+            filters.append(
+                "NOT EXISTS (SELECT 1 FROM private_question_owners p WHERE p.question_id = q.id)"
+            )
+
         for field in ("exam", "year", "category"):
             value = (params.get(field, [""])[0] or "").strip()
             if value:
@@ -2319,6 +2435,19 @@ class AppHandler(BaseHTTPRequestHandler):
         where = f"WHERE {' AND '.join(filters)}" if filters else ""
 
         with db() as conn:
+            if question_set_round_token:
+                round_exists = conn.execute(
+                    """
+                    SELECT 1
+                    FROM question_set_rounds r
+                    JOIN question_sets s ON s.id = r.question_set_id
+                    WHERE r.token = ? AND r.status = 'active' AND s.user_name = ?
+                    """,
+                    (question_set_round_token, user_name),
+                ).fetchone()
+                if round_exists is None:
+                    self.send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
+                    return
             rows = conn.execute(
                 f"""
                 SELECT
@@ -2387,10 +2516,8 @@ class AppHandler(BaseHTTPRequestHandler):
         args.append(question_id)
 
         with db() as conn:
-            existing = conn.execute(
-                "SELECT exam FROM questions WHERE id = ?",
-                (question_id,),
-            ).fetchone()
+            current_user = self.effective_user_name()
+            existing = self.question_for_user(conn, question_id, current_user)
             if existing is None:
                 self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
                 return
@@ -2415,7 +2542,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 f"UPDATE questions SET {', '.join(updates)} WHERE id = ?",
                 args,
             )
-            row = conn.execute("SELECT * FROM questions WHERE id = ?", (question_id,)).fetchone()
+            row = self.question_for_user(conn, question_id, current_user)
 
         self.send_json({"question": row_to_question(row)})
 
@@ -2423,10 +2550,8 @@ class AppHandler(BaseHTTPRequestHandler):
         if not self.require_question_edit():
             return
         with db() as conn:
-            row = conn.execute(
-                "SELECT id FROM questions WHERE id = ?",
-                (question_id,),
-            ).fetchone()
+            current_user = self.effective_user_name()
+            row = self.question_for_user(conn, question_id, current_user)
             if row is None:
                 self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
                 return
@@ -2466,7 +2591,7 @@ class AppHandler(BaseHTTPRequestHandler):
 
         timestamp = now_iso()
         with db() as conn:
-            row = conn.execute("SELECT id FROM questions WHERE id = ?", (question_id,)).fetchone()
+            row = self.question_for_user(conn, question_id, user_name)
             if row is None:
                 self.send_json({"error": "Question not found."}, HTTPStatus.NOT_FOUND)
                 return
@@ -2627,7 +2752,7 @@ class AppHandler(BaseHTTPRequestHandler):
             return
 
         with db() as conn:
-            row = conn.execute("SELECT * FROM questions WHERE id = ?", (question_id,)).fetchone()
+            row = self.question_for_user(conn, question_id, user_name)
             if row is None:
                 self.send_json({"error": "問題が見つかりません。"}, HTTPStatus.NOT_FOUND)
                 return
@@ -2964,11 +3089,20 @@ class AppHandler(BaseHTTPRequestHandler):
                 "SELECT COUNT(*) AS total FROM disease_checklists WHERE user_name = ?",
                 (row["name"],),
             ).fetchone()["total"]
-            if attempts_count or question_sets_count or disease_checklists_count:
+            private_questions_count = conn.execute(
+                "SELECT COUNT(*) AS total FROM private_question_owners WHERE user_name = ?",
+                (row["name"],),
+            ).fetchone()["total"]
+            if (
+                attempts_count
+                or question_sets_count
+                or disease_checklists_count
+                or private_questions_count
+            ):
                 self.send_json(
                     {
                         "error": (
-                            "履歴、問題セット、または疾患確認リストがあるユーザーは"
+                            "履歴、問題セット、個人問題、または疾患確認リストがあるユーザーは"
                             "削除できません。"
                         )
                     },
@@ -2984,9 +3118,17 @@ class AppHandler(BaseHTTPRequestHandler):
         params = parse_qs(query)
         exam = (params.get("exam", [""])[0] or "").strip()
         user_name = self.effective_user_name(params)
-        question_filter = "WHERE exam = ?" if exam else ""
+        question_filters = [
+            "NOT EXISTS (SELECT 1 FROM private_question_owners p WHERE p.question_id = q.id)"
+        ]
+        if exam:
+            question_filters.append("q.exam = ?")
+        question_filter = f"WHERE {' AND '.join(question_filters)}"
         question_args: list[str] = [exam] if exam else []
-        attempt_filters = ["a.user_name = ?"]
+        attempt_filters = [
+            "a.user_name = ?",
+            "NOT EXISTS (SELECT 1 FROM private_question_owners p WHERE p.question_id = q.id)",
+        ]
         attempt_args: list[str] = [user_name]
         if exam:
             attempt_filters.append("q.exam = ?")
@@ -2995,7 +3137,7 @@ class AppHandler(BaseHTTPRequestHandler):
 
         with db() as conn:
             q_total = conn.execute(
-                f"SELECT COUNT(*) AS total FROM questions {question_filter}",
+                f"SELECT COUNT(*) AS total FROM questions q {question_filter}",
                 question_args,
             ).fetchone()["total"]
             attempts = conn.execute(
@@ -3022,20 +3164,49 @@ class AppHandler(BaseHTTPRequestHandler):
             exams = [
                 row["exam"]
                 for row in conn.execute(
-                    "SELECT DISTINCT exam FROM questions WHERE exam <> '' ORDER BY exam"
+                    """
+                    SELECT DISTINCT q.exam
+                    FROM questions q
+                    WHERE q.exam <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM private_question_owners p
+                          WHERE p.question_id = q.id
+                      )
+                    ORDER BY q.exam
+                    """
                 ).fetchall()
             ]
             years = [
                 row["year"]
                 for row in conn.execute(
-                    f"SELECT DISTINCT year FROM questions WHERE year <> '' {'AND exam = ?' if exam else ''} ORDER BY year DESC",
+                    f"""
+                    SELECT DISTINCT q.year
+                    FROM questions q
+                    WHERE q.year <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM private_question_owners p
+                          WHERE p.question_id = q.id
+                      )
+                      {'AND q.exam = ?' if exam else ''}
+                    ORDER BY q.year DESC
+                    """,
                     question_args,
                 ).fetchall()
             ]
             categories = [
                 row["category"]
                 for row in conn.execute(
-                    f"SELECT DISTINCT category FROM questions WHERE category <> '' {'AND exam = ?' if exam else ''} ORDER BY category",
+                    f"""
+                    SELECT DISTINCT q.category
+                    FROM questions q
+                    WHERE q.category <> ''
+                      AND NOT EXISTS (
+                          SELECT 1 FROM private_question_owners p
+                          WHERE p.question_id = q.id
+                      )
+                      {'AND q.exam = ?' if exam else ''}
+                    ORDER BY q.category
+                    """,
                     question_args,
                 ).fetchall()
             ]
@@ -3062,7 +3233,9 @@ class AppHandler(BaseHTTPRequestHandler):
         params = parse_qs(query)
         exam = (params.get("exam", [""])[0] or "").strip()
         user_name = self.effective_user_name(params)
-        filters = []
+        filters = [
+            "NOT EXISTS (SELECT 1 FROM private_question_owners p WHERE p.question_id = q.id)"
+        ]
         args: list[str] = [user_name]
         if exam:
             filters.append("q.exam = ?")
@@ -3165,8 +3338,8 @@ class AppHandler(BaseHTTPRequestHandler):
         exam = (params.get("exam", [""])[0] or "").strip()
         user_name = self.effective_user_name(params)
 
-        filters = ["a.user_name = ?"]
-        args: list[object] = [user_name]
+        filters = ["a.user_name = ?", "(p.user_name IS NULL OR p.user_name = ?)"]
+        args: list[object] = [user_name, user_name]
         if question_id > 0:
             filters.append("a.question_id = ?")
             args.append(question_id)
@@ -3194,6 +3367,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     q.answer
                 FROM attempts a
                 JOIN questions q ON q.id = a.question_id
+                LEFT JOIN private_question_owners p ON p.question_id = q.id
                 {where}
                 ORDER BY a.created_at DESC, a.id DESC
                 LIMIT ?
@@ -3204,8 +3378,18 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_json({"attempts": [dict(row) for row in rows]})
 
     def handle_export(self) -> None:
+        user_name = self.effective_user_name()
         with db() as conn:
-            rows = conn.execute("SELECT * FROM questions ORDER BY id").fetchall()
+            rows = conn.execute(
+                """
+                SELECT q.*
+                FROM questions q
+                LEFT JOIN private_question_owners p ON p.question_id = q.id
+                WHERE p.user_name IS NULL OR p.user_name = ?
+                ORDER BY q.id
+                """,
+                (user_name,),
+            ).fetchall()
 
         self.send_json({"questions": [row_to_question(row) for row in rows]})
 

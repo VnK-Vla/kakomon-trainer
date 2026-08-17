@@ -63,6 +63,14 @@ class ManageQuestionSetsTests(unittest.TestCase):
                     created_at TEXT NOT NULL
                 );
 
+                CREATE TABLE private_question_owners (
+                    question_id INTEGER PRIMARY KEY,
+                    user_name TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_name) REFERENCES users(name) ON DELETE RESTRICT
+                );
+
                 CREATE TABLE question_sets (
                     id INTEGER PRIMARY KEY,
                     user_name TEXT NOT NULL,
@@ -192,6 +200,24 @@ class ManageQuestionSetsTests(unittest.TestCase):
                     self.create(dry_run=True)
 
         self.assertFalse(self.backup_root.exists())
+
+    def test_private_question_can_only_be_selected_by_its_owner(self):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO users (name, created_at) VALUES (?, ?)",
+                ("bob", "2026-08-06T00:00:00+00:00"),
+            )
+            conn.execute(
+                """
+                INSERT INTO private_question_owners (question_id, user_name, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (3, "bob", "2026-08-06T00:00:00+00:00"),
+            )
+        self.write_manifest(question_ids=[1, 3])
+
+        with self.assertRaisesRegex(manage_question_sets.QuestionSetError, "別ユーザー"):
+            self.create(dry_run=True)
 
     def test_failed_item_insert_rolls_back_the_entire_creation(self):
         with sqlite3.connect(self.db_path) as conn:

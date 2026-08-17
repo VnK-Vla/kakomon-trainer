@@ -2,6 +2,8 @@
 
 名前付き問題セットは、既存の過去問IDを1つの試験内でまとめ、所有者だけが繰り返し演習するための機能です。セットの作成はブラウザやOpenAI APIからは行わず、Codexが選定したIDを専用CLIで登録します。
 
+新作問題を所有者専用で登録する場合は、後半の「新作の個人問題セット」を使います。個人問題は通常の分野別・年度別・一覧・ランダム演習には混ぜず、所有者の進行中の問題セット周回からだけ取得できます。
+
 ## 前提
 
 - 新しい `server.py` でアプリを一度起動し、問題セット用テーブルを導入しておきます。
@@ -89,3 +91,31 @@ backups/before-question-set-YYYYMMDD-HHMMSS/questions.db
 - `static/media/`、`static/source-pdfs/`、`imports/`、`work/`、`logs/`
 
 公開してよいのは、秘密情報や問題データを含まないCLI本体、テスト、一般化された説明文書です。
+
+## 新作の個人問題セット
+
+新作問題は、既存問題IDのmanifestとは別に、リポジトリ外の非公開manifestへ置きます。最上位は `title`、`exam`、`questions` のみ、各問題は `year`、`category`、`question`、`choices`、`answer`、`explanation` のみです。画像は登録しません。
+
+最初に新しい `server.py` で一時コピーDBを初期化し、乾式実行します。
+
+```sh
+KAKOMON_DATA_DIR=/tmp/kakomon-private-preview python3 -c 'import server; server.init_db()'
+
+python3 tools/manage_private_question_sets.py create \
+  /private/path/private-question-set.json \
+  --user "owner@example.com" \
+  --db /tmp/kakomon-private-preview/questions.db \
+  --dry-run
+```
+
+乾式実行は所有者・試験・同名セット・問題形式・選択肢・単一正答・件数内訳だけを検証し、問題文や所有者名を出力しません。実登録では同じコマンドから `--dry-run` を外します。更新前にバックアップを作り、問題、所有者対応、問題セットを単一トランザクションで登録します。
+
+個人問題は次のすべてから除外されます。
+
+- 通常の問題一覧と検索
+- 分野別・年度別演習
+- 全問題ランダム演習
+- 通常の問題数・年度・分野集計
+- 他ユーザーの直接問題取得、解答登録、メモ保存、エクスポート
+
+問題セットを削除した際、その個人問題がほかの問題セットから参照されていなければ、問題本文と解答履歴も削除されます。周回履歴を残したい場合は、先にセットを削除しないでください。

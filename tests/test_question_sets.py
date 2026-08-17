@@ -116,6 +116,21 @@ class QuestionSetApiTests(unittest.TestCase):
             )
             return question_set_id
 
+    def mark_private_question(self, question_id, user_name):
+        timestamp = server.now_iso()
+        with server.db() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO users (name, created_at) VALUES (?, ?)",
+                (user_name, timestamp),
+            )
+            conn.execute(
+                """
+                INSERT INTO private_question_owners (question_id, user_name, created_at)
+                VALUES (?, ?, ?)
+                """,
+                (question_id, user_name, timestamp),
+            )
+
     def request_json(
         self,
         method,
@@ -219,6 +234,7 @@ class QuestionSetApiTests(unittest.TestCase):
                 "question_set_items",
                 "question_set_rounds",
                 "question_set_round_items",
+                "private_question_owners",
             }.issubset(tables)
         )
         self.assertTrue(
@@ -293,6 +309,101 @@ class QuestionSetApiTests(unittest.TestCase):
             with self.subTest(method=method):
                 status, _ = self.request_json(method, path, request_payload)
                 self.assertEqual(status, 404)
+
+    def test_private_questions_are_delivered_only_to_owner_active_round(self):
+        private_question = self.insert_question(
+            DIAGNOSTIC_EXAM,
+            "自作",
+            "多臓器疾患",
+            17,
+            "b",
+        )
+        self.mark_private_question(private_question, "alice")
+        private_set = self.insert_question_set(
+            "alice",
+            DIAGNOSTIC_EXAM,
+            "Alice 個人問題",
+            [self.diagnostic_questions[0], private_question],
+        )
+
+        ordinary_query = self.user_query("alice", exam=DIAGNOSTIC_EXAM)
+        status, ordinary = self.request_json("GET", f"/api/questions?{ordinary_query}")
+        self.assertEqual(status, 200)
+        ordinary_ids = {question["id"] for question in ordinary["questions"]}
+        self.assertNotIn(private_question, ordinary_ids)
+
+        stats_status, stats = self.request_json("GET", f"/api/stats?{ordinary_query}")
+        self.assertEqual(stats_status, 200)
+        self.assertEqual(stats["questions"], len(self.diagnostic_questions))
+
+        start_status, started = self.start_round(private_set, "alice")
+        self.assertEqual(start_status, 201)
+        token = started["round"]["token"]
+        round_query = self.user_query(
+            "alice",
+            exam=DIAGNOSTIC_EXAM,
+            question_set_round_token=token,
+        )
+        status, round_questions = self.request_json("GET", f"/api/questions?{round_query}")
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            {question["id"] for question in round_questions["questions"]},
+            {self.diagnostic_questions[0], private_question},
+        )
+
+        bob_query = self.user_query(
+            "bob",
+            exam=DIAGNOSTIC_EXAM,
+            question_set_round_token=token,
+        )
+        status, _ = self.request_json("GET", f"/api/questions?{bob_query}")
+        self.assertEqual(status, 404)
+        status, _ = self.request_json(
+            "POST",
+            "/api/attempts",
+            {
+                "question_id": private_question,
+                "user_name": "bob",
+                "user_answer": "b",
+                "self_mark": "ok",
+            },
+        )
+        self.assertEqual(status, 404)
+        status, _ = self.request_json(
+            "POST",
+            f"/api/notes/{private_question}",
+            {"user_name": "bob", "note": "should not save"},
+        )
+        self.assertEqual(status, 404)
+
+    def test_deleting_private_set_removes_unreferenced_private_questions(self):
+        private_question = self.insert_question(
+            DIAGNOSTIC_EXAM,
+            "自作",
+            "多臓器疾患",
+            18,
+            "a",
+        )
+        self.mark_private_question(private_question, "alice")
+        private_set = self.insert_question_set(
+            "alice",
+            DIAGNOSTIC_EXAM,
+            "削除対象の個人問題",
+            [private_question],
+        )
+
+        status, _ = self.request_json(
+            "DELETE",
+            f"/api/question-sets/{private_set}?{self.user_query('alice')}",
+        )
+        self.assertEqual(status, 200)
+        with server.db() as conn:
+            self.assertIsNone(
+                conn.execute(
+                    "SELECT 1 FROM questions WHERE id = ?",
+                    (private_question,),
+                ).fetchone()
+            )
 
     def test_round_mutations_require_json_content_type(self):
         query = self.user_query("alice")

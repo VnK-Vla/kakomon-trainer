@@ -2405,14 +2405,18 @@ async function openQuestionSetRoundForPractice(setId, { action = "resume" } = {}
       if (mutationPayload.question_set) upsertQuestionSet(mutationPayload.question_set);
     }
 
+    const activePayload = await api(
+      `/api/question-sets/${normalizedSetId}/rounds/active${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
+    );
+    const activeSet = normalizeQuestionSet(activePayload.question_set) || normalizeQuestionSet(questionSet);
+    const round = normalizeQuestionSetRound(activePayload.round);
+    if (!round?.token || round.status !== "active") {
+      throw new Error("進行中の周回を取得できませんでした。");
+    }
     const questionParams = userScopedParams();
-    questionParams.set("exam", questionSet.exam || requestedExam);
-    const [activePayload, questionPayload] = await Promise.all([
-      api(
-        `/api/question-sets/${normalizedSetId}/rounds/active${queryFor(questionSetParams({}, requestedUser, requestedExam))}`,
-      ),
-      api(`/api/questions${queryFor(questionParams)}`),
-    ]);
+    questionParams.set("exam", activeSet?.exam || questionSet.exam || requestedExam);
+    questionParams.set("question_set_round_token", round.token);
+    const questionPayload = await api(`/api/questions${queryFor(questionParams)}`);
     if (
       flowRequestId !== state.questionSetFlowRequestId ||
       requestId !== state.refreshRequestId ||
@@ -2422,11 +2426,6 @@ async function openQuestionSetRoundForPractice(setId, { action = "resume" } = {}
       return;
     }
 
-    const activeSet = normalizeQuestionSet(activePayload.question_set) || normalizeQuestionSet(questionSet);
-    const round = normalizeQuestionSetRound(activePayload.round);
-    if (!round?.token || round.status !== "active") {
-      throw new Error("進行中の周回を取得できませんでした。");
-    }
     state.practiceSessionActive = false;
     clearStudyFilters();
     state.questionSetPractice = { question_set: activeSet, round };
