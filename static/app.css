@@ -1329,7 +1329,7 @@ h2 {
 
 .practice-round-progress {
   display: grid;
-  grid-template-columns: auto minmax(100px, 1fr) auto;
+  grid-template-columns: minmax(0, auto) minmax(100px, 1fr) auto;
   gap: 10px;
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -1341,6 +1341,15 @@ h2 {
 .practice-round-progress span {
   color: #334155;
   font-size: 0.84rem;
+}
+
+/* 問題セット名は長くなりうるので折り返させる(nowrapだと列が縮まず横スクロールが出る) */
+.practice-round-progress strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.practice-round-progress span {
   white-space: nowrap;
 }
 
@@ -2717,7 +2726,7 @@ button.small {
   }
 
   .practice-round-progress {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px 10px;
     margin: 0 0 12px;
     padding-bottom: 10px;
